@@ -16,9 +16,14 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		res.send('TODO: remember last accessed branch. Until then - specify branch');
 		return;
 	}
+
 	const commitHash = !!req.query.hash
 		? req.query.hash
 		: await getCommitHashForBranch(req.query.branch);
+
+	if (commitHash instanceof Error) {
+		res.send('Calypso Server: ' + commitHash.message);
+	}
 
 	res.send(`Calypso Server: serving up hash: ${commitHash}`);
 });
