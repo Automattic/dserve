@@ -1,34 +1,15 @@
-const express = require('express');
-var Docker = require('dockerode');
-var docker = new Docker();
+// external
+import * as express from 'express';
+import * as Docker from 'dockerode';
 
-type CommitHash = string;
-type BranchName = string;
-type PortNumber = number;
-type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
+// internal
+import { getCommitHashForBranch } from './api';
 
-async function hasCommitHashLocally(branch: BranchName): Promise<boolean> {
-	return false;
-}
+const docker = new Docker();
 
-async function getCommitHashForBranch(branch: BranchName): Promise<CommitHash> {
-	return 'a8ejxk8';
-}
-
-async function hasBranchLocally(branch: BranchName): Promise<boolean> {
-	const commitHash = await getCommitHashForBranch(branch);
-	return hasCommitHashLocally(commitHash);
-}
-
-async function getImageStatus(hash: CommitHash): Promise<ImageStatus> {
-	return 'NoImage';
-}
-
-const builds: Array<CommitHash> = [];
-function getBuildsInProgress(): Array<CommitHash> {
-	return builds;
-}
-
+// calypso proxy server.
+// checks branch names, decides to start a build or a container,
+// and also proxies request to currently active container
 const calypsoServer = express();
 calypsoServer.get('*', async (req: any, res: any) => {
 	if (!req.query || (!req.query.hash && !req.query.branch)) {
