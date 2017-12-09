@@ -6,11 +6,18 @@
 	"dependencies": {
 		"@types/dockerode": "^2.5.1",
 		"@types/express": "^4.0.39",
+		"@types/express-session": "^1.15.6",
+		"@types/http-proxy": "^1.12.2",
+		"@types/lodash": "^4.14.88",
 		"@types/node": "^8.0.55",
 		"@types/node-fetch": "^1.6.7",
 		"dockerode": "^2.5.3",
 		"express": "^4.16.2",
+		"express-session": "^1.15.6",
+		"http-proxy": "^1.16.2",
+		"lodash": "^4.17.4",
 		"node-fetch": "^1.7.3",
+		"portfinder": "^1.0.13",
 		"typescript": "^2.6.2"
 	},
 	"scripts": {
