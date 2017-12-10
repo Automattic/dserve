@@ -17,23 +17,30 @@ const REPO = 'Automattic/wp-calypso';
 const TAG_PREFIX = 'wp-calypso';
 const BRANCH_URL = 'https://api.github.com/repos/Automattic/wp-calypso/branches/';
 const ONE_SECOND = 1000;
+const FIVE_MINUTES = 300000;
 
-function log(...args: Array<any>) {
-	console.log(...args);
-}
+export const log = (...args: Array<any>) => console.log(...args);
 
 async function sleep(ms: number): Promise<any> {
 	return new Promise(r => setTimeout(r, ms));
 }
 
+/**
+ *
+ * @param ms milliseconds to wait before calling the function again. The clock
+ *           doesn't start counting down until the function finishes
+ * @param fn function to call
+ */
 function runEvery(ms: number, fn: Function): void {
 	_.defer(async () => {
 		while (true) {
-			fn();
-			await sleep(ONE_SECOND);
+			await fn();
+			await sleep(ms);
 		}
 	});
 }
+
+const getImageName = (hash: CommitHash) => `${TAG_PREFIX}:${hash}`;
 
 /**
  * Returns which images are stored locally.
@@ -51,17 +58,30 @@ const getLocalImages = (function() {
 
 // docker run -it --name wp-calypso --rm -p 80:3000 -e
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
-async function startContainer(hash: CommitHash) {
-	const image = `wp-calypso:${hash}`;
-	const freePort = await portfinder.getPortPromise();
-	const container = await docker.run(image, [], process.stdout, {
-		Tty: false,
-		ExposedPorts: { '3000/tcp': {} },
-		PortBindings: { '3000/tcp': [{ HostPort: '3002' }] },
-		Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
-	});
+export async function startContainer(hash: CommitHash) {
+	const image = getImageName(hash);
+	let freePort;
+	try {
+		freePort = await portfinder.getPortPromise();
+	} catch (error) {
+		log(`error getting a free port: `, error);
+		return;
+	}
+
+	try {
+		const container = await docker.run(image, [], process.stdout, {
+			Tty: false,
+			ExposedPorts: { '3000/tcp': {} },
+			PortBindings: { '3000/tcp': [{ HostPort: freePort.toString() }] },
+			Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
+		});
+		return container;
+	} catch (error) {
+		log(`error starting container with error: `, error);
+		return false;
+	}
 }
-// startContainer('6b6215eed45a5668010911744ec660f5f12edb74');
+
 const getRunningContainers = (function() {
 	let containers = {};
 	runEvery(ONE_SECOND, async () => {
@@ -70,6 +90,11 @@ const getRunningContainers = (function() {
 
 	return () => containers;
 })();
+
+export function isContainerRunning(hash: CommitHash) {
+	const image = getImageName(hash);
+	return _.has(getRunningContainers, image);
+}
 
 // runEvery(ONE_SECOND, () => {
 // 	console.error(getPortForContainer('6b6215eed45a5668010911744ec660f5f12edb74'));
@@ -80,7 +105,8 @@ export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
 }
 
 export function getPortForContainer(hash: CommitHash): Promise<boolean> {
-	return _.get(getRunningContainers(), [`${TAG_PREFIX}:${hash}`, 'Ports', 0, 'PublicPort'], false);
+	const image = getImageName(hash);
+	return _.get(getRunningContainers(), [image, 'Ports', 0, 'PublicPort'], false);
 }
 
 export async function getCommitHashForBranch(branch: BranchName): Promise<CommitHash | NotFound> {
@@ -93,6 +119,42 @@ export async function getCommitHashForBranch(branch: BranchName): Promise<Commit
 	return response.commit.sha;
 }
 
-export async function getImageStatus(hash: CommitHash): Promise<ImageStatus> {
-	return 'NoImage';
+export const { touchCommit, getCommitAccessTimes } = (function() {
+	const accesses = new Map();
+
+	const touchCommit = (hash: CommitHash) => accesses.set(getImageName(hash), Date.now());
+
+	const getCommitAccessTimes = () => accesses;
+
+	return { touchCommit, getCommitAccessTimes };
+})();
+
+// stop any container that hasn't been accessed within five minutes
+function cleanupContainers() {
+	runEvery(FIVE_MINUTES, async () => {
+		const containers = _.values(getRunningContainers());
+		const lastAccessedTimes = getCommitAccessTimes();
+		containers.forEach(async (container: any) => {
+			const imageName = container.Image;
+			const lastAccessed = lastAccessedTimes.get(imageName);
+
+			if (_.isUndefined(lastAccessed) || Date.now() - lastAccessed > FIVE_MINUTES) {
+				log(`Attempting to stop container: ${imageName}`);
+				try {
+					await docker.getContainer(container.Id).stop();
+					log(
+						`Successfully stopped container with id: ${container.id} and image name: ${imageName}`
+					);
+				} catch (error) {
+					log(
+						`Did not successfully stop container: ${imageName}.
+					  experienced error: `,
+						error
+					);
+				}
+			}
+		});
+	});
 }
+
+cleanupContainers();
