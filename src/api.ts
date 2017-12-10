@@ -2,12 +2,14 @@ import * as Docker from 'dockerode';
 import fetch from 'node-fetch';
 import * as _ from 'lodash';
 import * as portfinder from 'portfinder';
+import * as git from 'nodegit';
 import * as os from 'os';
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 import { promisify } from 'util';
-// import { setTimeout } from 'timers';
+
 const docker = new Docker();
+const tar: any = require('tar-fs'); // todo: write a type definition for tar-fs
 
 // types
 export type NotFound = Error;
@@ -18,7 +20,7 @@ export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 
 // TODO: move out to configuration files
 const REPO = 'Automattic/wp-calypso';
-const TAG_PREFIX = 'wp-calypso';
+const TAG_PREFIX = 'dserve-wpcalypso';
 const BRANCH_URL = 'https://api.github.com/repos/Automattic/wp-calypso/branches/';
 const ONE_SECOND = 1000;
 const FIVE_MINUTES = 300000;
@@ -64,7 +66,7 @@ const getLocalImages = (function() {
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
 export async function startContainer(hash: CommitHash) {
 	const image = getImageName(hash);
-	let freePort;
+	let freePort: number;
 	try {
 		freePort = await portfinder.getPortPromise();
 	} catch (error) {
@@ -72,18 +74,14 @@ export async function startContainer(hash: CommitHash) {
 		return;
 	}
 
-	try {
-		const container = await docker.run(image, [], process.stdout, {
-			Tty: false,
-			ExposedPorts: { '3000/tcp': {} },
-			PortBindings: { '3000/tcp': [{ HostPort: freePort.toString() }] },
-			Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
-		});
-		return container;
-	} catch (error) {
-		log(`error starting container with error: `, error);
-		return false;
-	}
+	docker.run(image, [], process.stdout, {
+		Tty: false,
+		ExposedPorts: { '3000/tcp': {} },
+		PortBindings: { '3000/tcp': [{ HostPort: freePort.toString() }] },
+		Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
+	});
+	await sleep(ONE_SECOND * 2);
+	return;
 }
 
 const getRunningContainers = (function() {
@@ -97,7 +95,8 @@ const getRunningContainers = (function() {
 
 export function isContainerRunning(hash: CommitHash) {
 	const image = getImageName(hash);
-	return _.has(getRunningContainers, image);
+	console.error(image);
+	return _.has(getRunningContainers(), image);
 }
 
 // runEvery(ONE_SECOND, () => {
@@ -105,7 +104,7 @@ export function isContainerRunning(hash: CommitHash) {
 // });
 
 export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
-	return _.has(getLocalImages(), `${TAG_PREFIX}:${hash}`);
+	return _.has(getLocalImages(), getImageName(hash));
 }
 
 export function getPortForContainer(hash: CommitHash): Promise<boolean> {
@@ -163,15 +162,68 @@ function cleanupContainers() {
 
 cleanupContainers();
 
-export async function buildImageForHash(hash: CommitHash) {
-	log('building for ' + hash);
-	const tmpDir = os.tmpdir();
-	const buildDir = path.join(tmpDir, `dserve-build-${REPO}-${hash}`);
-	try {
-		await promisify(fs.mkdir)(buildDir);
-	} catch (error) {
-		log('failed building image because of error: ', error);
-	}
+/**
+ * Creates an empty file at `path` if one does not exist.
+ * Otherwise update the mtime to now.
+ *
+ * @param path path to touch
+ */
+async function touch(path: string) {
+	return await fs.close(await fs.open(path, 'a'));
 }
 
-buildImageForHash('b17f5a58ae09c4c25c8b300a4b0edb3ec728f187');
+function getBuildDir(hash: CommitHash) {
+	const tmpDir = os.tmpdir();
+	return path.join(tmpDir, `dserve-build-${REPO.replace('/', '-')}-${hash}`);
+}
+
+export async function isBuildInProgress(hash: CommitHash) {
+	return await fs.pathExists(getBuildDir(hash));
+}
+
+export async function buildImageForHash(hash: CommitHash) {
+	const buildDir = getBuildDir(hash);
+
+	if (await isBuildInProgress(hash)) {
+		log(`skipping build for ${hash} because a build is already in progress at: ${buildDir}`);
+		return;
+	}
+
+	log('1: attemping to build image for ' + hash);
+	try {
+		log(`2: cloning git repo for ${hash} to: ${buildDir}`);
+		await promisify(fs.mkdir)(buildDir);
+		const repo = await git.Clone.clone(`https://github.com/${REPO}`, buildDir);
+		const commit = await repo.getCommit(hash);
+		repo.setHeadDetached(commit.id());
+		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
+			log('3: actually building image for ' + hash);
+			const tarStream = tar.pack(buildDir);
+			const buildStream = await docker.buildImage(tarStream, {
+				t: getImageName(hash),
+			});
+			buildStream.pipe(process.stdout, {
+				end: true,
+			});
+			let encounteredError = false;
+			buildStream.on('end', () => {
+				if (!encounteredError) {
+					log(`successfully finished building image for ${hash}`);
+				}
+				log(`cleaning up build directory for ${hash}`);
+				cleanUpBuildDir(hash);
+			});
+			buildStream.on('error', (error: any) => {
+				encounteredError = true;
+				log(`encountered error while building: ${hash}: `, error);
+			});
+	} catch (error) {
+		log('failed building image because of error: ', error);
+		cleanUpBuildDir(hash);
+	}
+}
+async function cleanUpBuildDir(hash: CommitHash) {
+	const buildDir = getBuildDir(hash);
+	log(`removing directory: ${buildDir}`);
+	return fs.remove(buildDir);
+}
