@@ -2,6 +2,10 @@ import * as Docker from 'dockerode';
 import fetch from 'node-fetch';
 import * as _ from 'lodash';
 import * as portfinder from 'portfinder';
+import * as os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
+import { promisify } from 'util';
 // import { setTimeout } from 'timers';
 const docker = new Docker();
 
@@ -158,3 +162,16 @@ function cleanupContainers() {
 }
 
 cleanupContainers();
+
+export async function buildImageForHash(hash: CommitHash) {
+	log('building for ' + hash);
+	const tmpDir = os.tmpdir();
+	const buildDir = path.join(tmpDir, `dserve-build-${REPO}-${hash}`);
+	try {
+		await promisify(fs.mkdir)(buildDir);
+	} catch (error) {
+		log('failed building image because of error: ', error);
+	}
+}
+
+buildImageForHash('b17f5a58ae09c4c25c8b300a4b0edb3ec728f187');
