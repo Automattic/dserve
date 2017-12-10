@@ -146,7 +146,7 @@ function cleanupContainers() {
 				try {
 					await docker.getContainer(container.Id).stop();
 					log(
-						`Successfully stopped container with id: ${container.id} and image name: ${imageName}`
+						`Successfully stopped container with id: ${container.Id} and image name: ${imageName}`
 					);
 				} catch (error) {
 					log(
@@ -189,34 +189,37 @@ export async function buildImageForHash(hash: CommitHash) {
 		return;
 	}
 
-	log('1: attemping to build image for ' + hash);
 	try {
+		log('1: attemping to build image for ' + hash);
 		log(`2: cloning git repo for ${hash} to: ${buildDir}`);
+
 		await promisify(fs.mkdir)(buildDir);
 		const repo = await git.Clone.clone(`https://github.com/${REPO}`, buildDir);
 		const commit = await repo.getCommit(hash);
 		repo.setHeadDetached(commit.id());
 		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
-			log('3: actually building image for ' + hash);
-			const tarStream = tar.pack(buildDir);
-			const buildStream = await docker.buildImage(tarStream, {
-				t: getImageName(hash),
-			});
-			buildStream.pipe(process.stdout, {
-				end: true,
-			});
-			let encounteredError = false;
-			buildStream.on('end', () => {
-				if (!encounteredError) {
-					log(`successfully finished building image for ${hash}`);
-				}
-				log(`cleaning up build directory for ${hash}`);
-				cleanUpBuildDir(hash);
-			});
-			buildStream.on('error', (error: any) => {
-				encounteredError = true;
-				log(`encountered error while building: ${hash}: `, error);
-			});
+
+		log('3: actually building image for ' + hash);
+		const tarStream = tar.pack(buildDir);
+		const buildStream = await docker.buildImage(tarStream, {
+			t: getImageName(hash),
+		});
+		buildStream.pipe(process.stdout, {
+			end: true,
+		});
+
+		let encounteredError = false;
+		buildStream.on('end', () => {
+			if (!encounteredError) {
+				log(`successfully finished building image for ${hash}`);
+			}
+			log(`cleaning up build directory for ${hash}`);
+			cleanUpBuildDir(hash);
+		});
+		buildStream.on('error', (error: any) => {
+			encounteredError = true;
+			log(`encountered error while building: ${hash}: `, error);
+		});
 	} catch (error) {
 		log('failed building image because of error: ', error);
 		cleanUpBuildDir(hash);
