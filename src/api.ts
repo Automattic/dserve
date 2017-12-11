@@ -23,7 +23,9 @@ const REPO = 'Automattic/wp-calypso';
 const TAG_PREFIX = 'dserve-wpcalypso';
 const BRANCH_URL = 'https://api.github.com/repos/Automattic/wp-calypso/branches/';
 const ONE_SECOND = 1000;
-const FIVE_MINUTES = 300000;
+const ONE_MINUTE = 60 * ONE_SECOND;
+const FIVE_MINUTES = 5 * ONE_MINUTE;
+const TEN_MINUTES = 10 * ONE_MINUTE;
 
 export const log = (...args: Array<any>) => console.log(...args);
 
@@ -134,12 +136,15 @@ export const { touchCommit, getCommitAccessTimes } = (function() {
 
 // stop any container that hasn't been accessed within five minutes
 function cleanupContainers() {
-	runEvery(FIVE_MINUTES, async () => {
+	runEvery(TEN_MINUTES, async () => {
 		const containers = _.values(getRunningContainers());
 		const lastAccessedTimes = getCommitAccessTimes();
 		containers.forEach(async (container: any) => {
-			const imageName = container.Image;
+			const imageName: string = container.Image;
 			const lastAccessed = lastAccessedTimes.get(imageName);
+			if (!imageName.startsWith(TAG_PREFIX)) {
+				return;
+			}
 
 			if (_.isUndefined(lastAccessed) || Date.now() - lastAccessed > FIVE_MINUTES) {
 				log(`Attempting to stop container: ${imageName}`);

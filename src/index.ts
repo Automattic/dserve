@@ -60,11 +60,9 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		return;
 	}
 
-	try {
-		proxy.web(req, res, { target: `http://localhost:${port}` });
-	} catch (error) {
-		log('unexpected error occured while proxying', error);
-	}
+	proxy.web(req, res, { target: `http://localhost:${port}` }, err => {
+		log('unexpected error occured while proxying', err);
+	});
 });
 calypsoServer.listen(3000, () => log('listening on 3000'));
 
