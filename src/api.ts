@@ -194,9 +194,11 @@ export async function buildImageForHash(hash: CommitHash) {
 		log(`2: cloning git repo for ${hash} to: ${buildDir}`);
 
 		await promisify(fs.mkdir)(buildDir);
+		// why is checking out a commit require making a branch?
 		const repo = await git.Clone.clone(`https://github.com/${REPO}`, buildDir);
 		const commit = await repo.getCommit(hash);
-		repo.setHeadDetached(commit.id());
+		const branch = await repo.createBranch('dserve', commit, true, undefined, undefined);
+		await repo.checkoutBranch(branch);
 		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
 
 		log('3: actually building image for ' + hash);
@@ -222,6 +224,7 @@ export async function buildImageForHash(hash: CommitHash) {
 		});
 	} catch (error) {
 		log('failed building image because of error: ', error);
+		// TODO: remember there was a failure by leaving an error file in its wake
 		cleanUpBuildDir(hash);
 	}
 }
