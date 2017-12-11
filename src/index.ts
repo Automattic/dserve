@@ -46,6 +46,8 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		log(`starting up container for hash: ${commitHash}\n`);
 		try {
 			res.send('Just started your hash, try refreshing in two seconds');
+			// TODO: fix race condition where multiple containers may be spun up
+			// within the same subsecond time period.
 			await startContainer(commitHash);
 			log(`successfully started container for hash: ${commitHash}`);
 			return;
