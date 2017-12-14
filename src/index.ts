@@ -14,6 +14,7 @@ import {
 	isContainerRunning,
 	isBuildInProgress,
 	buildImageForHash,
+	readBuildLog,
 } from './api';
 import { determineCommitHash, session } from './middlewares';
 
@@ -27,25 +28,41 @@ calypsoServer.use(session);
 calypsoServer.use(determineCommitHash);
 
 calypsoServer.get('*', async (req: any, res: any) => {
-	const commitHash = req.session.commitHash;
+	const commitHash = req.session.commitHash; 
 
 	const hasLocally = await hasHashLocally(commitHash);
+	const restartInThreeSeconds = `
+		<script>
+		setTimeout( function() {
+			window.location.reload();
+		}, 3000 );
+		</script>
+	`;
+
 	if (!hasLocally) {
+		let message = 'Starting build now';
+
 		if (await isBuildInProgress(commitHash)) {
-			res.send(
-				'Good news! The build for this branch is currenlty under-way. Please give me up to 6 minutes to build'
-			);
+			message = await readBuildLog(commitHash);
 		} else {
-			res.send(`We do not have this build ready yet. Starting the build now!`);
 			buildImageForHash(commitHash);
 		}
+
+		res.send(`
+				${restartInThreeSeconds}
+				${message}	
+		`);
+
 		return;
 	}
 
 	if (!isContainerRunning(commitHash)) {
 		log(`starting up container for hash: ${commitHash}\n`);
 		try {
-			res.send('Just started your hash, try refreshing in two seconds');
+			res.send(`
+				${restartInThreeSeconds}
+				Just started your hash, this page will restart automatically
+			`);
 			// TODO: fix race condition where multiple containers may be spun up
 			// within the same subsecond time period.
 			await startContainer(commitHash);

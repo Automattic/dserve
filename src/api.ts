@@ -19,6 +19,7 @@ export type PortNumber = number;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 
 // TODO: move out to configuration files
+const BUILD_LOG_FILENAME = 'dserve-build-log.txt';
 const REPO = 'Automattic/wp-calypso';
 const TAG_PREFIX = 'dserve-wpcalypso';
 const BRANCH_URL = 'https://api.github.com/repos/Automattic/wp-calypso/branches/';
@@ -182,12 +183,27 @@ function getBuildDir(hash: CommitHash) {
 	return path.join(tmpDir, `dserve-build-${REPO.replace('/', '-')}-${hash}`);
 }
 
-export async function isBuildInProgress(hash: CommitHash) {
+export const getLogDir = (hash: CommitHash) => path.join(getBuildDir(hash), BUILD_LOG_FILENAME);
+
+export async function isBuildInProgress(hash: CommitHash): Promise<boolean> {
 	return await fs.pathExists(getBuildDir(hash));
 }
+export async function readBuildLog(hash: CommitHash): Promise<string> {
+	if (await fs.pathExists(getLogDir(hash))) {
+		return fs.readFile(getLogDir(hash), 'utf-8');
+	}
+	return 'Build still initializing...';
+}
 
+let pendingHashes = new Set();
 export async function buildImageForHash(hash: CommitHash) {
+	if (pendingHashes.has(hash)) {
+		log(`skipping build for ${hash} because it is already in progress... -- race condition state`);
+		return;
+	}
+	pendingHashes.add(hash);
 	const buildDir = getBuildDir(hash);
+	const pathToLog = getLogDir(hash);
 
 	if (await isBuildInProgress(hash)) {
 		log(`skipping build for ${hash} because a build is already in progress at: ${buildDir}`);
@@ -195,42 +211,58 @@ export async function buildImageForHash(hash: CommitHash) {
 	}
 
 	try {
-		log('1: attemping to build image for ' + hash);
-		log(`2: cloning git repo for ${hash} to: ${buildDir}`);
-
-		await promisify(fs.mkdir)(buildDir);
-		// why is checking out a commit require making a branch?
+		const firstTwoLogs = `\
+1: attempting to build image for: ${hash}
+2: cloning git repo for ${hash} to: ${buildDir}\n
+		`;
+		log(firstTwoLogs);
 		const repo = await git.Clone.clone(`https://github.com/${REPO}`, buildDir);
+		console.error('hiii');
+		pendingHashes.delete(hash);
+		await touch(pathToLog);
+		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
+
+		const writeStream = fs.createWriteStream(pathToLog);
+		const write = (str: any) => {
+			writeStream.write(str + '\n');
+			log(str);
+		};
+		writeStream.write(firstTwoLogs);
+
+		write('3: finished downloading repo');
 		const commit = await repo.getCommit(hash);
 		const branch = await repo.createBranch('dserve', commit, true, undefined, undefined);
 		await repo.checkoutBranch(branch);
-		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
+		write('4: checked out the correct branch');
 
-		log('3: actually building image for ' + hash);
+		write('5: placing all the contents into a tarball for docker');
 		const tarStream = tar.pack(buildDir);
+		write('6: reticulating splines');
+		write('7: handing off tarball to Docker for the rest of the legwork');
+
 		const buildStream = await docker.buildImage(tarStream, {
 			t: getImageName(hash),
 		});
-		buildStream.pipe(process.stdout, {
+
+		buildStream.pipe(writeStream, {
 			end: true,
 		});
 
 		let encounteredError = false;
 		buildStream.on('end', () => {
 			if (!encounteredError) {
-				log(`successfully finished building image for ${hash}`);
+				write(`successfully finished building image for ${hash}`);
+				write(`cleaning up build directory for ${hash}`);
+				cleanUpBuildDir(hash);
 			}
-			log(`cleaning up build directory for ${hash}`);
-			cleanUpBuildDir(hash);
 		});
 		buildStream.on('error', (error: any) => {
 			encounteredError = true;
-			log(`encountered error while building: ${hash}: `, error);
+			write(`encountered error during docker build: ${hash}: ${error.message}`);
 		});
 	} catch (error) {
-		log('failed building image because of error: ', error);
-		// TODO: remember there was a failure by leaving an error file in its wake
-		cleanUpBuildDir(hash);
+		log(`encountered error while git checking out or tarballing: ${hash}: ${error.message}`);
+		pendingHashes.delete(hash);
 	}
 }
 async function cleanUpBuildDir(hash: CommitHash) {
