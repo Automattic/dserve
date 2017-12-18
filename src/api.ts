@@ -24,10 +24,10 @@ const BUILD_LOG_FILENAME = 'dserve-build-log.txt';
 const REPO = 'Automattic/wp-calypso';
 const TAG_PREFIX = 'dserve-wpcalypso';
 const BRANCH_URL = 'https://api.github.com/repos/Automattic/wp-calypso/branches/';
-const ONE_SECOND = 1000;
-const ONE_MINUTE = 60 * ONE_SECOND;
-const FIVE_MINUTES = 5 * ONE_MINUTE;
-const TEN_MINUTES = 10 * ONE_MINUTE;
+export const ONE_SECOND = 1000;
+export const ONE_MINUTE = 60 * ONE_SECOND;
+export const FIVE_MINUTES = 5 * ONE_MINUTE;
+export const TEN_MINUTES = 10 * ONE_MINUTE;
 
 export const log = (...args: Array<any>) => console.log(...args);
 
@@ -36,8 +36,7 @@ export const log = (...args: Array<any>) => console.log(...args);
  *
  * @param {String} str string to write to the writable
  * @param {WriteStream} stream stream to write to
- */
-
+ */ 
 const writeAndLog = (stream: WriteStream) => (str: String) => {
 	stream.write(str);
 	log(str);
