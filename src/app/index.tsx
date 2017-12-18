@@ -33,7 +33,7 @@ const App = ({ buildLog, message }: RenderContext) => (
 		<body>
 			<h1> DServe </h1>
 			{buildLog && <BuildLog log={buildLog} />}
-			{message && <p> Initializing build...</p>}
+			{message && <p> {message}</p>}
 		</body>
 	</html>
 );

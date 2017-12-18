@@ -1,3 +1,4 @@
+import * as httpProxy from 'http-proxy';
 import * as Docker from 'dockerode';
 import fetch from 'node-fetch';
 import * as _ from 'lodash';
@@ -36,7 +37,8 @@ export const log = (...args: Array<any>) => console.log(...args);
  *
  * @param {String} str string to write to the writable
  * @param {WriteStream} stream stream to write to
- */ 
+ */
+
 const writeAndLog = (stream: WriteStream) => (str: String) => {
 	stream.write(str);
 	log(str);
@@ -81,6 +83,7 @@ const getLocalImages = (function() {
 // docker run -it --name wp-calypso --rm -p 80:3000 -e
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
 export async function startContainer(hash: CommitHash) {
+	log(`starting up container for hash: ${hash}\n`);
 	const image = getImageName(hash);
 	let freePort: number;
 	try {
@@ -96,7 +99,7 @@ export async function startContainer(hash: CommitHash) {
 		PortBindings: { '3000/tcp': [{ HostPort: freePort.toString() }] },
 		Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
 	});
-	await sleep(ONE_SECOND * 2);
+	log(`successfully started container for hash: ${hash}`);
 	return;
 }
 
@@ -276,6 +279,7 @@ cloning git repo for ${hash} to: ${buildDir}
 			write(`failed to build image for: ${hash}. Leaving build files in place`).end();
 		}
 	}
+
 	function onProgress(event: any) {
 		if (event.stream) {
 			write(event.stream);
@@ -283,10 +287,28 @@ cloning git repo for ${hash} to: ${buildDir}
 			log(event);
 		}
 	}
+
 	docker.modem.followProgress(buildStream, onFinished, onProgress);
 }
 async function cleanUpBuildDir(hash: CommitHash) {
 	const buildDir = getBuildDir(hash);
 	log(`removing directory: ${buildDir}`);
 	return fs.remove(buildDir);
+}
+
+const proxy = httpProxy.createProxyServer({}); // See (†)
+export async function proxyRequestToHash(req: any, res: any) {
+	const hash = req.session.commitHash;
+	let port = await getPortForContainer(hash);
+
+	if (!port) {
+		log(`could not find port for hash: ${hash}`, port);
+		res.send('Error setting up port!');
+		res.end();
+		return;
+	}
+
+	proxy.web(req, res, { target: `http://localhost:${port}` }, err => {
+		log('unexpected error occured while proxying', err);
+	});
 }
