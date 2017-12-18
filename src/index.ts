@@ -1,6 +1,5 @@
 // external
 import * as express from 'express';
-import * as httpProxy from 'http-proxy';
 import * as fs from 'fs-extra';
 
 // internal
@@ -16,11 +15,10 @@ import {
 	isBuildInProgress,
 	buildImageForHash,
 	readBuildLog,
+	proxyRequestToHash as proxy,
 } from './api';
 import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
-
-const proxy = httpProxy.createProxyServer({}); // See (†)
 
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
@@ -32,42 +30,29 @@ calypsoServer.use(determineCommitHash);
 calypsoServer.get('*', async (req: any, res: any) => {
 	const commitHash = req.session.commitHash;
 	const hasLocally = await hasHashLocally(commitHash);
+	const isCurrentlyBuilding = hasLocally && (await isBuildInProgress(commitHash));
+	const needsToBuild = !isCurrentlyBuilding && !hasLocally;
+	const shouldStartContainer = hasLocally && !isContainerRunning(commitHash);
 
-	if (!hasLocally) {
-		if (await isBuildInProgress(commitHash)) {
-			const buildLog = await readBuildLog(commitHash);
-			renderApp({ buildLog }).pipe(res);
-		} else {
-			buildImageForHash(commitHash);
-			const message = 'Starting build now';
-			renderApp({ message }).pipe(res);
-		}
+	if (isContainerRunning(commitHash)) {
+		proxy(req, res);
 		return;
 	}
 
-	if (!isContainerRunning(commitHash)) {
-		log(`starting up container for hash: ${commitHash}\n`);
-		try {
-			const message = 'Just started your hash, this page will restart automatically';
-			renderApp({ message }).pipe(res);
-			// TODO: fix race condition where multiple containers may be spun up
-			// within the same subsecond time period.
-			await startContainer(commitHash);
-			log(`successfully started container for hash: ${commitHash}`);
-		} catch (error) {
-			log(`failed at starting container for hash: ${commitHash} with error`, error);
-		}
-		return;
-	}
-	let port = await getPortForContainer(commitHash);
+	let buildLog;
+	let message;
+	if (isCurrentlyBuilding) {
+		buildLog = await readBuildLog(commitHash);
+	} else if (needsToBuild) {
+		message = 'Starting build now';
+		buildImageForHash(commitHash);
+	} else if (shouldStartContainer) {
+		message = 'Just started your hash, this page will restart automatically';
+		// TODO: fix race condition where multiple containers may be spun up
+		// within the same subsecond time period.
+		await startContainer(commitHash);
+	} 
 
-	if (!port) {
-		log(`could not find port for hash: ${commitHash}`, port);
-		return;
-	}
-
-	proxy.web(req, res, { target: `http://localhost:${port}` }, err => {
-		log('unexpected error occured while proxying', err);
-	});
+	renderApp({ message, buildLog }).pipe(res);
 });
 calypsoServer.listen(3000, () => log('listening on 3000'));
