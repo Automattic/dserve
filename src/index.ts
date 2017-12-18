@@ -1,6 +1,7 @@
 // external
 import * as express from 'express';
 import * as httpProxy from 'http-proxy';
+import * as fs from 'fs-extra';
 
 // internal
 import {
@@ -18,7 +19,7 @@ import {
 } from './api';
 import { determineCommitHash, session } from './middlewares';
 
-var proxy = httpProxy.createProxyServer({}); // See (†)
+const proxy = httpProxy.createProxyServer({}); // See (†)
 
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
@@ -28,15 +29,15 @@ calypsoServer.use(session);
 calypsoServer.use(determineCommitHash);
 
 calypsoServer.get('*', async (req: any, res: any) => {
-	const commitHash = req.session.commitHash; 
+	const commitHash = req.session.commitHash;
 
 	const hasLocally = await hasHashLocally(commitHash);
 	const restartInThreeSeconds = `
-		<script>
-		setTimeout( function() {
+	<script>
+		setTimeout(function() {
 			window.location.reload();
-		}, 3000 );
-		</script>
+		}, 3000);
+	</script>
 	`;
 
 	if (!hasLocally) {
@@ -48,10 +49,7 @@ calypsoServer.get('*', async (req: any, res: any) => {
 			buildImageForHash(commitHash);
 		}
 
-		res.send(`
-				${restartInThreeSeconds}
-				${message}	
-		`);
+		res.send(renderIndex({ reloadMs: 3000, buildLog: message }));
 
 		return;
 	}
@@ -85,8 +83,28 @@ calypsoServer.get('*', async (req: any, res: any) => {
 });
 calypsoServer.listen(3000, () => log('listening on 3000'));
 
-const imageServer = express();
-imageServer.get('/', async (req: any, res: any) => {
-	res.send(`Image Server`);
-});
-imageServer.listen(3001, () => log('Example app listening on port 3001'));
+function reload(ms: number) {
+	setTimeout(function() {
+		window.location.reload();
+	}, ms);
+}
+
+type renderVars = { reloadMs: number; buildLog: string };
+function renderIndex({ reloadMs, buildLog }: renderVars) {
+	const formattedLog = buildLog
+		.split('\n')
+		.map(str => `<li>${str}</li>`)
+		.join('\n');
+	const HTML = `
+	<html>
+	<script>
+		${reload.toString()};
+		reload(${reloadMs});
+	</script>
+	<ol>
+		${formattedLog}
+	</ol>
+	</html>	
+	`;
+	return HTML;
+}

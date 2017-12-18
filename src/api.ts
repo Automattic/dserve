@@ -7,6 +7,7 @@ import * as os from 'os';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { promisify } from 'util';
+import { WriteStream } from 'fs-extra';
 
 const docker = new Docker();
 const tar: any = require('tar-fs'); // todo: write a type definition for tar-fs
@@ -29,6 +30,19 @@ const FIVE_MINUTES = 5 * ONE_MINUTE;
 const TEN_MINUTES = 10 * ONE_MINUTE;
 
 export const log = (...args: Array<any>) => console.log(...args);
+
+/**
+ * writeAndLog writes a string to a stream and then console.logs it as well
+ *
+ * @param {String} str string to write to the writable
+ * @param {WriteStream} stream stream to write to
+ */
+
+const writeAndLog = (stream: WriteStream) => (str: String) => {
+	stream.write(str);
+	log(str);
+	return stream;
+};
 
 async function sleep(ms: number): Promise<any> {
 	return new Promise(r => setTimeout(r, ms));
@@ -210,60 +224,67 @@ export async function buildImageForHash(hash: CommitHash) {
 		return;
 	}
 
+	let write: Function;
+	let buildStream: ReadableStream;
 	try {
 		const firstTwoLogs = `\
-1: attempting to build image for: ${hash}
-2: cloning git repo for ${hash} to: ${buildDir}\n
-		`;
+attempting to build image for: ${hash}
+cloning git repo for ${hash} to: ${buildDir}
+`;
 		log(firstTwoLogs);
 		const repo = await git.Clone.clone(`https://github.com/${REPO}`, buildDir);
-		console.error('hiii');
 		pendingHashes.delete(hash);
 		await touch(pathToLog);
 		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
 
 		const writeStream = fs.createWriteStream(pathToLog);
-		const write = (str: any) => {
-			writeStream.write(str + '\n');
-			log(str);
-		};
+		write = writeAndLog(writeStream);
 		writeStream.write(firstTwoLogs);
 
-		write('3: finished downloading repo');
+		write('finished downloading repo\n');
 		const commit = await repo.getCommit(hash);
 		const branch = await repo.createBranch('dserve', commit, true, undefined, undefined);
 		await repo.checkoutBranch(branch);
-		write('4: checked out the correct branch');
+		write('checked out the correct branch\n');
 
-		write('5: placing all the contents into a tarball for docker');
+		write('placing all the contents into a tarball for docker\n');
 		const tarStream = tar.pack(buildDir);
-		write('6: reticulating splines');
-		write('7: handing off tarball to Docker for the rest of the legwork');
+		write('reticulating splines\n');
+		write('handing off tarball to Docker for the rest of the legwork\n');
 
-		const buildStream = await docker.buildImage(tarStream, {
+		buildStream = await docker.buildImage(tarStream, {
 			t: getImageName(hash),
 		});
-
-		buildStream.pipe(writeStream, {
-			end: true,
-		});
-
-		let encounteredError = false;
-		buildStream.on('end', () => {
-			if (!encounteredError) {
-				write(`successfully finished building image for ${hash}`);
-				write(`cleaning up build directory for ${hash}`);
-				cleanUpBuildDir(hash);
-			}
-		});
-		buildStream.on('error', (error: any) => {
-			encounteredError = true;
-			write(`encountered error during docker build: ${hash}: ${error.message}`);
-		});
 	} catch (error) {
-		log(`encountered error while git checking out or tarballing: ${hash}: ${error.message}`);
+		log(
+			`encountered error while git checking out, tarballing, or handing to docker: ${hash}: ${
+				error.message
+			}`
+		);
 		pendingHashes.delete(hash);
 	}
+
+	if (!write || !buildStream) {
+		return;
+	}
+
+	function onFinished(error: any) {
+		if (!error) {
+			write(`successfully built image for ${hash}. Now cleaning up build directory`).end();
+			cleanUpBuildDir(hash);
+		} else {
+			write(`encountered error: ${error} when building for ${hash}`);
+			write(`failed to build image for: ${hash}. Leaving build files in place`).end();
+		}
+	}
+	function onProgress(event: any) {
+		if (event.stream) {
+			write(event.stream);
+		} else {
+			log(event);
+		}
+	}
+	docker.modem.followProgress(buildStream, onFinished, onProgress);
 }
 async function cleanUpBuildDir(hash: CommitHash) {
 	const buildDir = getBuildDir(hash);

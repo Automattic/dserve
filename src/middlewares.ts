@@ -18,7 +18,14 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 	const isHashSpecified = req.query && (req.query.hash || req.query.branch);
 	let commitHash;
 
-	if (!isHashInSession && !isHashSpecified) {
+	// we already have it. no need to duplicate work
+	// or test gh api rate limiting
+	if (isHashInSession && ! isHashSpecified) {
+		next();
+		return;
+	}
+
+	if (!isHashSpecified) {
 		res.send('Please specify a branch to load');
 		return;
 	}
@@ -27,9 +34,7 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 		commitHash = req.query.hash;
 	} else if (req.query.branch) {
 		commitHash = await getCommitHashForBranch(req.query.branch);
-	} else {
-		commitHash = req.session.commitHash;
-	}
+	} 
 
 	if (commitHash instanceof Error) {
 		res.send('Calypso Server: ' + commitHash.message);
