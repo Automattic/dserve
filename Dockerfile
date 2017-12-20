@@ -9,11 +9,10 @@ RUN apk update && \
     yarn install --production nodegit
 
 # install rest of dependencies
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock tsconfig.json ./
 RUN yarn --production
 
-COPY src .
-
+COPY src ./src
 RUN yarn build-ts
 
 CMD yarn serve
