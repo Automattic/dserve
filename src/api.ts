@@ -213,11 +213,9 @@ export async function readBuildLog(hash: CommitHash): Promise<string> {
 
 let pendingHashes = new Set();
 export async function buildImageForHash(hash: CommitHash) {
-	if (pendingHashes.has(hash)) {
-		log(`skipping build for ${hash} because it is already in progress... -- race condition state`);
-		return;
-	}
-	pendingHashes.add(hash);
+	let write: Function;
+	let buildStream: ReadableStream;
+
 	const buildDir = getBuildDir(hash);
 	const pathToLog = getLogDir(hash);
 
@@ -226,8 +224,12 @@ export async function buildImageForHash(hash: CommitHash) {
 		return;
 	}
 
-	let write: Function;
-	let buildStream: ReadableStream;
+	if (pendingHashes.has(hash)) {
+		log(`skipping build for ${hash} because it is already in progress... -- race condition state`);
+		return;
+	}
+	pendingHashes.add(hash);
+
 	try {
 		const firstTwoLogs = `\
 attempting to build image for: ${hash}

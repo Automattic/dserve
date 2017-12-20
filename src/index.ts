@@ -30,7 +30,7 @@ calypsoServer.use(determineCommitHash);
 calypsoServer.get('*', async (req: any, res: any) => {
 	const commitHash = req.session.commitHash;
 	const hasLocally = await hasHashLocally(commitHash);
-	const isCurrentlyBuilding = hasLocally && (await isBuildInProgress(commitHash));
+	const isCurrentlyBuilding = !hasLocally && (await isBuildInProgress(commitHash));
 	const needsToBuild = !isCurrentlyBuilding && !hasLocally;
 	const shouldStartContainer = hasLocally && !isContainerRunning(commitHash);
 
@@ -51,7 +51,7 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		// TODO: fix race condition where multiple containers may be spun up
 		// within the same subsecond time period.
 		await startContainer(commitHash);
-	} 
+	}
 
 	renderApp({ message, buildLog }).pipe(res);
 });
