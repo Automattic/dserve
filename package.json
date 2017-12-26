@@ -4,6 +4,7 @@
 	"description": "",
 	"main": "src/index.js",
 	"dependencies": {
+		"@types/bunyan": "^1.8.4",
 		"@types/dockerode": "^2.5.1",
 		"@types/express": "^4.0.39",
 		"@types/express-session": "^1.15.6",
@@ -15,6 +16,7 @@
 		"@types/nodegit": "^0.18.5",
 		"@types/react": "^16.0.31",
 		"@types/react-dom": "^16.0.3",
+		"bunyan": "^1.8.12",
 		"dockerode": "^2.5.3",
 		"express": "^4.16.2",
 		"express-session": "^1.15.6",

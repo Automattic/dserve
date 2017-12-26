@@ -21,7 +21,13 @@ class Reloader extends React.Component<{ milliseconds: number }> {
 class BuildLog extends React.Component<{ log: string }> {
 	render() {
 		const { log } = this.props;
-		const formattedLog = log.split('\n').map((str, i) => <li key={i}>{str}</li>);
+		const formattedLog = log
+			.split('\n')
+			.map(str => {
+				const line = JSON.parse(str);
+				return `Time=${line.time} | ${line.msg}`;
+			})
+			.map((str, i) => <li key={i}>{str}</li>);
 		return <ol>{formattedLog}</ol>;
 	}
 }

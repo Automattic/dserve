@@ -9,6 +9,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { promisify } from 'util';
 import { WriteStream } from 'fs-extra';
+import { l, getLoggerForBuild, closeLogger } from './logger';
 
 const docker = new Docker();
 const tar: any = require('tar-fs'); // todo: write a type definition for tar-fs
@@ -24,26 +25,12 @@ export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 const BUILD_LOG_FILENAME = 'dserve-build-log.txt';
 const REPO = 'Automattic/wp-calypso';
 const TAG_PREFIX = 'dserve-wpcalypso';
-const BRANCH_URL = 'https://api.github.com/repos/Automattic/wp-calypso/branches/';
+const CLONE_PREFIX = 'git@github.com:';
+
 export const ONE_SECOND = 1000;
 export const ONE_MINUTE = 60 * ONE_SECOND;
 export const FIVE_MINUTES = 5 * ONE_MINUTE;
 export const TEN_MINUTES = 10 * ONE_MINUTE;
-
-export const log = (...args: Array<any>) => console.log(...args);
-
-/**
- * writeAndLog writes a string to a stream and then console.logs it as well
- *
- * @param {String} str string to write to the writable
- * @param {WriteStream} stream stream to write to
- */
-
-const writeAndLog = (stream: WriteStream) => (str: String) => {
-	stream.write(str);
-	log(str);
-	return stream;
-};
 
 async function sleep(ms: number): Promise<any> {
 	return new Promise(r => setTimeout(r, ms));
@@ -64,7 +51,7 @@ function runEvery(ms: number, fn: Function): void {
 	});
 }
 
-const getImageName = (hash: CommitHash) => `${TAG_PREFIX}:${hash}`;
+export const getImageName = (hash: CommitHash) => `${TAG_PREFIX}:${hash}`;
 
 /**
  * Returns which images are stored locally.
@@ -82,24 +69,35 @@ const getLocalImages = (function() {
 
 // docker run -it --name wp-calypso --rm -p 80:3000 -e
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
-export async function startContainer(hash: CommitHash) {
-	log(`starting up container for hash: ${hash}\n`);
-	const image = getImageName(hash);
+export async function startContainer(commitHash: CommitHash) {
+	l.log({ commitHash }, `Starting up container`);
+	const image = getImageName(commitHash);
 	let freePort: number;
 	try {
 		freePort = await portfinder.getPortPromise();
-	} catch (error) {
-		log(`error getting a free port: `, error);
+	} catch (err) {
+		l.error({ err, commitHash }, `Error while attempting to find a free port`);
 		return;
 	}
 
-	docker.run(image, [], process.stdout, {
-		Tty: false,
-		ExposedPorts: { '3000/tcp': {} },
-		PortBindings: { '3000/tcp': [{ HostPort: freePort.toString() }] },
-		Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
-	});
-	log(`successfully started container for hash: ${hash}`);
+	docker.run(
+		image,
+		[],
+		process.stdout,
+		{
+			Tty: false,
+			ExposedPorts: { '3000/tcp': {} },
+			PortBindings: { '3000/tcp': [{ HostPort: freePort.toString() }] },
+			Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
+		},
+		(err, succ) => {
+			if (err) {
+				l.error({ commitHash, freePort, err }, `failed starting container`);
+				return;
+			}
+			l.log({ commitHash, freePort }, `successfully started container: ${succ}`);
+		}
+	);
 	return;
 }
 
@@ -114,13 +112,8 @@ const getRunningContainers = (function() {
 
 export function isContainerRunning(hash: CommitHash) {
 	const image = getImageName(hash);
-	console.error(image);
 	return _.has(getRunningContainers(), image);
 }
-
-// runEvery(ONE_SECOND, () => {
-// 	console.error(getPortForContainer('6b6215eed45a5668010911744ec660f5f12edb74'));
-// });
 
 export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
 	return _.has(getLocalImages(), getImageName(hash));
@@ -131,15 +124,65 @@ export function getPortForContainer(hash: CommitHash): Promise<boolean> {
 	return _.get(getRunningContainers(), [image, 'Ports', 0, 'PublicPort'], false);
 }
 
-export async function getCommitHashForBranch(branch: BranchName): Promise<CommitHash | NotFound> {
-	const response = await (await fetch(BRANCH_URL + branch)).json();
+async function getRemoteBranches(): Promise<Map<string, string>> {
+	const repoDir = path.join(__dirname, '../repos');
+	const calypsoDir = path.join(repoDir, 'wp-calypso');
+	let repo: git.Repository;
 
-	if (!response.commit) {
-		return new Error(`branch ${branch} not found`);
+	const start = Date.now();
+	l.log({ repository: REPO }, 'Refreshing branches list');
+
+	try {
+		if (!await fs.pathExists(repoDir)) {
+			await fs.mkdir(repoDir);
+		}
+		if (!await fs.pathExists(calypsoDir)) {
+			repo = await git.Clone.clone(`https://github.com/${REPO}`, calypsoDir);
+		} else {
+			repo = await git.Repository.open(calypsoDir);
+		}
+		await repo.fetchAll();
+	} catch (err) {
+		l.error({ err }, 'Could not fetch repo to update branches list');
 	}
 
-	return response.commit.sha;
+	if (!repo) {
+		l.error('Something went very wrong while trying to refresh branches');
+	}
+
+	try {
+		const branchesReferences = (await repo.getReferences(git.Reference.TYPE.OID)).filter(
+			(x: git.Reference) => x.isBranch
+		);
+
+		const branchToCommitHashMap: Map<string, string> = new Map();
+		branchesReferences.forEach(async reference => {
+			const name = reference.shorthand().replace('origin/', '');
+			const commitHash = reference.target().tostrS();
+			branchToCommitHashMap.set(name, commitHash);
+		});
+
+		l.log(
+			{ repository: REPO, refreshBranchTime: Date.now() - start },
+			'Finished refreshing branches'
+		);
+		return branchToCommitHashMap;
+	} catch (err) {
+		l.error({ err, repository: REPO }, 'Error creating branchName --> commitSha map');
+		return;
+	}
 }
+
+export const getCommitHashForBranch = (function() {
+	let branches = new Map();
+	runEvery(ONE_MINUTE, async () => {
+		branches = await getRemoteBranches();
+	});
+
+	return function(branch: BranchName): CommitHash | undefined {
+		return branches.get(branch);
+	};
+})();
 
 export const { touchCommit, getCommitAccessTimes } = (function() {
 	const accesses = new Map();
@@ -164,18 +207,12 @@ function cleanupContainers() {
 			}
 
 			if (_.isUndefined(lastAccessed) || Date.now() - lastAccessed > FIVE_MINUTES) {
-				log(`Attempting to stop container: ${imageName}`);
+				l.log({ imageName }, `Attempting to stop container`);
 				try {
 					await docker.getContainer(container.Id).stop();
-					log(
-						`Successfully stopped container with id: ${container.Id} and image name: ${imageName}`
-					);
-				} catch (error) {
-					log(
-						`Did not successfully stop container: ${imageName}.
-					  experienced error: `,
-						error
-					);
+					l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
+				} catch (err) {
+					l.error({ err, imageName }, 'Failed to stop container.');
 				}
 			}
 		});
@@ -204,89 +241,104 @@ export const getLogDir = (hash: CommitHash) => path.join(getBuildDir(hash), BUIL
 export async function isBuildInProgress(hash: CommitHash): Promise<boolean> {
 	return await fs.pathExists(getBuildDir(hash));
 }
-export async function readBuildLog(hash: CommitHash): Promise<string> {
+export async function readBuildLog(hash: CommitHash): Promise<string | null> {
 	if (await fs.pathExists(getLogDir(hash))) {
 		return fs.readFile(getLogDir(hash), 'utf-8');
 	}
-	return 'Build still initializing...';
+	return null;
 }
 
 let pendingHashes = new Set();
-export async function buildImageForHash(hash: CommitHash) {
-	let write: Function;
+export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 	let buildStream: ReadableStream;
 
-	const buildDir = getBuildDir(hash);
-	const pathToLog = getLogDir(hash);
+	const buildDir = getBuildDir(commitHash);
+	const repoDir = path.join(buildDir, 'repo');
+	const pathToLog = getLogDir(commitHash);
+	let imageStart: number;
 
-	if (await isBuildInProgress(hash)) {
-		log(`skipping build for ${hash} because a build is already in progress at: ${buildDir}`);
+	if (await isBuildInProgress(commitHash)) {
+		l.log(
+			{ commitHash, buildDir },
+			'Skipping build because a build is already in progress according to the filesystem.'
+		);
 		return;
 	}
 
-	if (pendingHashes.has(hash)) {
-		log(`skipping build for ${hash} because it is already in progress... -- race condition state`);
+	if (pendingHashes.has(commitHash)) {
+		l.log(
+			{ commitHash },
+			`Skipping build because it is already in progress according to in-memory hash`
+		);
 		return;
 	}
-	pendingHashes.add(hash);
+	pendingHashes.add(commitHash);
 
 	try {
-		const firstTwoLogs = `\
-attempting to build image for: ${hash}
-cloning git repo for ${hash} to: ${buildDir}
-`;
-		log(firstTwoLogs);
-		const repo = await git.Clone.clone(`https://github.com/${REPO}`, buildDir);
-		pendingHashes.delete(hash);
-		await touch(pathToLog);
-		await touch(path.join(buildDir, 'env-config.sh')); // TODO: remove wp-calypso hack
+		await fs.mkdir(buildDir);
+	} catch (err) {
+		l.error({ err, buildDir, commitHash }, 'Could not create directory for the build');
+	}
+	const buildLogger = getLoggerForBuild(commitHash);
 
-		const writeStream = fs.createWriteStream(pathToLog);
-		write = writeAndLog(writeStream);
-		writeStream.write(firstTwoLogs);
+	try {
+		l.log({ commitHash, buildDir }, 'Attempting to build image.');
 
-		write('finished downloading repo\n');
-		const commit = await repo.getCommit(hash);
+		const cloneStart = Date.now();
+		buildLogger.info('Cloning git repo');
+		const repo = await git.Clone.clone(`https://github.com/${REPO}`, repoDir);
+		buildLogger.info('Finished cloning repo');
+		l.log({ commitHash, cloneTime: cloneStart - Date.now() });
+
+		pendingHashes.delete(commitHash);
+
+		const checkoutStart = Date.now();
+		const commit = await repo.getCommit(commitHash);
 		const branch = await repo.createBranch('dserve', commit, true, undefined, undefined);
 		await repo.checkoutBranch(branch);
-		write('checked out the correct branch\n');
+		l.log({ commitHash, checkoutTime: checkoutStart - Date.now() });
+		buildLogger.info('Checked out the correct branch');
 
-		write('placing all the contents into a tarball for docker\n');
-		const tarStream = tar.pack(buildDir);
-		write('reticulating splines\n');
-		write('handing off tarball to Docker for the rest of the legwork\n');
+		buildLogger.info('Placing all the contents into a tarball stream for docker\n');
+		const tarStream = tar.pack(repoDir);
+		buildLogger.info('Reticulating splines\n');
+		buildLogger.info('Handing off tarball to Docker for the rest of the legwork\n');
+		buildLogger.info('---------------- DOCKER START ----------------');
 
-		buildStream = await docker.buildImage(tarStream, {
-			t: getImageName(hash),
-		});
-	} catch (error) {
-		log(
-			`encountered error while git checking out, tarballing, or handing to docker: ${hash}: ${
-				error.message
-			}`
+		imageStart = Date.now();
+		buildStream = await docker.buildImage(tarStream, { t: getImageName(commitHash) });
+	} catch (err) {
+		buildLogger.error(
+			{ err },
+			`Encountered error while git checking out, tarballing, or handing to docker`
 		);
-		pendingHashes.delete(hash);
+		l.error({ err }, `Encountered error while git checking out, tarballing, or handing to docker`);
+		pendingHashes.delete(commitHash);
 	}
 
-	if (!write || !buildStream) {
+	if (!buildStream) {
 		return;
 	}
 
-	function onFinished(error: any) {
-		if (!error) {
-			write(`successfully built image for ${hash}. Now cleaning up build directory`).end();
-			cleanUpBuildDir(hash);
+	function onFinished(err: Error) {
+		if (!err) {
+			l.log(
+				{ commitHash, buildImageTime: Date.now() - imageStart },
+				`Successfully built image. Now cleaning up build directory`
+			);
+			cleanUpBuildDir(commitHash);
 		} else {
-			write(`encountered error: ${error} when building for ${hash}`);
-			write(`failed to build image for: ${hash}. Leaving build files in place`).end();
+			buildLogger.error({ err }, 'Encountered error when building image');
+			l.error({ err, commitHash }, `Failed to build image for. Leaving build files in place`);
+			closeLogger(buildLogger as any);
 		}
 	}
 
 	function onProgress(event: any) {
 		if (event.stream) {
-			write(event.stream);
+			buildLogger.info(event.stream);
 		} else {
-			log(event);
+			buildLogger.info(event);
 		}
 	}
 
@@ -294,23 +346,23 @@ cloning git repo for ${hash} to: ${buildDir}
 }
 async function cleanUpBuildDir(hash: CommitHash) {
 	const buildDir = getBuildDir(hash);
-	log(`removing directory: ${buildDir}`);
+	l.log(`removing directory: ${buildDir}`);
 	return fs.remove(buildDir);
 }
 
 const proxy = httpProxy.createProxyServer({}); // See (†)
 export async function proxyRequestToHash(req: any, res: any) {
-	const hash = req.session.commitHash;
-	let port = await getPortForContainer(hash);
+	const commitHash = req.session.commitHash;
+	let port = await getPortForContainer(commitHash);
 
 	if (!port) {
-		log(`could not find port for hash: ${hash}`, port);
+		l.log({ port, commitHash }, `Could not find port for commitHash`);
 		res.send('Error setting up port!');
 		res.end();
 		return;
 	}
 
 	proxy.web(req, res, { target: `http://localhost:${port}` }, err => {
-		log('unexpected error occured while proxying', err);
+		l.log({ err, req, res }, 'unexpected error occured while proxying');
 	});
 }
