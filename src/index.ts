@@ -1,6 +1,7 @@
 // external
 import * as express from 'express';
 import * as fs from 'fs-extra';
+import * as path from 'path';
 
 // internal
 import {
@@ -10,7 +11,6 @@ import {
 	NotFound,
 	getPortForContainer,
 	startContainer,
-	log,
 	isContainerRunning,
 	isBuildInProgress,
 	buildImageForHash,
@@ -19,6 +19,8 @@ import {
 } from './api';
 import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
+import { l } from './logger';
+import { Writable } from 'stream';
 
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
@@ -55,4 +57,4 @@ calypsoServer.get('*', async (req: any, res: any) => {
 
 	renderApp({ message, buildLog }).pipe(res);
 });
-calypsoServer.listen(3000, () => log('listening on 3000'));
+calypsoServer.listen(3000, () => l.log('dserve is listening on 3000'));
