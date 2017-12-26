@@ -22,10 +22,13 @@ class BuildLog extends React.Component<{ log: string }> {
 	render() {
 		const { log } = this.props;
 		const formattedLog = log
+			.trim()
 			.split('\n')
 			.map(str => {
-				const line = JSON.parse(str);
-				return `Time=${line.time} | ${line.msg}`;
+				try {
+					const line = JSON.parse(str);
+					return `Time=${line.time} | ${line.msg}`;
+				} catch (err) {}
 			})
 			.map((str, i) => <li key={i}>{str}</li>);
 		return <ol>{formattedLog}</ol>;

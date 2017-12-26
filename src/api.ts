@@ -336,9 +336,9 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 
 	function onProgress(event: any) {
 		if (event.stream) {
-			buildLogger.info(event.stream);
+			buildLogger.info({ fromDocker: true }, event.stream);
 		} else {
-			buildLogger.info(event);
+			buildLogger.info({ fromDocker: true }, event);
 		}
 	}
 
