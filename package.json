@@ -20,6 +20,7 @@
 		"dockerode": "^2.5.3",
 		"express": "^4.16.2",
 		"express-session": "^1.15.6",
+		"forever": "^0.15.3",
 		"fs-extra": "^4.0.3",
 		"http-proxy": "^1.16.2",
 		"lodash": "^4.17.4",
@@ -35,6 +36,7 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"start": "npm run build-ts && npm run serve",
 		"serve": "node build/index.js",
+		"serve:forever": "forever build/index.js",
 		"build-ts": "tsc",
 		"watch-ts": "tsc -w"
 	},
