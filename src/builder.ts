@@ -24,8 +24,11 @@ const BUILD_QUEUE: BuildQueue = [];
 const pendingHashes = new Set();
 
 export const getLogDir = (hash: CommitHash) => path.join(getBuildDir(hash), BUILD_LOG_FILENAME);
-export async function isBuildInProgress(hash: CommitHash): Promise<boolean> {
-	return (await fs.pathExists(getBuildDir(hash))) || getCurrentBuilds().has(hash);
+export async function isBuildInProgress(
+	hash: CommitHash,
+	currentBuilds = getCurrentBuilds()
+): Promise<boolean> {
+	return (await fs.pathExists(getBuildDir(hash))) || currentBuilds.has(hash);
 }
 const getCurrentBuilds = () => pendingHashes;
 
@@ -47,10 +50,11 @@ async function cleanUpBuildDir(hash: CommitHash) {
 	return fs.remove(buildDir);
 }
 
-export function buildFromQueue(
-	buildQueue: BuildQueue = BUILD_QUEUE,
-	currentBuilds: Set<CommitHash> = getCurrentBuilds()
-) {
+export function buildFromQueue({
+	buildQueue = BUILD_QUEUE,
+	currentBuilds = getCurrentBuilds(),
+	builder = buildImageForHash,
+} = {}) {
 	if (buildQueue.length > 0) {
 		if (currentBuilds.size <= MAX_CONCURRENT_BUILDS) {
 			const commit = buildQueue.shift();
@@ -58,7 +62,11 @@ export function buildFromQueue(
 				{ buildQueueSize: buildQueue.length, commitHash: commit },
 				'Popping a commitHash off of the buildQueue'
 			);
-			buildImageForHash(commit);
+			builder(commit, {
+				onBuildComplete: () => {
+					currentBuilds.delete(commit);
+				},
+			});
 		} else {
 			l.log(
 				{ buildQueueSize: buildQueue.length },
@@ -73,13 +81,19 @@ export function addToBuildQueue(
 	buildQueue: BuildQueue = BUILD_QUEUE,
 	currentBuilds: Set<CommitHash> = getCurrentBuilds()
 ) {
-	if (buildQueue.includes(commitHash) || getCurrentBuilds().has(commitHash)) {
+	if (buildQueue.includes(commitHash) || currentBuilds.has(commitHash)) {
 		return;
 	}
 	return buildQueue.push(commitHash);
 }
 
-export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
+export async function buildImageForHash(
+	commitHash: CommitHash,
+	{
+		onBuildComplete,
+		currentBuilds = getCurrentBuilds(),
+	}: { onBuildComplete: Function; currentBuilds: Set<CommitHash> }
+): Promise<void> {
 	let buildStream: Readable;
 
 	const buildDir = getBuildDir(commitHash);
@@ -87,7 +101,7 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 	const pathToLog = getLogDir(commitHash);
 	let imageStart: number;
 
-	if (await isBuildInProgress(commitHash)) {
+	if (await isBuildInProgress(commitHash, currentBuilds)) {
 		l.log({ commitHash, buildDir }, 'Skipping build because a build is already in progress');
 		return;
 	}
@@ -109,8 +123,6 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 		const repo = await git.Clone.clone(`https://github.com/${REPO}`, repoDir);
 		buildLogger.info('Finished cloning repo');
 		l.log({ commitHash, cloneTime: cloneStart - Date.now() });
-
-		pendingHashes.delete(commitHash);
 
 		const checkoutStart = Date.now();
 		const commit = await repo.getCommit(commitHash);
@@ -141,6 +153,7 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 	}
 
 	function onFinished(err: Error) {
+		onBuildComplete();
 		if (!err) {
 			l.log(
 				{ commitHash, buildImageTime: Date.now() - imageStart },
