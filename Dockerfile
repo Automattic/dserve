@@ -13,6 +13,7 @@ COPY package.json yarn.lock tsconfig.json ./
 RUN yarn --production
 
 COPY src ./src
+COPY logs ./logs
 RUN yarn build-ts
 
 CMD yarn serve
