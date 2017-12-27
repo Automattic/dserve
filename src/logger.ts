@@ -1,7 +1,9 @@
 import * as bunyan from 'bunyan';
 import * as _ from 'lodash';
-import { getLogDir, CommitHash, getImageName } from './api';
 import { Writable } from 'stream';
+
+import { CommitHash, getImageName, } from './api';
+import { getLogDir } from './builder';
 
 const dserveLogger = bunyan.createLogger({
 	name: 'dserve',

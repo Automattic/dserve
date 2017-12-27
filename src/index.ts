@@ -12,12 +12,9 @@ import {
 	getPortForContainer,
 	startContainer,
 	isContainerRunning,
-	isBuildInProgress,
-	buildImageForHash,
-	readBuildLog,
 	proxyRequestToHash as proxy,
-	addToBuildQueue,
 } from './api';
+import { isBuildInProgress, buildImageForHash, readBuildLog, addToBuildQueue } from './builder';
 import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
 import { l } from './logger';

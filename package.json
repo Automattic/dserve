@@ -10,6 +10,7 @@
 		"@types/express-session": "^1.15.6",
 		"@types/fs-extra": "^4.0.5",
 		"@types/http-proxy": "^1.12.2",
+		"@types/jest": "^21.1.9",
 		"@types/lodash": "^4.14.88",
 		"@types/node": "^8.0.55",
 		"@types/node-fetch": "^1.6.7",
@@ -23,6 +24,7 @@
 		"forever": "^0.15.3",
 		"fs-extra": "^4.0.3",
 		"http-proxy": "^1.16.2",
+		"jest": "^22.0.4",
 		"lodash": "^4.17.4",
 		"node-fetch": "^1.7.3",
 		"nodegit": "^0.20.3",
@@ -30,11 +32,12 @@
 		"react": "^16.2.0",
 		"react-dom": "^16.2.0",
 		"tar-fs": "^1.16.0",
+		"ts-jest": "^22.0.0",
 		"typescript": "^2.6.2"
 	},
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1",
-		"start": "npm run build-ts && npm run serve",
+		"test": "jest",
+		"start": "yarn run build-ts && yarn run serve",
 		"serve": "node build/index.js",
 		"serve:forever": "forever build/index.js",
 		"build-ts": "tsc",
@@ -45,5 +48,12 @@
 		"url": "to-be-determined"
 	},
 	"author": "samouri",
-	"license": "MIT"
+	"license": "MIT",
+	"jest": {
+		"transform": {
+			"^.+\\.tsx?$": "ts-jest"
+		},
+		"testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$",
+		"moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"]
+	}
 }
