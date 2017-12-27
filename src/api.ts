@@ -10,6 +10,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { WriteStream } from 'fs-extra';
 import { l, getLoggerForBuild, closeLogger } from './logger';
+import { Packbuilder } from 'nodegit/pack-builder';
 
 const docker = new Docker();
 const tar: any = require('tar-fs'); // todo: write a type definition for tar-fs
@@ -247,6 +248,25 @@ export async function readBuildLog(hash: CommitHash): Promise<string | null> {
 	}
 	return null;
 }
+
+const MAX_CONCURRENT_BUILDS = 3;
+export const addToBuildQueue = (function() {
+	const toBuildQueue: Array<string> = [];
+
+	runEvery(ONE_SECOND, () => {
+		if (toBuildQueue.length > 0 && getCurrentBuilds().size <= MAX_CONCURRENT_BUILDS) {
+			buildImageForHash(toBuildQueue.shift());
+		}
+	});
+
+	return function(commitHash: CommitHash) {
+		if (!toBuildQueue.includes(commitHash) && !getCurrentBuilds().has(commitHash)) {
+			toBuildQueue.push(commitHash);
+		}
+	};
+})();
+
+const getCurrentBuilds = () => pendingHashes;
 
 let pendingHashes = new Set();
 export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
