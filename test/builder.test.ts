@@ -1,5 +1,6 @@
 import { addToBuildQueue, buildFromQueue } from '../src/builder';
 import { CommitHash } from '../src/api';
+jest.mock('../src/logger');
 
 describe('builder', () => {
 	describe('addToBuildQueue', () => {

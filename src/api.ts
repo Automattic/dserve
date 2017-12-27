@@ -15,6 +15,7 @@ import { Container, ContainerInfo } from 'dockerode';
 
 import { l, getLoggerForBuild, closeLogger } from './logger';
 import { getBuildDir } from './builder';
+import { setInterval } from 'timers';
 
 export const docker = new Docker();
 
@@ -37,23 +38,6 @@ export const FIVE_MINUTES = 5 * ONE_MINUTE;
 export const TEN_MINUTES = 10 * ONE_MINUTE;
 export const CONTAINER_EXPIRY_TIME = FIVE_MINUTES;
 
-async function sleep(ms: number): Promise<any> {
-	return new Promise(r => setTimeout(r, ms));
-}
-
-/**
- *
- * @param ms milliseconds to wait before calling the function again. The clock
- *           doesn't start counting down until the function finishes
- * @param fn function to call
- */
-export async function runEvery(ms: number, fn: Function): Promise<void> {
-	while (true) {
-		await fn();
-		await sleep(ms);
-	}
-}
-
 export const getImageName = (hash: CommitHash) => `${TAG_PREFIX}:${hash}`;
 export const extractCommitFromImage = (imageName: string): CommitHash => imageName.split(':')[1];
 
@@ -61,14 +45,12 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
  * Returns which images are stored locally.
  * Polls locker docker daemon for image list
  */
-const getLocalImages = (function() {
+const { refreshLocalImages, getLocalImages } = (function() {
 	let localImages = {};
-
-	runEvery(ONE_SECOND, async () => {
-		localImages = _.keyBy(await docker.listImages(), 'RepoTags');
-	});
-
-	return () => localImages;
+	return {
+		refreshLocalImages: async () => (localImages = _.keyBy(await docker.listImages(), 'RepoTags')),
+		getLocalImages: () => localImages,
+	};
 })();
 
 // docker run -it --name wp-calypso --rm -p 80:3000 -e
@@ -105,13 +87,14 @@ export async function startContainer(commitHash: CommitHash) {
 	return;
 }
 
-const getRunningContainers = (function() {
+const { getRunningContainers, refreshRunningContainers } = (function() {
 	let containers: { [s: string]: ContainerInfo } = {};
-	runEvery(ONE_SECOND, async () => {
-		containers = _.keyBy(await docker.listContainers(), 'Image');
-	});
-
-	return () => containers;
+	return {
+		refreshRunningContainers: async () => {
+			containers = _.keyBy(await docker.listContainers(), 'Image');
+		},
+		getRunningContainers: () => containers,
+	};
 })();
 
 export function isContainerRunning(hash: CommitHash) {
@@ -177,14 +160,15 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 	}
 }
 
-export const getCommitHashForBranch = (function() {
+export const { refreshRemoteBranches, getCommitHashForBranch } = (function() {
 	let branches = new Map();
-	runEvery(ONE_MINUTE, async () => {
-		branches = await getRemoteBranches();
-	});
-
-	return function(branch: BranchName): CommitHash | undefined {
-		return branches.get(branch);
+	return {
+		refreshRemoteBranches: async () => {
+			branches = await getRemoteBranches();
+		},
+		getCommitHashForBranch: function(branch: BranchName): CommitHash | undefined {
+			return branches.get(branch);
+		},
 	};
 })();
 
@@ -217,28 +201,21 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 }
 
 // stop any container that hasn't been accessed within five minutes
-function cleanupContainers() {
-	runEvery(TEN_MINUTES, async () => {
-		const containers = _.values(getRunningContainers());
-		const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
-		expiredContainers.forEach(async (container: ContainerInfo) => {
-			const imageName: string = container.Image;
+function cleanupExpiredContainers() {
+	const containers = _.values(getRunningContainers());
+	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
+	expiredContainers.forEach(async (container: ContainerInfo) => {
+		const imageName: string = container.Image;
 
-			l.log(
-				{ imageName },
-				`Attempting to stop container because it hasn't been accessed in a while`
-			);
-			try {
-				await docker.getContainer(container.Id).stop();
-				l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
-			} catch (err) {
-				l.error({ err, imageName }, 'Failed to stop container.');
-			}
-		});
+		l.log({ imageName }, `Attempting to stop container because it hasn't been accessed in a while`);
+		try {
+			await docker.getContainer(container.Id).stop();
+			l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
+		} catch (err) {
+			l.error({ err, imageName }, 'Failed to stop container.');
+		}
 	});
 }
-
-cleanupContainers();
 
 const proxy = httpProxy.createProxyServer({}); // See (†)
 export async function proxyRequestToHash(req: any, res: any) {
@@ -255,4 +232,11 @@ export async function proxyRequestToHash(req: any, res: any) {
 	proxy.web(req, res, { target: `http://localhost:${port}` }, err => {
 		l.log({ err, req, res }, 'unexpected error occured while proxying');
 	});
+}
+
+if (process.env.NODE_ENV !== 'test') {
+	setInterval(cleanupExpiredContainers, TEN_MINUTES);
+	setInterval(refreshLocalImages, ONE_SECOND);
+	setInterval(refreshRunningContainers, ONE_SECOND);
+	setInterval(refreshRemoteBranches, ONE_MINUTE);
 }
