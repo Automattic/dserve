@@ -19,10 +19,10 @@ yarn start
 You will need to modify your hosts file to include the following line:
 
 ```
-localhost wpcalypso.wordpress.com
+127.0.0.1 calypso.localhost
 ```
 
 Then you may either specify a branch or a hash to load.
 
-1. branch: wpcalypso.wordpress.com?branch={branchName}
-2. hash: wpcalypso.wordpress.com?hash={commitHash}
+1. branch: calypso.localhost:3000?branch={branchName}
+2. hash: calypso.localhost:3000?hash={commitHash}
