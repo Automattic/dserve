@@ -66,6 +66,7 @@ export function buildFromQueue({
 				onBuildComplete: () => {
 					currentBuilds.delete(commit);
 				},
+				currentBuilds,
 			});
 		} else {
 			l.log(
@@ -92,7 +93,7 @@ export async function buildImageForHash(
 	{
 		onBuildComplete,
 		currentBuilds = getCurrentBuilds(),
-	}: { onBuildComplete: Function; currentBuilds: Set<CommitHash> }
+	}: { onBuildComplete: Function; currentBuilds?: Set<CommitHash> }
 ): Promise<void> {
 	let buildStream: Readable;
 
