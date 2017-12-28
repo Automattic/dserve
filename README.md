@@ -1,5 +1,7 @@
 # dserve
 
+[![CircleCI](https://circleci.com/gh/Automattic/dserve.svg?style=svg)](https://circleci.com/gh/Automattic/dserve)
+
 A development server for serving branches of your docker-based web application an on-demand basis.
 
 It can build images for any hash, run containers, stop a containers that haven't been accessed in a
