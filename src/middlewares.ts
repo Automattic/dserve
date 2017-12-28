@@ -2,6 +2,7 @@
 import * as express from 'express';
 import * as httpProxy from 'http-proxy';
 import * as expressSession from 'express-session';
+import * as _ from 'lodash';
 
 // internal
 import {
@@ -33,11 +34,14 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 	if (req.query.hash) {
 		commitHash = req.query.hash;
 	} else if (req.query.branch) {
-		commitHash = await getCommitHashForBranch(req.query.branch);
+		commitHash = getCommitHashForBranch(req.query.branch);
 	}
 
 	if (commitHash instanceof Error) {
 		res.send('Calypso Server: ' + commitHash.message);
+		return;
+	} else if (req.query.branch && _.isUndefined(commitHash)) {
+		res.send(`Please specify a valid branch.  Could not find: ${req.query.branch}`);
 		return;
 	}
 

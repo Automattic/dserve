@@ -235,6 +235,12 @@ export async function proxyRequestToHash(req: any, res: any) {
 }
 
 if (process.env.NODE_ENV !== 'test') {
+	// first run
+	refreshLocalImages();
+	refreshRunningContainers();
+	refreshRemoteBranches();
+
+	// setup for future
 	setInterval(cleanupExpiredContainers, TEN_MINUTES);
 	setInterval(refreshLocalImages, ONE_SECOND);
 	setInterval(refreshRunningContainers, ONE_SECOND);

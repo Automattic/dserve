@@ -83,8 +83,13 @@ export function addToBuildQueue(
 	currentBuilds: Set<CommitHash> = getCurrentBuilds()
 ) {
 	if (buildQueue.includes(commitHash) || currentBuilds.has(commitHash)) {
+		l.log(
+			{ buildQueueSize: buildQueue.length, commitHash },
+			'Skipping the build queue since it is already in it'
+		);
 		return;
 	}
+	l.log({ buildQueueSize: buildQueue.length, commitHash }, 'Adding a commitHash to the buildQueue');
 	return buildQueue.push(commitHash);
 }
 
