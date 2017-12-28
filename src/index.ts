@@ -12,11 +12,9 @@ import {
 	getPortForContainer,
 	startContainer,
 	isContainerRunning,
-	isBuildInProgress,
-	buildImageForHash,
-	readBuildLog,
 	proxyRequestToHash as proxy,
 } from './api';
+import { isBuildInProgress, buildImageForHash, readBuildLog, addToBuildQueue } from './builder';
 import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
 import { l } from './logger';
@@ -47,7 +45,7 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		buildLog = await readBuildLog(commitHash);
 	} else if (needsToBuild) {
 		message = 'Starting build now';
-		buildImageForHash(commitHash);
+		addToBuildQueue(commitHash);
 	} else if (shouldStartContainer) {
 		message = 'Just started your hash, this page will restart automatically';
 		// TODO: fix race condition where multiple containers may be spun up

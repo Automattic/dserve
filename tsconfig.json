@@ -6,7 +6,8 @@
 		"removeComments": true,
 		"sourceMap": true,
 		"outDir": "build",
-		"jsx": "react"
+		"jsx": "react",
+		"lib": [ "es7" ]
 	},
 	"include": ["src/*"]
 }
