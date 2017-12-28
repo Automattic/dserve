@@ -16,4 +16,4 @@ COPY src ./src
 COPY logs ./logs
 RUN yarn build-ts
 
-CMD yarn serve
+CMD yarn serve:forever
