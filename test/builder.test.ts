@@ -1,4 +1,6 @@
-import { addToBuildQueue, buildFromQueue } from '../src/builder';
+import * as _ from 'lodash';
+
+import { addToBuildQueue, buildFromQueue, MAX_CONCURRENT_BUILDS } from '../src/builder';
 import { CommitHash } from '../src/api';
 jest.mock('../src/logger');
 
@@ -32,6 +34,14 @@ describe('builder', () => {
 			const buildQueue = ['hash'];
 			buildFromQueue({ buildQueue });
 			expect(buildQueue).toEqual([]);
+		});
+
+		test('should not build anything if already at capacity', () => {
+			const buildQueue = ['hash'];
+			const currentBuilds = new Set(_.range(MAX_CONCURRENT_BUILDS));
+
+			buildFromQueue({ buildQueue, currentBuilds });
+			expect(buildQueue).toEqual(['hash']);
 		});
 
 		test('should remove hash from curent builds once building is complete', done => {

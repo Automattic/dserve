@@ -19,7 +19,7 @@ import { closeLogger, l, getLoggerForBuild } from './logger';
 
 type BuildQueue = Array<CommitHash>;
 
-const MAX_CONCURRENT_BUILDS = 3;
+export const MAX_CONCURRENT_BUILDS = 3;
 const BUILD_QUEUE: BuildQueue = [];
 const pendingHashes = new Set();
 
@@ -56,7 +56,7 @@ export function buildFromQueue({
 	builder = buildImageForHash,
 } = {}) {
 	if (buildQueue.length > 0) {
-		if (currentBuilds.size <= MAX_CONCURRENT_BUILDS) {
+		if (currentBuilds.size < MAX_CONCURRENT_BUILDS) {
 			const commit = buildQueue.shift();
 			l.log(
 				{ buildQueueSize: buildQueue.length, commitHash: commit },
