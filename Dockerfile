@@ -1,3 +1,9 @@
+# THIS DOES NOT CURRENTLY WORK
+# Docker for Mac and Docker for Linux have different networking configuration requirements for making dserve work
+# On Mac all of docker runs in a vm, in Linux it can kind-of run on the host.
+#
+# We need the dserve container to share a localhost with the host in order to proxy to various other containers
+
 from node:alpine
 LABEL maintainer="Automattic"
 
@@ -13,7 +19,9 @@ COPY package.json yarn.lock tsconfig.json ./
 RUN yarn --production
 
 COPY src ./src
-COPY logs ./logs
+RUN mkdir logs
+RUN mkdir repos
+
 RUN yarn build-ts
 
 CMD yarn serve:forever
