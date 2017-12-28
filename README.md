@@ -1,6 +1,6 @@
 # dserve
 
-![CircleCI](https://circleci.com/gh/Automattic/dserve.svg?style=svg)](https://circleci.com/gh/Automattic/dserve)
+[![CircleCI](https://circleci.com/gh/Automattic/dserve/tree/master.svg?style=svg)](https://circleci.com/gh/Automattic/dserve/tree/master)
 
 A development server for serving branches of your docker-based web application an on-demand basis.
 
