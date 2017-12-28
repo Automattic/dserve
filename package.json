@@ -45,7 +45,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "to-be-determined"
+		"url": "https://github.com/Automattic/dserve"
 	},
 	"author": "samouri",
 	"license": "MIT",
