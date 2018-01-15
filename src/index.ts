@@ -25,6 +25,13 @@ import { Writable } from 'stream';
 // and also proxies request to currently active container
 const calypsoServer = express();
 calypsoServer.use(session);
+
+// get application log for debugging
+calypsoServer.get('/log', (req: any, res: any) => {
+	const appLog = fs.readFileSync('./logs/log.txt', 'utf-8');
+	res.send(appLog);
+});
+
 calypsoServer.use(determineCommitHash);
 
 calypsoServer.get('*', async (req: any, res: any) => {
@@ -55,4 +62,5 @@ calypsoServer.get('*', async (req: any, res: any) => {
 
 	renderApp({ message, buildLog }).pipe(res);
 });
+
 calypsoServer.listen(3000, () => l.log('dserve is listening on 3000'));

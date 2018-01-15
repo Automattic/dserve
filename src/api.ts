@@ -48,7 +48,9 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
 const { refreshLocalImages, getLocalImages } = (function() {
 	let localImages = {};
 	return {
-		refreshLocalImages: async () => (localImages = _.keyBy(await docker.listImages(), 'RepoTags')),
+		refreshLocalImages: async () => {
+			localImages = _.keyBy(await docker.listImages(), 'RepoTags');
+		},
 		getLocalImages: () => localImages,
 	};
 })();
@@ -200,7 +202,7 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 	});
 }
 
-// stop any container that hasn't been accessed within five minutes
+// stop any container that hasn't been accessed within ten minutes
 function cleanupExpiredContainers() {
 	const containers = _.values(getRunningContainers());
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);

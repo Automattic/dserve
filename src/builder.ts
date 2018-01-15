@@ -23,7 +23,7 @@ export const MAX_CONCURRENT_BUILDS = 3;
 const BUILD_QUEUE: BuildQueue = [];
 const pendingHashes = new Set();
 
-export const getLogDir = (hash: CommitHash) => path.join(getBuildDir(hash), BUILD_LOG_FILENAME);
+export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), BUILD_LOG_FILENAME);
 export async function isBuildInProgress(
 	hash: CommitHash,
 	currentBuilds = getCurrentBuilds()
@@ -33,8 +33,8 @@ export async function isBuildInProgress(
 const getCurrentBuilds = () => pendingHashes;
 
 export async function readBuildLog(hash: CommitHash): Promise<string | null> {
-	if (await fs.pathExists(getLogDir(hash))) {
-		return fs.readFile(getLogDir(hash), 'utf-8');
+	if (await fs.pathExists(getLogPath(hash))) {
+		return fs.readFile(getLogPath(hash), 'utf-8');
 	}
 	return null;
 }
@@ -44,7 +44,7 @@ export function getBuildDir(hash: CommitHash) {
 	return path.join(tmpDir, `dserve-build-${REPO.replace('/', '-')}-${hash}`);
 }
 
-async function cleanUpBuildDir(hash: CommitHash) {
+async function cleanupBuildDir(hash: CommitHash) {
 	const buildDir = getBuildDir(hash);
 	l.log(`removing directory: ${buildDir}`);
 	return fs.remove(buildDir);
@@ -55,25 +55,27 @@ export function buildFromQueue({
 	currentBuilds = getCurrentBuilds(),
 	builder = buildImageForHash,
 } = {}) {
-	if (buildQueue.length > 0) {
-		if (currentBuilds.size < MAX_CONCURRENT_BUILDS) {
-			const commit = buildQueue.shift();
-			l.log(
-				{ buildQueueSize: buildQueue.length, commitHash: commit },
-				'Popping a commitHash off of the buildQueue'
-			);
-			builder(commit, {
-				onBuildComplete: () => {
-					currentBuilds.delete(commit);
-				},
-				currentBuilds,
-			});
-		} else {
-			l.log(
-				{ buildQueueSize: buildQueue.length },
-				'There images waiting to be built that are stuck because of too many concurrent builds'
-			);
-		}
+	if (buildQueue.length == 0) {
+		return;
+	}
+
+	if (currentBuilds.size < MAX_CONCURRENT_BUILDS) {
+		const commit = buildQueue.shift();
+		l.log(
+			{ buildQueueSize: buildQueue.length, commitHash: commit },
+			'Popping a commitHash off of the buildQueue'
+		);
+		builder(commit, {
+			onBuildComplete: () => {
+				currentBuilds.delete(commit);
+			},
+			currentBuilds,
+		});
+	} else {
+		l.log(
+			{ buildQueueSize: buildQueue.length },
+			'There images waiting to be built that are stuck because of too many concurrent builds'
+		);
 	}
 }
 
@@ -104,7 +106,7 @@ export async function buildImageForHash(
 
 	const buildDir = getBuildDir(commitHash);
 	const repoDir = path.join(buildDir, 'repo');
-	const pathToLog = getLogDir(commitHash);
+	const pathToLog = getLogPath(commitHash);
 	let imageStart: number;
 
 	if (await isBuildInProgress(commitHash, currentBuilds)) {
@@ -165,7 +167,8 @@ export async function buildImageForHash(
 				{ commitHash, buildImageTime: Date.now() - imageStart },
 				`Successfully built image. Now cleaning up build directory`
 			);
-			cleanUpBuildDir(commitHash);
+			// TODO: maybe re-enable cleanup.  disabled for now to aid in debugging
+			// cleanupBuildDir(commitHash);
 		} else {
 			buildLogger.error({ err }, 'Encountered error when building image');
 			l.error({ err, commitHash }, `Failed to build image for. Leaving build files in place`);

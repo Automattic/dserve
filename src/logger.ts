@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import { Writable } from 'stream';
 
 import { CommitHash, getImageName, } from './api';
-import { getLogDir } from './builder';
+import { getLogPath } from './builder';
 
 const dserveLogger = bunyan.createLogger({
 	name: 'dserve',
@@ -35,7 +35,7 @@ export const l = {
  * @param commitHash - hash to make logger for
  */
 export function getLoggerForBuild(commitHash: CommitHash) {
-	const path = getLogDir(commitHash);
+	const path = getLogPath(commitHash);
 	const logger = dserveLogger.child({
 		streams: [
 			{
