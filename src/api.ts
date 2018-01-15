@@ -55,6 +55,28 @@ const { refreshLocalImages, getLocalImages } = (function() {
 	};
 })();
 
+export async function deleteImage(hash: CommitHash) {
+	l.log({ commitHash: hash }, 'attempting to remove image for hash');
+
+	const runningContainer = getRunningContainers()[getImageName(hash)];
+	if (runningContainer) {
+		await docker.getContainer(runningContainer.Id).stop();
+	}
+
+	const img = docker.getImage(getImageName(hash));
+	if (!img) {
+		l.log({ commitHash: hash }, 'did not have an image locally with name' + getImageName(hash));
+		return;
+	}
+
+	try {
+		await img.remove({ force: true });
+		l.log({ commitHash: hash }, 'succesfully removed image');
+	} catch (err) {
+		l.error({ err, commitHash: hash }, 'failed to remove image');
+	}
+}
+
 // docker run -it --name wp-calypso --rm -p 80:3000 -e
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
 export async function startContainer(commitHash: CommitHash) {

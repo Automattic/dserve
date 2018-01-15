@@ -13,8 +13,15 @@ import {
 	startContainer,
 	isContainerRunning,
 	proxyRequestToHash as proxy,
+	deleteImage,
 } from './api';
-import { isBuildInProgress, buildImageForHash, readBuildLog, addToBuildQueue } from './builder';
+import {
+	isBuildInProgress,
+	buildImageForHash,
+	readBuildLog,
+	addToBuildQueue,
+	cleanupBuildDir,
+} from './builder';
 import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
 import { l } from './logger';
@@ -40,6 +47,14 @@ calypsoServer.get('*', async (req: any, res: any) => {
 	const isCurrentlyBuilding = !hasLocally && (await isBuildInProgress(commitHash));
 	const needsToBuild = !isCurrentlyBuilding && !hasLocally;
 	const shouldStartContainer = hasLocally && !isContainerRunning(commitHash);
+	const shouldReset = req.query.reset;
+
+	if (shouldReset) {
+		await deleteImage(commitHash);
+		await cleanupBuildDir(commitHash);
+		res.send('hard resetting hash: ' + commitHash);
+		return;
+	}
 
 	if (isContainerRunning(commitHash)) {
 		proxy(req, res);

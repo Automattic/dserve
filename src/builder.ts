@@ -44,7 +44,7 @@ export function getBuildDir(hash: CommitHash) {
 	return path.join(tmpDir, `dserve-build-${REPO.replace('/', '-')}-${hash}`);
 }
 
-async function cleanupBuildDir(hash: CommitHash) {
+export async function cleanupBuildDir(hash: CommitHash) {
 	const buildDir = getBuildDir(hash);
 	l.log(`removing directory: ${buildDir}`);
 	return fs.remove(buildDir);
