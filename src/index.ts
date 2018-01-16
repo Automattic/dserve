@@ -14,6 +14,7 @@ import {
 	isContainerRunning,
 	proxyRequestToHash as proxy,
 	deleteImage,
+	getLocalImages,
 } from './api';
 import {
 	isBuildInProgress,
@@ -37,6 +38,10 @@ calypsoServer.use(session);
 calypsoServer.get('/log', (req: any, res: any) => {
 	const appLog = fs.readFileSync('./logs/log.txt', 'utf-8');
 	res.send(appLog);
+});
+calypsoServer.get('/localimages', (req: any, res: any) => {
+	const localImages = getLocalImages();
+	res.send(JSON.stringify(localImages));
 });
 
 calypsoServer.use(determineCommitHash);

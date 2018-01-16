@@ -45,7 +45,7 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
  * Returns which images are stored locally.
  * Polls locker docker daemon for image list
  */
-const { refreshLocalImages, getLocalImages } = (function() {
+export const { refreshLocalImages, getLocalImages } = (function() {
 	let localImages = {};
 	return {
 		refreshLocalImages: async () => {
