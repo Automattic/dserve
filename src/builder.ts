@@ -107,6 +107,7 @@ export async function buildImageForHash(
 	const buildDir = getBuildDir(commitHash);
 	const repoDir = path.join(buildDir, 'repo');
 	const pathToLog = getLogPath(commitHash);
+	const imageName = getImageName(commitHash);
 	let imageStart: number;
 
 	if (await isBuildInProgress(commitHash, currentBuilds)) {
@@ -124,7 +125,7 @@ export async function buildImageForHash(
 	const buildLogger = getLoggerForBuild(commitHash);
 
 	try {
-		l.log({ commitHash, buildDir }, 'Attempting to build image.');
+		l.log({ commitHash, buildDir, repoDir, imageName }, 'Attempting to build image.');
 
 		const cloneStart = Date.now();
 		buildLogger.info('Cloning git repo');
@@ -140,13 +141,17 @@ export async function buildImageForHash(
 		buildLogger.info('Checked out the correct branch');
 
 		buildLogger.info('Placing all the contents into a tarball stream for docker\n');
+		l.log(
+			{ repoDir, imageName },
+			'Placing contents of repoDir into a tarball and sending to docker for a build'
+		);
 		const tarStream = tar.pack(repoDir);
 		buildLogger.info('Reticulating splines\n');
 		buildLogger.info('Handing off tarball to Docker for the rest of the legwork\n');
 		buildLogger.info('---------------- DOCKER START ----------------');
 
 		imageStart = Date.now();
-		buildStream = await docker.buildImage(tarStream, { t: getImageName(commitHash) });
+		buildStream = await docker.buildImage(tarStream, { t: imageName });
 	} catch (err) {
 		buildLogger.error(
 			{ err },
@@ -164,7 +169,7 @@ export async function buildImageForHash(
 		onBuildComplete();
 		if (!err) {
 			l.log(
-				{ commitHash, buildImageTime: Date.now() - imageStart },
+				{ commitHash, buildImageTime: Date.now() - imageStart, repoDir, imageName },
 				`Successfully built image. Now cleaning up build directory`
 			);
 			// TODO: maybe re-enable cleanup.  disabled for now to aid in debugging

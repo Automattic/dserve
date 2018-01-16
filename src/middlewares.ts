@@ -19,8 +19,6 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 	const isHashSpecified = req.query && (req.query.hash || req.query.branch);
 	let commitHash;
 
-	// we already have it. no need to duplicate work
-	// or test gh api rate limiting
 	if (isHashInSession && !isHashSpecified) {
 		next();
 		return;
