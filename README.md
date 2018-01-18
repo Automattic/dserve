@@ -29,14 +29,18 @@ Then you may either specify a branch or a hash to load.
 1. branch: calypso.localhost:3000?branch={branchName}
 2. hash: calypso.localhost:3000?hash={commitHash}
 
-## logging
+## Source Code Overview
 
-dserve uses `node-bunyan` for structured logging. Most logs are both written to the console and written to the file ./logs/log.txt.
-The build log for each individual image is written to its build directory and is retained in the case of a failed build.
+At the end of the day, dserve is node express server written in typescript. It can trigger docker image
+builds and deletions, start and stop containers, and a few other tricks.
 
-## Source Code
+Here is an example flow of what happens when requesting a never-requested-before commit sha:
+1. User tries to access `https://dserve.a8c.com?hash=hash`.
+2. dserve will query the local fs and docker daemon to determine the status of the corresponding image. It will discover that `hash` has never been requested before and needs to build an image for it. Therefore it will add the hash to the build queue and send the user a screen saying "starting a build for requested hash".
+3. Internally dserve checks the build queue very frequently and will initate a build within seconds. The build takes places within its own temporary directory in a place like: `/tmp/dserve-calyspo-hash/repo` and logs will be stored in `/tmp/dserve-calypso-hash/dserve-build-log.txt`.  
+4. When a user requests the branch while the build is happening, dserve will recognize that the build is in progress and show the user the build's status.
+5. Finally when the build completes, the next time a user requests the branch they will see: "starting container, this page will refresh in a couple of seconds". 
 
-The source for dserve split into a few files.
 
 **index.ts**: this acts as the entry point for dserve.  it sets up the server, initializes the routes, and contains the request handling for each incoming route.
 
@@ -53,4 +57,4 @@ _on-demand helper functions_: this includes functionality for recording how rece
 
 **builder.ts**: Contains all of the code for building the docker images for a specific commit hash.  This includes making build queue and rate limiting dserve to N builds at a time.
 
-**logger.ts**: Exports a couple key items around loggers including the application log and a getter for configuring a specific logger per-docker build of commits.
+**logger.ts**: Exports a couple key items around loggers including the application logger and a getter for configuring a specific logger per-docker build of commits.
