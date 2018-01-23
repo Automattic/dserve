@@ -45,6 +45,21 @@ calypsoServer.get('/localimages', (req: any, res: any) => {
 });
 
 calypsoServer.use(determineCommitHash);
+calypsoServer.get('/status', async (req: any, res: any) => {
+	const commitHash = req.session.commitHash;
+	let status;
+	if (isContainerRunning(commitHash)) {
+		status = 'Ready';
+	} else if (await hasHashLocally(commitHash)) {
+		status = 'NeedsPriming';
+	} else if (await isBuildInProgress(commitHash)) {
+		status = 'Building';
+	} else {
+		status = 'NotBuilt';
+	}
+	res.send(status);
+	res.end();
+});
 
 calypsoServer.get('*', async (req: any, res: any) => {
 	const commitHash = req.session.commitHash;
