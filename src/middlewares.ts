@@ -3,6 +3,7 @@ import * as express from 'express';
 import * as httpProxy from 'http-proxy';
 import * as expressSession from 'express-session';
 import * as _ from 'lodash';
+import * as striptags from 'striptags';
 
 // internal
 import {
@@ -36,10 +37,10 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 	}
 
 	if (commitHash instanceof Error) {
-		res.send('Calypso Server: ' + commitHash.message);
+		res.send(striptags('Calypso Server: ' + commitHash.message));
 		return;
 	} else if (req.query.branch && _.isUndefined(commitHash)) {
-		res.send(`Please specify a valid branch.  Could not find: ${req.query.branch}`);
+		res.send(striptags(`Please specify a valid branch.  Could not find: ${req.query.branch}`));
 		return;
 	}
 

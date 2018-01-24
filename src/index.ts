@@ -2,6 +2,7 @@
 import * as express from 'express';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import * as striptags from 'striptags';
 
 // internal
 import {
@@ -72,7 +73,8 @@ calypsoServer.get('*', async (req: any, res: any) => {
 	if (shouldReset) {
 		await deleteImage(commitHash);
 		await cleanupBuildDir(commitHash);
-		res.send('hard resetting hash: ' + commitHash);
+		const response = `hard resetting hash: ${commitHash}`;
+		res.send(striptags(response));
 		return;
 	}
 
