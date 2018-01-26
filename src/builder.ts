@@ -151,7 +151,7 @@ export async function buildImageForHash(
 		buildLogger.info('---------------- DOCKER START ----------------');
 
 		imageStart = Date.now();
-		buildStream = await docker.buildImage(tarStream, { t: imageName, nocache: true });
+		buildStream = await docker.buildImage(tarStream, { t: imageName });
 	} catch (err) {
 		buildLogger.error(
 			{ err },
