@@ -1,6 +1,6 @@
 # dserve
 
-[![CircleCI](https://circleci.com/gh/Automattic/dserve/tree/master.svg?style=svg)](https://circleci.com/gh/Automattic/dserve/tree/master)
+[![CircleCI](https://circleci.com/gh/Automattic/dserve/tree/master.svg?style=svg&circle-token=061a56710d3d75a9251ff74141b1c758a0790461)](https://circleci.com/gh/Automattic/dserve/tree/master)
 
 A development server for serving branches of your docker-based web application an on-demand basis.
 
@@ -37,9 +37,9 @@ builds and deletions, start and stop containers, and a few other tricks.
 Here is an example flow of what happens when requesting a never-requested-before commit sha:
 1. User tries to access `https://dserve.a8c.com?hash=hash`.
 2. dserve will query the local fs and docker daemon to determine the status of the corresponding image. It will discover that `hash` has never been requested before and needs to build an image for it. Therefore it will add the hash to the build queue and send the user a screen saying "starting a build for requested hash".
-3. Internally dserve checks the build queue very frequently and will initate a build within seconds. The build takes places within its own temporary directory in a place like: `/tmp/dserve-calyspo-hash/repo` and logs will be stored in `/tmp/dserve-calypso-hash/dserve-build-log.txt`.  
+3. Internally dserve checks the build queue very frequently and will initate a build within seconds. The build takes places within its own temporary directory in a place like: `/tmp/dserve-calyspo-hash/repo` and logs will be stored in `/tmp/dserve-calypso-hash/dserve-build-log.txt`.
 4. When a user requests the branch while the build is happening, dserve will recognize that the build is in progress and show the user the build's status.
-5. Finally when the build completes, the next time a user requests the branch they will see: "starting container, this page will refresh in a couple of seconds". 
+5. Finally when the build completes, the next time a user requests the branch they will see: "starting container, this page will refresh in a couple of seconds".
 
 
 **index.ts**: this acts as the entry point for dserve.  it sets up the server, initializes the routes, and contains the request handling for each incoming route.
