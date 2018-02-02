@@ -137,6 +137,7 @@ export async function buildImageForHash(
 		const commit = await repo.getCommit(commitHash);
 		const branch = await repo.createBranch('dserve', commit, true, undefined, undefined);
 		await repo.checkoutBranch(branch);
+		repo.free();
 		l.log({ commitHash, checkoutTime: checkoutStart - Date.now() });
 		buildLogger.info('Checked out the correct branch');
 
@@ -177,8 +178,8 @@ export async function buildImageForHash(
 		} else {
 			buildLogger.error({ err }, 'Encountered error when building image');
 			l.error({ err, commitHash }, `Failed to build image for. Leaving build files in place`);
-			closeLogger(buildLogger as any);
 		}
+		closeLogger(buildLogger as any);
 	}
 
 	function onProgress(event: any) {

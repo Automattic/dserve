@@ -2,7 +2,7 @@ import * as bunyan from 'bunyan';
 import * as _ from 'lodash';
 import { Writable } from 'stream';
 
-import { CommitHash, getImageName, } from './api';
+import { CommitHash, getImageName } from './api';
 import { getLogPath } from './builder';
 
 const dserveLogger = bunyan.createLogger({
@@ -60,7 +60,7 @@ export function getLoggerForBuild(commitHash: CommitHash) {
 	return logger;
 }
 
-type Logger = { streams: Array<{ stream: Writable }> };
+type Logger = { streams: Array<{ stream: Writable; type: string }> };
 export function closeLogger(logger: Logger) {
 	logger.streams.forEach(stream => {
 		stream.stream.end();

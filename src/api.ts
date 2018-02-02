@@ -177,6 +177,8 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 			{ repository: REPO, refreshBranchTime: Date.now() - start },
 			'Finished refreshing branches'
 		);
+
+		repo.free(); 
 		return branchToCommitHashMap;
 	} catch (err) {
 		l.error({ err, repository: REPO }, 'Error creating branchName --> commitSha map');
