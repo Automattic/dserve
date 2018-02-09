@@ -19,6 +19,7 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 	const isHashInSession = !!req.session.commitHash;
 	const isHashSpecified = req.query && (req.query.hash || req.query.branch);
 	let commitHash;
+	let branch;
 
 	if (isHashInSession && !isHashSpecified) {
 		next();
@@ -34,17 +35,19 @@ export async function determineCommitHash(req: any, res: any, next: any) {
 		commitHash = req.query.hash;
 	} else if (req.query.branch) {
 		commitHash = getCommitHashForBranch(req.query.branch);
+		branch = req.query.branch;
 	}
 
 	if (commitHash instanceof Error) {
 		res.send(striptags('Calypso Server: ' + commitHash.message));
 		return;
-	} else if (req.query.branch && _.isUndefined(commitHash)) {
-		res.send(striptags(`Please specify a valid branch.  Could not find: ${req.query.branch}`));
+	} else if (branch && _.isUndefined(commitHash)) {
+		res.send(striptags(`Please specify a valid branch.  Could not find: ${branch}`));
 		return;
 	}
 
 	req.session.commitHash = commitHash;
+	req.session.branch = branch;
 	touchCommit(commitHash);
 
 	next();
