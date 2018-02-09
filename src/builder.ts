@@ -2,6 +2,7 @@ import * as git from 'nodegit';
 import * as os from 'os';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import * as _ from 'lodash';
 import { Readable } from 'stream';
 const tar: any = require('tar-fs'); // todo: write a type definition for tar-fs
 
@@ -17,7 +18,7 @@ import {
 } from './api';
 import { closeLogger, l, getLoggerForBuild } from './logger';
 
-type BuildQueue = Array<CommitHash>;
+type BuildQueue = Array<{ commitHash: CommitHash; branch?: string }>;
 
 export const MAX_CONCURRENT_BUILDS = 3;
 const BUILD_QUEUE: BuildQueue = [];
@@ -60,17 +61,20 @@ export function buildFromQueue({
 	}
 
 	if (currentBuilds.size < MAX_CONCURRENT_BUILDS) {
-		const commit = buildQueue.shift();
+		const { commitHash, branch } = buildQueue.shift();
 		l.log(
-			{ buildQueueSize: buildQueue.length, commitHash: commit },
+			{ buildQueueSize: buildQueue.length, commitHash },
 			'Popping a commitHash off of the buildQueue'
 		);
-		builder(commit, {
-			onBuildComplete: () => {
-				currentBuilds.delete(commit);
-			},
-			currentBuilds,
-		});
+		builder(
+			{ commitHash, branch },
+			{
+				onBuildComplete: () => {
+					currentBuilds.delete(commitHash);
+				},
+				currentBuilds,
+			}
+		);
 	} else {
 		l.log(
 			{ buildQueueSize: buildQueue.length },
@@ -80,11 +84,11 @@ export function buildFromQueue({
 }
 
 export function addToBuildQueue(
-	commitHash: CommitHash,
+	{ commitHash, branch }: { commitHash: CommitHash; branch: string },
 	buildQueue: BuildQueue = BUILD_QUEUE,
 	currentBuilds: Set<CommitHash> = getCurrentBuilds()
 ) {
-	if (buildQueue.includes(commitHash) || currentBuilds.has(commitHash)) {
+	if (!!_.find(buildQueue, { commitHash }) || currentBuilds.has(commitHash)) {
 		l.log(
 			{ buildQueueSize: buildQueue.length, commitHash },
 			'Skipping the build queue since it is already in it'
@@ -92,11 +96,11 @@ export function addToBuildQueue(
 		return;
 	}
 	l.log({ buildQueueSize: buildQueue.length, commitHash }, 'Adding a commitHash to the buildQueue');
-	return buildQueue.push(commitHash);
+	return buildQueue.push({ commitHash, branch });
 }
 
 export async function buildImageForHash(
-	commitHash: CommitHash,
+	{ commitHash, branch }: { commitHash: CommitHash; branch: string },
 	{
 		onBuildComplete,
 		currentBuilds = getCurrentBuilds(),
@@ -107,7 +111,7 @@ export async function buildImageForHash(
 	const buildDir = getBuildDir(commitHash);
 	const repoDir = path.join(buildDir, 'repo');
 	const pathToLog = getLogPath(commitHash);
-	const imageName = getImageName(commitHash);
+	const imageName = getImageName(commitHash, branch);
 	let imageStart: number;
 
 	if (await isBuildInProgress(commitHash, currentBuilds)) {

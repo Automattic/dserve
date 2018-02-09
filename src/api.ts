@@ -38,7 +38,7 @@ export const FIVE_MINUTES = 5 * ONE_MINUTE;
 export const TEN_MINUTES = 10 * ONE_MINUTE;
 export const CONTAINER_EXPIRY_TIME = FIVE_MINUTES;
 
-export const getImageName = (hash: CommitHash) => `${TAG_PREFIX}:${hash}`;
+export const getImageName = (hash: CommitHash, branch: string) => `${TAG_PREFIX}:${hash}:${branch}`;
 export const extractCommitFromImage = (imageName: string): CommitHash => imageName.split(':')[1];
 
 /**
@@ -58,14 +58,17 @@ export const { refreshLocalImages, getLocalImages } = (function() {
 export async function deleteImage(hash: CommitHash) {
 	l.log({ commitHash: hash }, 'attempting to remove image for hash');
 
-	const runningContainer = getRunningContainers()[getImageName(hash)];
+	const runningContainer = getRunningContainers()[getLocalImageName(hash)];
 	if (runningContainer) {
 		await docker.getContainer(runningContainer.Id).stop();
 	}
 
-	const img = docker.getImage(getImageName(hash));
+	const img = docker.getImage(getLocalImageName(hash));
 	if (!img) {
-		l.log({ commitHash: hash }, 'did not have an image locally with name' + getImageName(hash));
+		l.log(
+			{ commitHash: hash },
+			'did not have an image locally with name' + getLocalImageName(hash)
+		);
 		return;
 	}
 
@@ -81,7 +84,7 @@ export async function deleteImage(hash: CommitHash) {
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
 export async function startContainer(commitHash: CommitHash) {
 	l.log({ commitHash }, `Starting up container`);
-	const image = getImageName(commitHash);
+	const image = getLocalImageName(commitHash);
 	let freePort: number;
 	try {
 		freePort = await portfinder.getPortPromise();
@@ -122,16 +125,35 @@ const { getRunningContainers, refreshRunningContainers } = (function() {
 })();
 
 export function isContainerRunning(hash: CommitHash) {
-	const image = getImageName(hash);
+	const image = getLocalImageName(hash);
 	return _.has(getRunningContainers(), image);
 }
 
-export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
-	return _.has(getLocalImages(), getImageName(hash));
+/**
+ * When creating images, we include a branch if available at the time.
+ * When retrieving them from the local docker fs, we want to be more leninent
+ * because multiple branches can use the same sha, and also people may specify a hash without
+ * a branch. Therefore, any image referencing the right hash will do when querying for built images
+ *
+ * @param hash hash to look for in image names
+ * @returns {string} - the actual image name of the image with the hash specified
+ */
+export function getLocalImageName(hash: CommitHash): string {
+	const imageNames = Object.keys(getLocalImages());
+
+	imageNames.forEach(imageName => {
+		if (imageName.includes(hash)) {
+			return imageName;
+		}
+	});
+	return null;
+}
+export function hasHashLocally(hash: CommitHash): boolean {
+	return !!getLocalImageName(hash);
 }
 
 export function getPortForContainer(hash: CommitHash): Promise<boolean> {
-	const image = getImageName(hash);
+	const image = getLocalImageName(hash);
 	return _.get(getRunningContainers(), [image, 'Ports', 0, 'PublicPort'], false);
 }
 
@@ -178,7 +200,7 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 			'Finished refreshing branches'
 		);
 
-		repo.free(); 
+		repo.free();
 		return branchToCommitHashMap;
 	} catch (err) {
 		l.error({ err, repository: REPO }, 'Error creating branchName --> commitSha map');
