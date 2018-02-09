@@ -5,22 +5,24 @@ import { CommitHash } from '../src/api';
 jest.mock('../src/logger');
 
 describe('builder', () => {
+	const toAdd = { commitHash: 'hash', branch: 'branch' };
 	describe('addToBuildQueue', () => {
 		test('should add to an empty queue', () => {
 			const queue = [];
-			addToBuildQueue('hash', queue, new Set());
-			expect(queue).toEqual(['hash']);
+			addToBuildQueue(toAdd, queue, new Set());
+			expect(queue).toEqual([toAdd]);
 		});
 
 		test('should not add to a queue if already in it', () => {
-			const queue = ['hash'];
-			addToBuildQueue('hash', queue, new Set());
-			expect(queue).toEqual(['hash']);
+			const sameHashOtherBranch = { ...toAdd, branch: 'other-branch' };
+			const queue = [sameHashOtherBranch];
+			addToBuildQueue(toAdd, queue, new Set());
+			expect(queue).toEqual([sameHashOtherBranch]);
 		});
 
 		test('should not add to queue if build is under way', () => {
 			const queue = [];
-			addToBuildQueue('hash', queue, new Set(['hash']));
+			addToBuildQueue(toAdd, queue, new Set(['hash']));
 			expect(queue).toEqual([]);
 		});
 	});
@@ -31,28 +33,31 @@ describe('builder', () => {
 		});
 
 		test('should remove hash from the queue once building it', () => {
-			const buildQueue = ['hash'];
+			const buildQueue = [toAdd];
 			buildFromQueue({ buildQueue });
 			expect(buildQueue).toEqual([]);
 		});
 
 		test('should not build anything if already at capacity', () => {
-			const buildQueue = ['hash'];
+			const buildQueue = [toAdd];
 			const currentBuilds = new Set(_.range(MAX_CONCURRENT_BUILDS));
 
 			buildFromQueue({ buildQueue, currentBuilds });
-			expect(buildQueue).toEqual(['hash']);
+			expect(buildQueue).toEqual([toAdd]);
 		});
 
 		test('should remove hash from curent builds once building is complete', done => {
-			const instaBuilder = (hash: CommitHash, { onBuildComplete }) => {
+			async function instaBuilder(
+				{ commitHash, branch }: { commitHash: CommitHash; branch: string },
+				{ onBuildComplete }
+			) {
 				onBuildComplete();
 				expect(Array.from(currentBuilds.values())).toEqual([]);
 				done();
-			};
+			}
 
-			const buildQueue = ['hash'];
-			const currentBuilds = new Set(buildQueue);
+			const buildQueue = [toAdd];
+			const currentBuilds = new Set(['hash']);
 			buildFromQueue({ buildQueue, currentBuilds, builder: instaBuilder });
 		});
 	});
