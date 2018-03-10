@@ -4,7 +4,7 @@
 
 A development server for serving branches of your docker-based web application an on-demand basis.
 
-It can build images for any hash, run containers, stop a containers that haven't been accessed in a
+It can build images for any hash, run containers, stop containers that haven't been accessed in a
 while, proxy requests to the right container based on query params, etc.
 
 ## Install
