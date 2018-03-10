@@ -153,11 +153,12 @@ export async function buildImageForHash(
 
 		imageStart = Date.now();
 		buildStream = await docker.buildImage(tarStream, {
-                  t: imageName,
-                  buildargs: {
-                    commit_sha: commitHash,
-                  },
-                });
+			t: imageName,
+			nocache: true,
+			buildargs: {
+				commit_sha: commitHash,
+			},
+		});
 	} catch (err) {
 		buildLogger.error(
 			{ err },
