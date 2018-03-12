@@ -50,6 +50,15 @@ export async function cleanupBuildDir(hash: CommitHash) {
 	return fs.remove(buildDir);
 }
 
+function warnOnQueueBuildup(buildQueue = BUILD_QUEUE) {
+	if (buildQueue.length > 0) {
+		l.log(
+			{ buildQueueSize: buildQueue.length },
+			'There are images waiting to be built that are stuck because of too many concurrent builds'
+		);
+	}
+}
+
 export function buildFromQueue({
 	buildQueue = BUILD_QUEUE,
 	currentBuilds = getCurrentBuilds(),
@@ -71,11 +80,6 @@ export function buildFromQueue({
 			},
 			currentBuilds,
 		});
-	} else {
-		l.log(
-			{ buildQueueSize: buildQueue.length },
-			'There images waiting to be built that are stuck because of too many concurrent builds'
-		);
 	}
 }
 
@@ -200,3 +204,4 @@ export async function buildImageForHash(
 }
 
 setInterval(() => buildFromQueue(), ONE_SECOND);
+setInterval(() => warnOnQueueBuildup(), ONE_MINUTE);
