@@ -154,7 +154,7 @@ export async function buildImageForHash(
 		imageStart = Date.now();
 		buildStream = await docker.buildImage(tarStream, {
 			t: imageName,
-			nocache: true,
+			nocache: false,
 			buildargs: {
 				commit_sha: commitHash,
 			},
