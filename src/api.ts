@@ -152,6 +152,17 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 		} else {
 			repo = await git.Repository.open(calypsoDir);
 		}
+
+		// this code here is all for retrieving origin
+		// and then pruning out old branches
+		const origin: git.Remote = await repo.getRemote('origin');
+		await origin.connect(git.Enums.DIRECTION.FETCH, {});
+		await origin.download(null);
+		const pruneError = origin.prune(new git.RemoteCallbacks());
+		if (pruneError) {
+			throw new Error(`invoking remote prune returned error code: ${pruneError}`);
+		}
+		//
 		await repo.fetchAll();
 	} catch (err) {
 		l.error({ err }, 'Could not fetch repo to update branches list');
@@ -178,7 +189,7 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 			'Finished refreshing branches'
 		);
 
-		repo.free(); 
+		repo.free();
 		return branchToCommitHashMap;
 	} catch (err) {
 		l.error({ err, repository: REPO }, 'Error creating branchName --> commitSha map');
