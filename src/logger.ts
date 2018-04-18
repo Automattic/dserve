@@ -4,6 +4,7 @@ import { Writable } from 'stream';
 
 import { CommitHash, getImageName } from './api';
 import { getLogPath } from './builder';
+import { config } from './config';
 
 const dserveLogger = bunyan.createLogger({
 	name: 'dserve',
@@ -16,6 +17,7 @@ const dserveLogger = bunyan.createLogger({
 		},
 		{
 			stream: process.stdout,
+			level: bunyan.DEBUG,
 		},
 	],
 	serializers: bunyan.stdSerializers, // allows one to use err, req, and res as special keys
@@ -24,8 +26,10 @@ const dserveLogger = bunyan.createLogger({
 
 /* super convenient name */
 export const l = {
+	// @ts-ignore need to find proper type to express passing variable args
 	log: (...args: any[]) => dserveLogger.info(...args),
-	error: (...args: any[]) => dserveLogger.error(...args),
+	// @ts-ignore need to find proper type to express passing variable args
+	error: (...args: any[]) => dserveLogger.error(...args)
 };
 
 /**
@@ -55,6 +59,7 @@ export function getLoggerForBuild(commitHash: CommitHash) {
 	// it inherits al the same properties as the parent
 	// except we don't want any of the parents streams
 	// so this line removes them all
+	// @ts-ignore this needs to be fixed with proper typing
 	((logger as any) as Logger).streams = _.filter((logger as any).streams, { path });
 
 	return logger;

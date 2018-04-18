@@ -7,14 +7,13 @@ const tar: any = require('tar-fs'); // todo: write a type definition for tar-fs
 
 import {
 	CommitHash,
-	REPO,
 	ONE_SECOND,
 	ONE_MINUTE,
 	FIVE_MINUTES,
-	BUILD_LOG_FILENAME,
 	getImageName,
 	docker,
 } from './api';
+import {config} from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
 
 type BuildQueue = Array<CommitHash>;
@@ -23,7 +22,7 @@ export const MAX_CONCURRENT_BUILDS = 3;
 const BUILD_QUEUE: BuildQueue = [];
 const pendingHashes = new Set();
 
-export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), BUILD_LOG_FILENAME);
+export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), config.build.logFilename);
 export async function isBuildInProgress(
 	hash: CommitHash,
 	currentBuilds = getCurrentBuilds()
@@ -41,7 +40,7 @@ export async function readBuildLog(hash: CommitHash): Promise<string | null> {
 
 export function getBuildDir(hash: CommitHash) {
 	const tmpDir = os.tmpdir();
-	return path.join(tmpDir, `dserve-build-${REPO.replace('/', '-')}-${hash}`);
+	return path.join(tmpDir, `dserve-build-${config.repo.project.replace('/', '-')}-${hash}`);
 }
 
 export async function cleanupBuildDir(hash: CommitHash) {
@@ -133,7 +132,7 @@ export async function buildImageForHash(
 
 		const cloneStart = Date.now();
 		buildLogger.info('Cloning git repo');
-		const repo = await git.Clone.clone(`https://github.com/${REPO}`, repoDir);
+		const repo = await git.Clone.clone(`https://github.com/${config.repo.project}`, repoDir);
 		buildLogger.info('Finished cloning repo');
 		l.log({ commitHash, cloneTime: cloneStart - Date.now() });
 
@@ -173,6 +172,7 @@ export async function buildImageForHash(
 	}
 
 	if (!buildStream) {
+		l.error({buildStream}, "Failed to build image but didn't throw an error" );
 		return;
 	}
 
