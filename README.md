@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/Automattic/dserve/tree/master.svg?style=svg&circle-token=061a56710d3d75a9251ff74141b1c758a0790461)](https://circleci.com/gh/Automattic/dserve/tree/master)
 
-![](./logo.png)
+![](https://raw.githubusercontent.com/Automattic/dserve/f699948673de4600a181484f5ab96a4a153eb552/logo.png)
 
 A development server for serving branches of your docker-based web application an on-demand basis.
 
