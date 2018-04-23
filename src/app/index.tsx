@@ -2,6 +2,8 @@ import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 import { ONE_SECOND } from '../api';
 
+import stripAnsi = require('strip-ansi');
+
 class Reloader extends React.Component<{ milliseconds: number }> {
 	render() {
 		return (
@@ -30,7 +32,7 @@ class BuildLog extends React.Component<{ log: string }> {
 					return `Time=${line.time} | ${line.msg}`;
 				} catch (err) {}
 			})
-			.map((str, i) => <li key={i}>{str}</li>);
+			.map( ( str, i ) => <li key={ i }>{ stripAnsi( str ) }</li> );
 		return <ol>{formattedLog}</ol>;
 	}
 }

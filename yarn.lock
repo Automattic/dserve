@@ -113,6 +113,10 @@
     "@types/express-serve-static-core" "*"
     "@types/mime" "*"
 
+"@types/strip-ansi@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@types/strip-ansi/-/strip-ansi-3.0.0.tgz#9b63d453a6b54aa849182207711a08be8eea48ae"
+
 "@types/striptags@^3.1.1":
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/@types/striptags/-/striptags-3.1.1.tgz#26322004d802843db36a6bf31a9744e946194108"
