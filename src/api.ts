@@ -62,11 +62,9 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
  */
 export async function refreshLocalImages() {
 	const images = await docker.listImages();
-	const nextImages = new Map();
-
-	images.forEach( image => nextImages.set( image.RepoTags, image ) );
-
-	state.localImages = nextImages;
+	state.localImages = new Map( images.map( 
+		image => [ image.RepoTags[0], image ] as [ string, Docker.ImageInfo ]
+	) );
 }
 
 /**
@@ -138,11 +136,9 @@ export async function startContainer(commitHash: CommitHash) {
 
 export async function refreshRunningContainers() {
 	const containers = await docker.listContainers();
-	const nextContainers = new Map();
-
-	containers.forEach( container => nextContainers.set( container.Image, container ) );
-
-	state.containers = nextContainers;
+	state.containers = new Map( containers.map( 
+		container => [ container.Image, container ] as [ string, ContainerInfo ] 
+	) );
 }
 
 export function isContainerRunning(hash: CommitHash) {
@@ -206,12 +202,12 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 			(x: git.Reference) => x.isBranch
 		);
 
-		const branchToCommitHashMap: Map<string, string> = new Map();
-		branchesReferences.forEach(async reference => {
+		const branchToCommitHashMap: Map<string, string> = new Map( branchesReferences.map(reference => {
 			const name = reference.shorthand().replace('origin/', '');
 			const commitHash = reference.target().tostrS();
-			branchToCommitHashMap.set(name, commitHash);
-		});
+
+			return [ name, commitHash ] as [ string, CommitHash ];
+		} ) );
 
 		l.log(
 			{ repository: REPO, refreshBranchTime: Date.now() - start },
