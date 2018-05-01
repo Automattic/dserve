@@ -77,6 +77,8 @@ export async function deleteImage(hash: CommitHash) {
 	}
 }
 
+export const lastBuildFinished: Map<CommitHash, boolean> = new Map();
+
 // docker run -it --name wp-calypso --rm -p 80:3000 -e
 // NODE_ENV=wpcalypso -e CALYPSO_ENV=wpcalypso wp-calypso"
 export async function startContainer(commitHash: CommitHash) {
@@ -101,6 +103,8 @@ export async function startContainer(commitHash: CommitHash) {
 			Env: ['NODE_ENV=wpcalypso', 'CALYPSO_ENV=wpcalypso'],
 		},
 		(err, succ) => {
+			lastBuildFinished.set( commitHash, !! err );
+
 			if (err) {
 				l.error({ commitHash, freePort, err }, `failed starting container`);
 				return;
