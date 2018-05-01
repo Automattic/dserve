@@ -40,8 +40,15 @@ calypsoServer.get('/log', (req: any, res: any) => {
 	const appLog = fs.readFileSync('./logs/log.txt', 'utf-8'); // todo change back from l
 	res.send(appLog);
 });
+
 calypsoServer.get('/localimages', (req: any, res: any) => {
-	const localImages = getLocalImages();
+	const localImages = Array
+		.from(getLocalImages())
+		.reduce( 
+			( images, [ repoTags, image ] ) => ( { ...images, [ repoTags ]: image } ), 
+			{} 
+		);
+
 	res.send(JSON.stringify(localImages));
 });
 

@@ -16,6 +16,21 @@ import { Container, ContainerInfo } from 'dockerode';
 import { l, getLoggerForBuild, closeLogger } from './logger';
 import { getBuildDir } from './builder';
 import { setInterval } from 'timers';
+import { stat } from 'fs';
+
+type APIState = {
+	accesses: Map<CommitHash, number>;
+	containers: Map<string, Docker.ContainerInfo>;
+	localImages: Map<string, Docker.ImageInfo>;
+	remoteBranches: Map<BranchName, CommitHash>;
+};
+
+const state: APIState = {
+	accesses: new Map(),
+	containers: new Map(),
+	localImages: new Map(),
+	remoteBranches: new Map()
+};
 
 export const docker = new Docker();
 
@@ -42,23 +57,33 @@ export const getImageName = (hash: CommitHash) => `${TAG_PREFIX}:${hash}`;
 export const extractCommitFromImage = (imageName: string): CommitHash => imageName.split(':')[1];
 
 /**
- * Returns which images are stored locally.
- * Polls locker docker daemon for image list
+ * Polls the local Docker daemon to
+ * fetch an updated list of images
  */
-export const { refreshLocalImages, getLocalImages } = (function() {
-	let localImages = {};
-	return {
-		refreshLocalImages: async () => {
-			localImages = _.keyBy(await docker.listImages(), 'RepoTags');
-		},
-		getLocalImages: () => localImages,
-	};
-})();
+export async function refreshLocalImages() {
+	const images = await docker.listImages();
+	const nextImages = new Map();
+
+	images.forEach( image => nextImages.set( image.RepoTags, image ) );
+
+	state.localImages = nextImages;
+}
+
+/**
+ * Returns the list of local images
+ */
+export function getLocalImages() {
+	return state.localImages;
+}
+
+export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
+	return state.localImages.has( getImageName( hash ) );
+}
 
 export async function deleteImage(hash: CommitHash) {
 	l.log({ commitHash: hash }, 'attempting to remove image for hash');
 
-	const runningContainer = getRunningContainers()[getImageName(hash)];
+	const runningContainer = state.containers.get( getImageName(hash) );
 	if (runningContainer) {
 		await docker.getContainer(runningContainer.Id).stop();
 	}
@@ -111,28 +136,32 @@ export async function startContainer(commitHash: CommitHash) {
 	return;
 }
 
-const { getRunningContainers, refreshRunningContainers } = (function() {
-	let containers: { [s: string]: ContainerInfo } = {};
-	return {
-		refreshRunningContainers: async () => {
-			containers = _.keyBy(await docker.listContainers(), 'Image');
-		},
-		getRunningContainers: () => containers,
-	};
-})();
+export async function refreshRunningContainers() {
+	const containers = await docker.listContainers();
+	const nextContainers = new Map();
+
+	containers.forEach( container => nextContainers.set( container.Image, container ) );
+
+	state.containers = nextContainers;
+}
 
 export function isContainerRunning(hash: CommitHash) {
 	const image = getImageName(hash);
-	return _.has(getRunningContainers(), image);
+	return state.containers.has( image );
 }
 
-export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
-	return _.has(getLocalImages(), getImageName(hash));
-}
-
-export function getPortForContainer(hash: CommitHash): Promise<boolean> {
+export function getPortForContainer(hash: CommitHash): number|boolean {
 	const image = getImageName(hash);
-	return _.get(getRunningContainers(), [image, 'Ports', 0, 'PublicPort'], false);
+
+	if ( ! state.containers.has( image ) ) {
+		return false;
+	}
+
+	const ports = state.containers.get( image ).Ports;
+
+	return ports.length > 0
+		? ports[0].PublicPort
+		: false;
 }
 
 async function getRemoteBranches(): Promise<Map<string, string>> {
@@ -197,27 +226,25 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 	}
 }
 
-export const { refreshRemoteBranches, getCommitHashForBranch } = (function() {
-	let branches = new Map();
-	return {
-		refreshRemoteBranches: async () => {
-			branches = await getRemoteBranches();
-		},
-		getCommitHashForBranch: function(branch: BranchName): CommitHash | undefined {
-			return branches.get(branch);
-		},
-	};
-})();
+export async function refreshRemoteBranches() {
+	const branches = await getRemoteBranches();
 
-export const { touchCommit, getCommitAccessTime } = (function() {
-	const accesses = new Map();
+	if ( branches ) {
+		state.remoteBranches = branches;
+	}
+}
 
-	const touchCommit = (hash: CommitHash) => accesses.set(hash, Date.now());
+export function getCommitHashForBranch( branch: BranchName ): CommitHash | undefined {
+	return state.remoteBranches.get( branch );
+}
 
-	const getCommitAccessTime = (hash: CommitHash) => accesses.get(hash);
+export function touchCommit( hash: CommitHash ): void {
+	state.accesses.set( hash, Date.now() );
+}
 
-	return { touchCommit, getCommitAccessTime };
-})();
+export function getCommitAccessTime( hash: CommitHash ): number {
+	return state.accesses.get( hash );
+}
 
 /*
  * Get all currently running containers that were created by dserve and have expired.
@@ -239,7 +266,7 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 
 // stop any container that hasn't been accessed within ten minutes
 function cleanupExpiredContainers() {
-	const containers = _.values(getRunningContainers());
+	const containers = Array.from( state.containers.values() );
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
 	expiredContainers.forEach(async (container: ContainerInfo) => {
 		const imageName: string = container.Image;
