@@ -60,3 +60,34 @@ _on-demand helper functions_: this includes functionality for recording how rece
 **builder.ts**: Contains all of the code for building the docker images for a specific commit hash.  This includes making build queue and rate limiting dserve to N builds at a time.
 
 **logger.ts**: Exports a couple key items around loggers including the application logger and a getter for configuring a specific logger per-docker build of commits.
+
+## Operations
+
+Are you in a situation where you are suddently tasked with maintaining dserve even though you didn't write it?
+Once the flood of mixed feelings towards the original authors settles, it'd be a good idea to read this section.
+You probably want to know how to do things like, deploy new code, debug issues, and e2e test dserve locally.
+Here goes nothing:
+
+**deploying**
+This GitHub repo is polled every 15 minutes. If there have been updates to the repo, then the latest sha is deployed.
+Thats it.  Merge, and it'll be deployed. In a high severity situation where dserve is broken, you'll want to make sure you time your attempts to fix it _before_ the next 15 minute mark.
+
+**debugging**
+dserve has a couple helpful urls for debugging issues for times when you don't have ssh access.
+Note that any time you see `branch=${branchName}` you can subsitute `hash=${sha}`.
+
+- Application Log: https://calypso.live/log
+- List of local Docker images: https://calypso.live/localimages
+- Delete a build directory: add reset=1 as a query param like so https://calypso.live?branch=${branchName}&reset=1
+- Build Status: https://calypso.live/status?branch=${branchName}
+
+**e2e test locally**
+1. start up dserve with `yarn start`
+2. try to access a branch that you've never built before by going to localhost:3000?branch=${branchName}. After a successful build you should be proxied to calypso
+3. try to access an already built branch (by looking at the result of `docker images` you can find repo-tags with the right sha to specify). After a succesfful build you should be proxied to that branch's version of calypso.
+
+
+**things that have broken in the past**
+1. We were running an older version of docker that had `buildCache` issues. disabling the build cache (as a setting in the `buildImage` function) until we could upgrade docker versions solved the issue
+2. The Docker Daemon ran into problems: there was one instance where builds seemed to just hang randomly and there was no obvious cause. all builds had failed.  Systems restarting the docker daemon solved the issue.
+3. Double slash branches: there is an interesting property of git with respect to how branches get stored on the local filesystem.  Each slash in a branchname actually means that it occupies a nested folder. That means if locally you have a branch named `thing/thing2` then you _cannot_ pull down a remote branch with the name `thing`. The reason the remote repo was capable of having branch `thing/thing2` is because `thing` had already been deleted in its repo. The fix here is to always run a `git prune` when pulling down new branches which automatically deletes the appropriates local branches that no longer exist in the remote repo.
