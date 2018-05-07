@@ -16,6 +16,7 @@ import {
 	proxyRequestToHash as proxy,
 	deleteImage,
 	getLocalImages,
+	lastBuildFinished,
 } from './api';
 import {
 	isBuildInProgress,
@@ -46,20 +47,29 @@ calypsoServer.get('/localimages', (req: any, res: any) => {
 });
 
 calypsoServer.use(determineCommitHash);
-calypsoServer.get('/status', async (req: any, res: any) => {
+calypsoServer.get('/status', async (req: express.Request, res: express.Response) => {
 	const commitHash = req.session.commitHash;
 	let status;
-	if (isContainerRunning(commitHash)) {
-		status = 'Ready';
-	} else if (await hasHashLocally(commitHash)) {
-		status = 'NeedsPriming';
-	} else if (await isBuildInProgress(commitHash)) {
-		status = 'Building';
-	} else {
-		status = 'NotBuilt';
+	const send = ( m: string ) => ( res.send( m ), res.end() );
+
+	const isRunning = isContainerRunning(commitHash);
+	if ( isRunning ) {
+		return send( 'Ready' );
 	}
-	res.send(status);
-	res.end();
+
+	if ( ! lastBuildFinished.get( commitHash ) ) {
+		return send( 'FailedBuild' );
+	}
+
+	if ( await hasHashLocally( commitHash ) ) {
+		return send( 'NeedsPriming' );
+	}
+
+	if ( await isBuildInProgress( commitHash ) ) {
+		return send( 'Building' );
+	}
+
+	send( 'NotBuilt' );
 });
 
 calypsoServer.get('*', async (req: any, res: any) => {
