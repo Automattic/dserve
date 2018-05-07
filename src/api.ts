@@ -234,11 +234,11 @@ export function getCommitHashForBranch( branch: BranchName ): CommitHash | undef
 	return state.remoteBranches.get( branch );
 }
 
-export function touchCommit( hash: CommitHash ): void {
+export function touchCommit( hash: CommitHash ) {
 	state.accesses.set( hash, Date.now() );
 }
 
-export function getCommitAccessTime( hash: CommitHash ): number {
+export function getCommitAccessTime( hash: CommitHash ): number | undefined {
 	return state.accesses.get( hash );
 }
 
