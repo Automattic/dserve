@@ -90,17 +90,11 @@ export const Shell = ({ refreshInterval, children }: any) => (
                     text-decoration: none;
                     color: #ffffff;
                     background: #2e4453;
-                    transition: all 200ms ease-in;
                 }
 
 				.dserve-toolbar a:hover {
 					background: #ffffff;
 					color: #2e4453;
-				}
-
-				@keyframes progress-bar-animation {
-						0%   { background-position: 400px 50px; }
-						100% {  }
 				}
 		`,
 			}}

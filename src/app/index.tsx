@@ -28,6 +28,18 @@ const App = ({ buildLog, message }: RenderContext) => (
 			{buildLog && <BuildLog log={buildLog} />}
 			{message && <p> {message}</p>}
 		</pre>
+		<div dangerouslySetInnerHTML={ { __html: `
+			<style>
+                .dserve-toolbar a {
+					transition: all 200ms ease-in;
+				}
+
+				@keyframes progress-bar-animation {
+						0%   { background-position: 400px 50px; }
+						100% {  }
+				}
+			</style>
+		` } } />
 	</Shell>
 );
 
