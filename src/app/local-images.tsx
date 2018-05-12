@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 import * as Docker from 'dockerode';
+import { config } from '../config';
 
 import { Shell } from './app-shell';
 import { humanSize, humanTime } from './util';
@@ -47,7 +48,7 @@ const LocalImages = ({ branchHashes, knownBranches, localImages }: RenderContext
             { Object.keys( localImages ).map( repoTags => {
                 const info = localImages[ repoTags ];
                 const createdAt = new Date( info.Created * 1000 );
-                const match = repoTags.match( /dserve-wpcalypso:([a-f0-9]+)/ );
+                const match = repoTags.match( new RegExp( `${ config.build.tagPrefix }:([a-f0-9]+)` ) );
                 const title = ( match && branchHashes.has( match[ 1 ] ) )
                     ? branchHashes.get( match[ 1 ] )
                     : repoTags;
@@ -58,7 +59,7 @@ const LocalImages = ({ branchHashes, knownBranches, localImages }: RenderContext
                             { title }{ match && (
                                 <React.Fragment>
                                     { ' - ' }
-                                    <a href={ `https://github.com/automattic/wp-calypso/commit/${ match[ 1 ] }` }>Github</a>
+                                    <a href={ `https://github.com/${ config.repo.project }/commit/${ match[ 1 ] }` }>Github</a>
                                     { ' - ' }
                                     <a href={ `/?hash=${ match[ 1 ] }` } target="_blank">Open</a>
                                 </React.Fragment>
