@@ -31,7 +31,7 @@ const App = ({ buildLog, message }: RenderContext) => (
 		<div dangerouslySetInnerHTML={ { __html: `
 			<style>
                 .dserve-toolbar a {
-					transition: all 200ms ease-in;
+					transition: background 200ms ease-in;
 				}
 
 				@keyframes progress-bar-animation {
