@@ -74,7 +74,7 @@ const Log = ({ log }: RenderContext) => (
 				}}
 			>
                 <ol className="dserve-log-lines">
-                { log.split( '\n' ).filter( l => l.length > 0 ).map( ( line, i ) => {
+                { log.split( '\n' ).filter( l => l.length > 0 ).reverse().map( ( line, i ) => {
                     let data;
                     try {
                         data = JSON.parse( line );
