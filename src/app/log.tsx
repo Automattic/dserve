@@ -3,10 +3,10 @@ import * as ReactDOMServer from 'react-dom/server';
 
 import { Shell } from './app-shell';
 import { errorClass, humanTime } from './util';
-import { ONE_SECOND } from '../api';
+import { ONE_MINUTE } from '../api';
 
 const Log = ({ log }: RenderContext) => (
-    <Shell refreshInterval={ 3 * ONE_SECOND }>
+    <Shell refreshInterval={ ONE_MINUTE }>
         <React.Fragment>
             <ol className="dserve-log-lines">
             { log.split( '\n' ).filter( l => l.length > 0 ).reverse().map( ( line, i ) => {
