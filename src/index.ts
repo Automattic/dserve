@@ -3,6 +3,7 @@ import * as express from 'express';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as striptags from 'striptags';
+import * as useragent from 'useragent';
 
 // internal
 import {
@@ -26,6 +27,8 @@ import {
 } from './builder';
 import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
+import renderLocalImages from './app/local-images';
+import renderLog from './app/log';
 import { l } from './logger';
 import { Writable } from 'stream';
 
@@ -36,12 +39,15 @@ const calypsoServer = express();
 calypsoServer.use(session);
 
 // get application log for debugging
-calypsoServer.get('/log', (req: any, res: any) => {
+calypsoServer.get('/log', (req: express.Request, res: express.Response) => {
 	const appLog = fs.readFileSync('./logs/log.txt', 'utf-8'); // todo change back from l
-	res.send(appLog);
+
+	isBrowser( req )
+		? res.send( renderLog( { log: appLog } ) )
+		: res.send(appLog);
 });
 
-calypsoServer.get('/localimages', (req: any, res: any) => {
+calypsoServer.get('/localimages', (req: express.Request, res: express.Response) => {
 	const localImages = Array
 		.from(getLocalImages())
 		.reduce( 
@@ -49,7 +55,9 @@ calypsoServer.get('/localimages', (req: any, res: any) => {
 			{} 
 		);
 
-	res.send(JSON.stringify(localImages));
+	isBrowser( req )
+		? res.send( renderLocalImages( { localImages } ) )
+		: res.send(JSON.stringify(localImages));
 });
 
 calypsoServer.use(determineCommitHash);
@@ -108,3 +116,16 @@ calypsoServer.get('*', async (req: any, res: any) => {
 });
 
 calypsoServer.listen(3000, () => l.log('dserve is listening on 3000'));
+
+function isBrowser( req: express.Request ): Boolean {
+	const ua = useragent.lookup( req.header( 'user-agent' ) );
+	const family = ua.family.toLocaleLowerCase();
+
+	return (
+		family === 'chrome' ||
+		family === 'safari' ||
+		family === 'firefox' ||
+		family === 'chrome mobile' ||
+		family === 'mobile safari'
+	);
+}

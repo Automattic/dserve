@@ -19,6 +19,7 @@
 		"@types/react-dom": "^16.0.3",
 		"@types/strip-ansi": "^3.0.0",
 		"@types/striptags": "^3.1.1",
+		"@types/useragent": "^2.1.1",
 		"bunyan": "^1.8.12",
 		"dockerode": "^2.5.3",
 		"express": "^4.16.2",
@@ -37,7 +38,8 @@
 		"striptags": "^3.1.1",
 		"tar-fs": "^1.16.0",
 		"ts-jest": "^22.0.0",
-		"typescript": "^2.6.2"
+		"typescript": "^2.6.2",
+		"useragent": "^2.3.0"
 	},
 	"scripts": {
 		"test": "jest",
