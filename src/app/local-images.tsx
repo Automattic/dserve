@@ -2,6 +2,8 @@ import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 import * as Docker from 'dockerode';
 
+import { humanSize, humanTime } from './util';
+
 const LocalImages = ({ localImages }: RenderContext) => (
 	<html>
 		<head />
@@ -73,14 +75,24 @@ const LocalImages = ({ localImages }: RenderContext) => (
 				}}
 			>
                 <dl>
-                { Object.keys( localImages ).map( repoTags => (
-                    <React.Fragment>
-                        <dt>{ repoTags }</dt>
-                        <dd>
-                            <pre><code>{ JSON.stringify( localImages[ repoTags ], null, 2 ) }</code></pre>
-                        </dd>
-                    </React.Fragment>
-                ) ) }
+                { Object.keys( localImages ).map( repoTags => {
+                    const info = localImages[ repoTags ];
+                    const createdAt = new Date( info.Created * 1000 );
+                    const title = /dserve-wpcalypso:[a-f0-9]+/.test( repoTags )
+                        ? <a href={ `https://github.com/Automattic/wp-calypso/commit/${ repoTags.split( ':' )[ 1 ] }` }>{ repoTags }</a>
+                        : repoTags;
+
+                    return (
+                        <React.Fragment key={ info.Id }>
+                            <dt className="dserve-image-header">{ title }</dt>
+                            <dd>
+                                <p>Created <time dateTime={ createdAt.toISOString() }>{ humanTime( info.Created ) }</time></p>
+                                <p>ID { info.Id }</p>
+                                <p>Size { humanSize( info.Size ) }</p>
+                            </dd>
+                        </React.Fragment>
+                    );
+                } ) }
                 </dl>
 			</div>
 		</body>
@@ -91,6 +103,27 @@ const LocalImages = ({ localImages }: RenderContext) => (
 					background: #ffffff;
 					color: #2e4453;
 				}
+                
+                .dserve-image-header {
+                    color: #00d8ff;
+                }
+
+                .dserve-image-header a {
+                    color: #00d8ff;
+                    text-decoration: none;
+                }
+
+                .dserve-image-header a:hover {
+                    text-decoration: underline;
+                }
+
+                .dserve-image-header a:visited {
+                    color: #00d8ff;
+                }
+
+                time {
+                    color: #00ff0c;
+                }
 		`,
 			}}
 		/>

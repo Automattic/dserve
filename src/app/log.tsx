@@ -1,6 +1,8 @@
 import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 
+import { errorClass, humanTime } from './util';
+
 const Log = ({ log }: RenderContext) => (
 	<html>
 		<head />
@@ -71,26 +73,24 @@ const Log = ({ log }: RenderContext) => (
 					padding: '86px 20px 10px 20px',
 				}}
 			>
-                <dl>
-                { log.split( '\n' ).map( line => {
-                    let header;
+                <ol className="dserve-log-lines">
+                { log.split( '\n' ).filter( l => l.length > 0 ).map( ( line, i ) => {
                     let data;
                     try {
                         data = JSON.parse( line );
-                        header = data.msg;
                     } catch ( e ) {
-                        data = line;
-                        header = 'Unparsable log message';
+                        return <li className="dserve-log-line" key={ `${ i }-${ line }` }>Unparseable log item - »<pre>{ line }</pre>«</li>
                     }
+                    
+                    const at = Date.parse( data.time );
 
                     return (
-                        <React.Fragment>
-                            <dt className="dserve-log-header">{ header }</dt>
-                            <dd><pre><code>{ JSON.stringify( data, null, 2 ) }</code></pre></dd>
-                        </React.Fragment>
+                        <li className={ `dserve-log-line ${ errorClass( data.level ) }` } key={ `${ i }-${ line }` }>
+                            <time dateTime={ new Date( at ).toISOString() }>{ humanTime( at / 1000 ) }</time> <span>{ data.msg }</span>
+                        </li>
                     );
                 } ) }
-                </dl>
+                </ol>
 			</div>
 		</body>
 		<style
@@ -100,9 +100,29 @@ const Log = ({ log }: RenderContext) => (
 					background: #ffffff;
 					color: #2e4453;
                 }
+
+                .dserve-log-lines {
+                    list-style: none;
+                }
                 
-                .dserve-log-header {
+                .dserve-log-line {
                     color: #00d8ff;
+                    margin-bottom: 4px;
+                }
+
+                .dserve-log-line time {
+                    color: #eee;
+                    display: inline-block;
+                    min-width: 6em;
+                    text-align: right;
+                }
+
+                .dserve-log-line.error span::before {
+                    content: ' - 🚨 - ';
+                }
+
+                .dserve-log-line.info span::before {
+                    content: ' - ℹ - ';
                 }
 		`,
 			}}
