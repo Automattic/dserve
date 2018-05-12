@@ -20,6 +20,7 @@ import { stat } from 'fs';
 
 type APIState = {
 	accesses: Map<CommitHash, number>;
+	branchHashes: Map<CommitHash, BranchName>;
 	containers: Map<string, Docker.ContainerInfo>;
 	localImages: Map<string, Docker.ImageInfo>;
 	remoteBranches: Map<BranchName, CommitHash>;
@@ -27,6 +28,7 @@ type APIState = {
 
 const state: APIState = {
 	accesses: new Map(),
+	branchHashes: new Map(),
 	containers: new Map(),
 	localImages: new Map(),
 	remoteBranches: new Map()
@@ -226,8 +228,20 @@ export async function refreshRemoteBranches() {
 	const branches = await getRemoteBranches();
 
 	if ( branches ) {
+		state.branchHashes = new Map(
+			Array.from( branches ).map( ( [ a, b ] ) => [ b, a ] as [ CommitHash, BranchName ] )
+		);
+
 		state.remoteBranches = branches;
 	}
+}
+
+export function getBranchHashes() {
+	return state.branchHashes;
+}
+
+export function getKnownBranches() {
+	return state.remoteBranches;
 }
 
 export function getCommitHashForBranch( branch: BranchName ): CommitHash | undefined {

@@ -8,6 +8,7 @@ import * as useragent from 'useragent';
 // internal
 import {
 	getCommitHashForBranch,
+	getKnownBranches,
 	hasHashLocally,
 	CommitHash,
 	NotFound,
@@ -17,6 +18,7 @@ import {
 	proxyRequestToHash as proxy,
 	deleteImage,
 	getLocalImages,
+	getBranchHashes,
 } from './api';
 import {
 	isBuildInProgress,
@@ -48,6 +50,8 @@ calypsoServer.get('/log', (req: express.Request, res: express.Response) => {
 });
 
 calypsoServer.get('/localimages', (req: express.Request, res: express.Response) => {
+	const branchHashes = getBranchHashes();
+	const knownBranches = getKnownBranches();
 	const localImages = Array
 		.from(getLocalImages())
 		.reduce( 
@@ -56,7 +60,7 @@ calypsoServer.get('/localimages', (req: express.Request, res: express.Response) 
 		);
 
 	isBrowser( req )
-		? res.send( renderLocalImages( { localImages } ) )
+		? res.send( renderLocalImages( { branchHashes, knownBranches, localImages } ) )
 		: res.send(JSON.stringify(localImages));
 });
 
