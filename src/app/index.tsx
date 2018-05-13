@@ -24,10 +24,6 @@ class BuildLog extends React.Component<{ log: string }> {
 
 const App = ({ buildLog, message }: RenderContext) => (
 	<Shell refreshInterval={ 3 * ONE_SECOND }>
-		<pre>
-			{buildLog && <BuildLog log={buildLog} />}
-			{message && <p> {message}</p>}
-		</pre>
 		<div dangerouslySetInnerHTML={ { __html: `
 			<style>
                 .dserve-toolbar a {
@@ -40,6 +36,10 @@ const App = ({ buildLog, message }: RenderContext) => (
 				}
 			</style>
 		` } } />
+		<pre>
+			{buildLog && <BuildLog log={buildLog} />}
+			{message && <p> {message}</p>}
+		</pre>
 	</Shell>
 );
 
