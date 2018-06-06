@@ -60,7 +60,7 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
 export async function refreshLocalImages() {
 	const images = await docker.listImages();
 	const isTag = (tag: string) => tag.startsWith( config.build.tagPrefix );
-	const hasTag = (image: Docker.ImageInfo) => image.RepoTags.some( isTag );
+	const hasTag = (image: Docker.ImageInfo) => image.RepoTags && image.RepoTags.some( isTag );
 
 	state.localImages = new Map( images.filter( hasTag ).map( 
 		image => [ image.RepoTags.find( isTag ), image ] as [ string, Docker.ImageInfo ]
