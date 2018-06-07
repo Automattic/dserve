@@ -34,6 +34,8 @@ import renderLog from './app/log';
 import { l } from './logger';
 import { Writable } from 'stream';
 
+const startedServerAt = new Date();
+
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
 // and also proxies request to currently active container
@@ -45,7 +47,7 @@ calypsoServer.get('/log', (req: express.Request, res: express.Response) => {
 	const appLog = fs.readFileSync('./logs/log.txt', 'utf-8'); // todo change back from l
 
 	isBrowser( req )
-		? res.send( renderLog( { log: appLog } ) )
+		? res.send( renderLog( { log: appLog, startedServerAt } ) )
 		: res.send(appLog);
 });
 
@@ -60,7 +62,7 @@ calypsoServer.get('/localimages', (req: express.Request, res: express.Response) 
 		);
 
 	isBrowser( req )
-		? res.send( renderLocalImages( { branchHashes, knownBranches, localImages } ) )
+		? res.send( renderLocalImages( { branchHashes, knownBranches, localImages, startedServerAt } ) )
 		: res.send(JSON.stringify(localImages));
 });
 
@@ -116,7 +118,7 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		await startContainer(commitHash);
 	}
 
-	renderApp({ message, buildLog }).pipe(res);
+	renderApp({ message, buildLog, startedServerAt }).pipe(res);
 });
 
 calypsoServer.listen(3000, () => l.log('dserve is listening on 3000'));

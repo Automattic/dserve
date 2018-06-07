@@ -22,8 +22,8 @@ class BuildLog extends React.Component<{ log: string }> {
 	}
 }
 
-const App = ({ buildLog, message }: RenderContext) => (
-	<Shell refreshInterval={ 3 * ONE_SECOND }>
+const App = ({ buildLog, message, startedServerAt }: RenderContext) => (
+	<Shell refreshInterval={ 3 * ONE_SECOND } startedServerAt={ startedServerAt }>
 		<div dangerouslySetInnerHTML={ { __html: `
 			<style>
                 .dserve-toolbar a {
@@ -43,7 +43,7 @@ const App = ({ buildLog, message }: RenderContext) => (
 	</Shell>
 );
 
-type RenderContext = { buildLog?: string; message?: string };
+type RenderContext = { buildLog?: string; message?: string, startedServerAt: Date };
 export default function renderApp(renderContext: RenderContext) {
 	return ReactDOMServer.renderToStaticNodeStream(<App {...renderContext} />);
 }

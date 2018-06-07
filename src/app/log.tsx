@@ -5,8 +5,8 @@ import { Shell } from './app-shell';
 import { errorClass, humanTime } from './util';
 import { ONE_MINUTE } from '../api';
 
-const Log = ({ log }: RenderContext) => (
-    <Shell refreshInterval={ ONE_MINUTE }>
+const Log = ({ log, startedServerAt }: RenderContext) => (
+    <Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
         <style
             dangerouslySetInnerHTML={{
                 __html: `
@@ -57,7 +57,7 @@ const Log = ({ log }: RenderContext) => (
     </Shell>
 );
 
-type RenderContext = { log: string };
+type RenderContext = { log: string, startedServerAt: Date };
 export default function renderLog(renderContext: RenderContext) {
 	return ReactDOMServer.renderToStaticMarkup(<Log {...renderContext} />);
 }

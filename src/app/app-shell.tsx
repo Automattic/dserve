@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { start } from 'repl';
+import { humanTime } from './util';
 
 class Reloader extends React.Component<{ milliseconds: number }> {
 	render() {
@@ -16,7 +18,7 @@ class Reloader extends React.Component<{ milliseconds: number }> {
 	}
 }
 
-export const Shell = ({ refreshInterval, children }: any) => (
+export const Shell = ({ refreshInterval, startedServerAt, children }: any) => (
 	<html>
 		<head>
             { 'number' === typeof refreshInterval && <Reloader milliseconds={ refreshInterval } /> }
@@ -85,7 +87,7 @@ export const Shell = ({ refreshInterval, children }: any) => (
         </head>
 		<body>
 			<div className="dserve-message">
-				DServe Calypso
+				DServe Calypso - <time dateTime={ startedServerAt.toISOString() }>{ humanTime( startedServerAt / 1000 ) }</time>
 				<div className="dserve-toolbar">
                     <a href="/log">Logs</a>
                     <a href="/localimages">Local Images</a>

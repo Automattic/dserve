@@ -7,8 +7,8 @@ import { Shell } from './app-shell';
 import { humanSize, humanTime } from './util';
 import { ONE_MINUTE, ONE_SECOND, BranchName, CommitHash } from '../api';
 
-const LocalImages = ({ branchHashes, knownBranches, localImages }: RenderContext) => (
-    <Shell refreshInterval={ knownBranches.size > 0 ? ONE_MINUTE : 5 * ONE_SECOND }>
+const LocalImages = ({ branchHashes, knownBranches, localImages, startedServerAt }: RenderContext) => (
+    <Shell refreshInterval={ knownBranches.size > 0 ? ONE_MINUTE : 5 * ONE_SECOND } startedServerAt={ startedServerAt }>
         <style
             dangerouslySetInnerHTML={{
                 __html: `
@@ -125,6 +125,7 @@ type RenderContext = {
     branchHashes: Map<CommitHash, BranchName>;
     knownBranches: Map<BranchName, CommitHash>;
     localImages: { [s: string]: Docker.ImageInfo };
+    startedServerAt: Date;
 };
 export default function renderLocalImages(renderContext: RenderContext) {
 	return ReactDOMServer.renderToStaticMarkup(<LocalImages {...renderContext} />);
