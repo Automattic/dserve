@@ -34,6 +34,14 @@ import renderDebug from './app/debug';
 import { l } from './logger';
 import { Writable } from 'stream';
 
+process.on( 'unhandledRejection', ( reason, p ) => {
+	l.error( reason, 'Unhandled rejection! %s', reason );
+});
+
+process.on( 'uncaughtException', ( ex ) => {
+	l.error( ex, 'Uncaught exception' );
+} );
+
 const startedServerAt = new Date();
 
 // calypso proxy server.
