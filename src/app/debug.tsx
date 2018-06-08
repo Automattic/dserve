@@ -11,6 +11,8 @@ import { humanSize, humanTime, percent, round } from './util';
 import { state as apiState } from '../api';
 import { BUILD_QUEUE } from '../builder';
 
+const Docker = new Dockerode();
+
 const Debug = (c: RenderContext) => {
     const memUsage = process.memoryUsage();
     const heapU = memUsage.heapUsed;
@@ -18,6 +20,8 @@ const Debug = (c: RenderContext) => {
     const memTotal = os.totalmem();
     const memUsed = memTotal - os.freemem();
     const images = Array.from(apiState.localImages.entries()) as Array<[string, Dockerode.ImageInfo]>;
+
+    const shortHash = (hash: string, length = 30) => <span title={hash}>{hash.slice(0, length)}…</span>;
 
     return (
         <Shell refreshInterval={ONE_MINUTE} startedServerAt={c.startedServerAt}>
@@ -99,7 +103,7 @@ const Debug = (c: RenderContext) => {
                     <ul>
                         {Array.from(apiState.containers.entries()).map(([key, value]) => (
                             <li key={value.Id}>
-                                <strong>{value.Names}</strong><br />Image ID: {value.ImageID}<br />Id: {value.Id}<br />Status: {value.Status}
+                                <strong>{value.Names}</strong> - {shortHash(value.Id)}<br />Image ID: {shortHash(value.ImageID)}<br />Status: {value.Status}
                             </li>
                         ))}
                     </ul>
@@ -109,12 +113,33 @@ const Debug = (c: RenderContext) => {
                     <ul>
                         {images.map(([key, value]) => (
                             <li key={value.Id}>
-                                RepoTags: <strong>{value.RepoTags}</strong><br />Id: {value.Id}<br />Size: {humanSize(value.Size)}
+                                RepoTags: <strong>{shortHash(value.RepoTags.join(', '), 38)}</strong><br />Id: {shortHash(value.Id)}<br />Size: {humanSize(value.Size)}
                             </li>
                         ))}
                     </ul>
 
                     <figcaption>API</figcaption>
+                </figure>
+
+                <figure>
+                    <p>Containers</p>
+                    <ul>
+                        {(
+                            c.docker.containers
+                                .sort((a, b) => a.Names[0].localeCompare(b.Names[0]))
+                                .map(info => <li key={info.Id}><strong>{info.Names}</strong> - {shortHash(info.Id)}<br />Image ID: {shortHash(info.ImageID)}<br />Status: {info.Status}</li>)
+                        )}
+                    </ul>
+
+                    <p>Images</p>
+                    <ul>
+                        {(
+                            c.docker.images
+                                .sort((a, b) => a.RepoTags[0].localeCompare(b.RepoTags[0]))
+                                .map(info => <li key={info.Id}>RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />Id: {shortHash(info.Id)}</li>)
+                        )}
+                    </ul>
+                    <figcaption>Docker</figcaption>
                 </figure>
             </div>
         </Shell>
@@ -123,7 +148,20 @@ const Debug = (c: RenderContext) => {
 
 type RenderContext = {
     startedServerAt: Date;
-};
-export default function renderDebug(renderContext: RenderContext) {
-    return ReactDOMServer.renderToStaticMarkup(<Debug {...renderContext} />);
+    docker: {
+        containers: Array<Dockerode.ContainerInfo>;
+        images: Array<Dockerode.ImageInfo>;
+    };
+}
+
+export default async function renderDebug({ startedServerAt }: { startedServerAt: Date }) {
+    return ReactDOMServer.renderToStaticMarkup((
+        <Debug
+            startedServerAt={startedServerAt}
+            docker={{
+                containers: await Docker.listContainers(),
+                images: await Docker.listImages(),
+            }}
+        />
+    ));
 }
