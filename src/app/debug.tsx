@@ -40,8 +40,7 @@ const Debug = (c: RenderContext) => {
                         border: 1px solid gray;
                         border-radius: 4px;
                         padding: 8px;
-                        margin: auto;
-                        margin-bottom: 16px;
+                        margin-bottom: auto;
                     }
 
                     .dserve-debug-cards figure figcaption {
