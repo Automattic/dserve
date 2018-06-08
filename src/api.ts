@@ -27,7 +27,7 @@ type APIState = {
 	remoteBranches: Map<BranchName, CommitHash>;
 };
 
-const state: APIState = {
+export const state: APIState = {
 	accesses: new Map(),
 	branchHashes: new Map(),
 	containers: new Map(),

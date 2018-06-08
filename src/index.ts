@@ -1,7 +1,6 @@
 // external
 import * as express from 'express';
 import * as fs from 'fs-extra';
-import * as path from 'path';
 import * as striptags from 'striptags';
 import * as useragent from 'useragent';
 
@@ -31,6 +30,7 @@ import { determineCommitHash, session } from './middlewares';
 import renderApp from './app/index';
 import renderLocalImages from './app/local-images';
 import renderLog from './app/log';
+import renderDebug from './app/debug';
 import { l } from './logger';
 import { Writable } from 'stream';
 
@@ -65,6 +65,12 @@ calypsoServer.get('/localimages', (req: express.Request, res: express.Response) 
 		? res.send( renderLocalImages( { branchHashes, knownBranches, localImages, startedServerAt } ) )
 		: res.send(JSON.stringify(localImages));
 });
+
+calypsoServer.get('/debug', async (req: express.Request, res: express.Response) => {
+	res.send( renderDebug( {
+		startedServerAt,
+	} ) ) 
+} );
 
 calypsoServer.use(determineCommitHash);
 calypsoServer.get('/status', async (req: any, res: any) => {

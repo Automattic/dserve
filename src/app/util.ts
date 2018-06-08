@@ -4,6 +4,10 @@ export function round( a: number, digits: number ):number {
     return Math.round( a * scale ) / scale;
 }
 
+export function percent( numerator: number, denominator: number ): number {
+    return round( numerator / ( Number.EPSILON + denominator ) * 100, 2 );
+}
+
 export function splitTime( t: number, u: number, n: number ): [ number, number ] {
     const whole = Math.floor( t / ( u * n ) );
     const part = Math.round( ( t - ( whole * u * n ) ) / u );
@@ -12,16 +16,16 @@ export function splitTime( t: number, u: number, n: number ): [ number, number ]
 }
 
 export function humanSize( size: number ): string {
-    if ( size > 1e9 ) {
-        return `${ round( size / 1e9, 2 ) } GB`;
+    if ( size > (1024 ** 3) ) {
+        return `${ round( size / (1024 ** 3), 2 ) } GB`;
     }
 
-    if ( size > 1e6 ) {
-        return `${ round( size / 1e6, 1 ) } MB`;
+    if ( size > (1024 ** 2) ) {
+        return `${ round( size / (1024 ** 2), 1 ) } MB`;
     }
 
-    if ( size > 1e3 ) {
-        return `${ Math.round( size / 1e3 ) } KB`;
+    if ( size > 1024 ) {
+        return `${ Math.round( size / 1024 ) } KB`;
     }
 
     return `${ size } B`;
