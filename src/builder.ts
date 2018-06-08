@@ -19,7 +19,7 @@ import { closeLogger, l, getLoggerForBuild } from './logger';
 type BuildQueue = Array<CommitHash>;
 
 export const MAX_CONCURRENT_BUILDS = 3;
-const BUILD_QUEUE: BuildQueue = [];
+export const BUILD_QUEUE: BuildQueue = [];
 const pendingHashes = new Set();
 
 export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), config.build.logFilename);
