@@ -132,23 +132,27 @@ export async function startContainer(commitHash: CommitHash) {
 export async function refreshRunningContainers() {
 	const containers = await docker.listContainers();
 	state.containers = new Map( containers.map( 
-		container => [ container.Image, container ] as [ string, ContainerInfo ] 
+		container => [ container.Id, container ] as [ string, ContainerInfo ] 
 	) );
 }
 
-export function isContainerRunning(hash: CommitHash) {
+export function getRunningContainerForHash( hash: CommitHash ) {
 	const image = getImageName(hash);
-	return state.containers.has( image );
+	return Array.from(state.containers.values()).find( ci => ci.Image === image );
+}
+
+export function isContainerRunning(hash: CommitHash): boolean {
+	return !!getRunningContainerForHash( hash );
 }
 
 export function getPortForContainer(hash: CommitHash): number|boolean {
-	const image = getImageName(hash);
+	const container = getRunningContainerForHash( hash );
 
-	if ( ! state.containers.has( image ) ) {
+	if ( ! container ) {
 		return false;
 	}
 
-	const ports = state.containers.get( image ).Ports;
+	const ports = container.Ports;
 
 	return ports.length > 0
 		? ports[0].PublicPort
@@ -311,5 +315,5 @@ if (process.env.NODE_ENV !== 'test') {
 	loop( refreshLocalImages, 5 * ONE_SECOND );
 	loop( refreshRunningContainers, 5 * ONE_SECOND );
 	loop( refreshRemoteBranches, ONE_MINUTE );
-	loop( cleanupExpiredContainers, TEN_MINUTES );
+	loop( cleanupExpiredContainers, 30 * ONE_SECOND );
 }
