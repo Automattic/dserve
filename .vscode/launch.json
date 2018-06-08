@@ -14,12 +14,12 @@
             "type": "node",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceRoot}/dist/server.js",
+            "program": "${workspaceRoot}/build/index.js",
             "smartStep": true,
             "outFiles": [
                 "../dist/**/*.js"
             ],
-            "preLaunchTask": "npm: build",
+            "preLaunchTask": "npm: build-ts",
             "protocol": "inspector"
         }
     ]
