@@ -88,7 +88,7 @@ calypsoServer.get('/localimages', (req: express.Request, res: express.Response) 
 });
 
 calypsoServer.get('/debug', async (req: express.Request, res: express.Response) => {
-	res.send( renderDebug( {
+	res.send( await renderDebug( {
 		startedServerAt,
 	} ) ) 
 } );
