@@ -12,8 +12,8 @@ const dserveLogger = bunyan.createLogger({
 		{
 			type: 'rotating-file',
 			path: './logs/log.txt',
-			period: '1h',
-			count: 30,
+			period: '1d',
+			count: 7,
 		},
 		{
 			stream: process.stdout,
