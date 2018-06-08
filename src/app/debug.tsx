@@ -54,6 +54,23 @@ const Debug = (c: RenderContext) => {
                     .dserve-debug-cards strong {
                         color: #00d8ff;
                     }
+
+                    .dserve-container-list li ,
+                    .dserve-image-list li {
+                        margin-bottom: 8px;
+                    }
+
+                    .dserve-container-list li.created strong:before {
+                        content: '🈺 ';
+                    }
+
+                    .dserve-container-list li.exited strong:before {
+                        content: '🈵 ';
+                    }
+
+                    .dserve-container-list li.running strong:before {
+                        content: '✅ ';
+                    }
                     `,
                 }}
             />
@@ -101,9 +118,11 @@ const Debug = (c: RenderContext) => {
                 <figure>
                     <p>Containers</p>
                     <ul>
-                        {Array.from(apiState.containers.entries()).map(([key, value]) => (
-                            <li key={value.Id}>
-                                <strong>{value.Names}</strong> - {shortHash(value.Id)}<br />Image ID: {shortHash(value.ImageID)}<br />Status: {value.Status}
+                        {Array.from(apiState.containers.entries()).map(([key, info]) => (
+                            <li key={info.Id} className={info.State}>
+                                <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
+                                Image ID: {shortHash(info.ImageID)}<br />
+                                Status: {info.Status}
                             </li>
                         ))}
                     </ul>
@@ -111,9 +130,12 @@ const Debug = (c: RenderContext) => {
                     <p>Images</p>
                     <p>Total storage size: {humanSize(images.reduce((size, [, info]) => size + info.Size, 0))}</p>
                     <ul>
-                        {images.map(([key, value]) => (
-                            <li key={value.Id}>
-                                RepoTags: <strong>{shortHash(value.RepoTags.join(', '), 38)}</strong><br />Id: {shortHash(value.Id)}<br />Size: {humanSize(value.Size)}
+                        {images.map(([key, info]) => (
+                            <li key={info.Id}>
+                                RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
+                                Id: {shortHash(info.Id)}<br />
+                                Size: {humanSize(info.Size)}<br />
+                                Created: {humanTime(info.Created)}
                             </li>
                         ))}
                     </ul>
@@ -123,20 +145,33 @@ const Debug = (c: RenderContext) => {
 
                 <figure>
                     <p>Containers</p>
-                    <ul>
+                    <ul className="dserve-container-list">
                         {(
                             c.docker.containers
-                                .sort((a, b) => a.Names[0].localeCompare(b.Names[0]))
-                                .map(info => <li key={info.Id}><strong>{info.Names}</strong> - {shortHash(info.Id)}<br />Image ID: {shortHash(info.ImageID)}<br />Status: {info.Status}</li>)
+                                .sort((a, b) => b.Created - a.Created)
+                                .map(info => (
+                                    <li key={info.Id} className={info.State}>
+                                        <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
+                                        Image ID: {shortHash(info.ImageID)}<br />
+                                        Status: {info.State} - {info.Status}
+                                    </li>
+                                ))
                         )}
                     </ul>
 
                     <p>Images</p>
-                    <ul>
+                    <ul className="dserve-image-list">
                         {(
                             c.docker.images
-                                .sort((a, b) => a.RepoTags[0].localeCompare(b.RepoTags[0]))
-                                .map(info => <li key={info.Id}>RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />Id: {shortHash(info.Id)}</li>)
+                                .sort((a, b) => b.Created - a.Created)
+                                .map(info => (
+                                    <li key={info.Id}>
+                                        RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
+                                        Id: {shortHash(info.Id)}<br />
+                                        Size: {humanSize(info.Size)}<br />
+                                        Created: {humanTime(info.Created)}
+                                    </li>
+                                ))
                         )}
                     </ul>
                     <figcaption>Docker</figcaption>
@@ -159,7 +194,7 @@ export default async function renderDebug({ startedServerAt }: { startedServerAt
         <Debug
             startedServerAt={startedServerAt}
             docker={{
-                containers: await Docker.listContainers(),
+                containers: await Docker.listContainers({ all: true }),
                 images: await Docker.listImages(),
             }}
         />
