@@ -49,7 +49,10 @@ const Log = ({ log, startedServerAt }: RenderContext) => (
 
             return (
                 <li className={ `dserve-log-line ${ errorClass( data.level ) }` } key={ `${ i }-${ line }` }>
-                    <time dateTime={ new Date( at ).toISOString() }>{ humanTime( at / 1000 ) }</time> <span>{ data.msg }</span>
+                    <time
+                        dateTime={ new Date( at ).toISOString() }
+                        title={ new Date( at ).toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }
+                    >{ humanTime( at / 1000 ) }</time> <span>{ data.msg }</span>
                 </li>
             );
         } ) }

@@ -87,7 +87,12 @@ export const Shell = ({ refreshInterval, startedServerAt, children }: any) => (
         </head>
 		<body>
 			<div className="dserve-message">
-				DServe Calypso - <time dateTime={ startedServerAt.toISOString() }>{ humanTime( startedServerAt / 1000 ) }</time>
+				DServe Calypso - { (
+					<time
+						dateTime={ startedServerAt.toISOString() }
+						title={ startedServerAt.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }
+					>{ humanTime( startedServerAt / 1000 ) }</time>
+				) }
 				<div className="dserve-toolbar">
                     <a href="/log">Logs</a>
                     <a href="/localimages">Local Images</a>

@@ -121,7 +121,9 @@ calypsoServer.get('*', async (req: any, res: any) => {
 	renderApp({ message, buildLog, startedServerAt }).pipe(res);
 });
 
-calypsoServer.listen(3000, () => l.log('dserve is listening on 3000'));
+calypsoServer.listen(3000, () => l.log(
+	`✅ dserve is listening on 3000 - started at ${ startedServerAt.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true }) }`)
+);
 
 function isBrowser( req: express.Request ): Boolean {
 	const ua = useragent.lookup( req.header( 'user-agent' ) );

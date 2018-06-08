@@ -110,7 +110,12 @@ const LocalImages = ({ branchHashes, knownBranches, localImages, startedServerAt
                         ) }
                     </dt>
                     <dd>
-                        <p>Created <time dateTime={ createdAt.toISOString() }>{ humanTime( info.Created ) }</time></p>
+                        <p>Created { (
+                            <time
+                                dateTime={ createdAt.toISOString() }
+                                title={ createdAt.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }
+                            >{ humanTime( info.Created ) }</time>
+                        ) }</p>
                         <p>ID { info.Id }</p>
                         <p>Size { humanSize( info.Size ) }</p>
                     </dd>
