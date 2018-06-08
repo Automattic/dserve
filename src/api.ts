@@ -58,7 +58,13 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
  * fetch an updated list of images
  */
 export async function refreshLocalImages() {
-	const images = await docker.listImages();
+	let images: Docker.ImageInfo[];
+	try {
+		images = await docker.listImages();
+	} catch( error ) {
+		l.error( { error }, 'Error refreshing local images' );
+		return;
+	}
 	const isTag = (tag: string) => tag.startsWith( config.build.tagPrefix );
 	const hasTag = (image: Docker.ImageInfo) => image.RepoTags && image.RepoTags.some( isTag );
 
@@ -130,7 +136,13 @@ export async function startContainer(commitHash: CommitHash) {
 }
 
 export async function refreshRunningContainers() {
-	const containers = await docker.listContainers();
+	let containers: Docker.ContainerInfo[];
+	try {
+		containers = await docker.listContainers();
+	} catch( error ) {
+		l.error( { error }, 'Error fetching running containers' );
+		return;
+	}
 	state.containers = new Map( containers.map( 
 		container => [ container.Image, container ] as [ string, ContainerInfo ] 
 	) );
@@ -155,6 +167,53 @@ export function getPortForContainer(hash: CommitHash): number|boolean {
 		: false;
 }
 
+var repoClonePromises: Map<string, Promise<git.Repository> > = new Map();
+
+async function getRepo( repoUrl: string, repoDir: string ) {
+	// is someone already cloning 
+	l.log({ repoUrl, repoDir}, 'getting repo' );
+	if ( repoClonePromises.has( repoUrl) ) {
+		l.log({ repoUrl, repoDir}, 'returning existing promise' );
+		return repoClonePromises.get( repoUrl );
+	}
+	if ( await fs.pathExists( repoDir ) ) {
+		// try to open it
+		l.log({ repoUrl, repoDir}, 'opening existing repo' );
+		try {
+			return await git.Repository.open( repoDir );
+		} catch( error ) {
+			l.error( { error, repoDir }, 'Error opening repo' );
+			// blow the dir up?
+			throw error;
+		}
+	}
+
+	l.log({ repoUrl, repoDir}, 'setting up to clone repo' );
+	try {
+		await fs.mkdir(repoDir);
+	} catch( error ) {
+		l.error( { error, repoDir }, 'Error creating repo dir' );
+		throw error;
+	}
+
+	l.log( {
+		repoUrl,
+		repoDir
+	}, 'cloning repo' );
+	
+	// clone the repo, take the promise
+	const cloningPromise = git.Clone.clone(repoUrl, repoDir);
+	// make up a function that removes the promise from the map and returns nothing
+	const removePromiseFromMap = () => { repoClonePromises.delete( repoUrl ) };
+	// hang it off the clone promise, but don't record the returned promise. This ends this promise chain.
+	cloningPromise.then( removePromiseFromMap, removePromiseFromMap );
+	// save the promise in the map so other folks can know if the repo is currently being cloned and wait
+	repoClonePromises.set( repoUrl, cloningPromise );
+	// hand back the promise
+	return cloningPromise;
+
+}
+
 async function getRemoteBranches(): Promise<Map<string, string>> {
 	const repoDir = path.join(__dirname, '../repos');
 	const calypsoDir = path.join(repoDir, 'wp-calypso');
@@ -164,14 +223,7 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 	l.log({ repository: config.repo.project }, 'Refreshing branches list');
 
 	try {
-		if (!await fs.pathExists(repoDir)) {
-			await fs.mkdir(repoDir);
-		}
-		if (!await fs.pathExists(calypsoDir)) {
-			repo = await git.Clone.clone(`https://github.com/${config.repo.project}`, calypsoDir);
-		} else {
-			repo = await git.Repository.open(calypsoDir);
-		}
+		repo = await getRepo( `https://github.com/${config.repo.project}`, calypsoDir );
 
 		// this code here is all for retrieving origin
 		// and then pruning out old branches
@@ -190,6 +242,7 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 
 	if (!repo) {
 		l.error('Something went very wrong while trying to refresh branches');
+		return;
 	}
 
 	try {
@@ -309,7 +362,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 	// setup for future
 	setInterval(cleanupExpiredContainers, TEN_MINUTES);
-	setInterval(refreshLocalImages, ONE_SECOND);
-	setInterval(refreshRunningContainers, ONE_SECOND);
+	setInterval(refreshLocalImages, ONE_SECOND * 10);
+	setInterval(refreshRunningContainers, ONE_SECOND * 10);
 	setInterval(refreshRemoteBranches, ONE_MINUTE);
 }

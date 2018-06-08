@@ -20,14 +20,24 @@ type BuildQueue = Array<CommitHash>;
 
 export const MAX_CONCURRENT_BUILDS = 3;
 const BUILD_QUEUE: BuildQueue = [];
-const pendingHashes = new Set();
+const pendingHashes: Set<CommitHash> = new Set();
 
 export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), config.build.logFilename);
 export async function isBuildInProgress(
 	hash: CommitHash,
 	currentBuilds = getCurrentBuilds()
 ): Promise<boolean> {
-	return (await fs.pathExists(getBuildDir(hash))) || currentBuilds.has(hash);
+	l.log( 'checking to see if %s is being built', hash );
+	const pathExists = await fs.pathExists(getBuildDir(hash));
+	if ( pathExists ) {
+		l.log( '%s has a dir!', hash );
+		return true;
+	}
+	if ( currentBuilds.has( hash ) ) {
+		l.log( '%s is currently building', hash );
+		return true;
+	}
+	return false;
 }
 const getCurrentBuilds = () => pendingHashes;
 
@@ -63,6 +73,7 @@ export function buildFromQueue({
 	currentBuilds = getCurrentBuilds(),
 	builder = buildImageForHash,
 } = {}) {
+	//l.log( { buildQueue }, 'Checking the build queue' );
 	if (buildQueue.length == 0) {
 		return;
 	}
@@ -118,6 +129,7 @@ export async function buildImageForHash(
 		return;
 	}
 
+	l.log( { commitHash }, 'Marking %s as building', commitHash );
 	pendingHashes.add(commitHash);
 
 	try {
@@ -128,7 +140,7 @@ export async function buildImageForHash(
 	const buildLogger = getLoggerForBuild(commitHash);
 
 	try {
-		l.log({ commitHash, buildDir, repoDir, imageName }, 'Attempting to build image.');
+		l.log({ commitHash, buildDir, repoDir, imageName }, 'Attempting to build image for %s in %s', commitHash, buildDir );
 
 		const cloneStart = Date.now();
 		buildLogger.info('Cloning git repo');
@@ -203,5 +215,5 @@ export async function buildImageForHash(
 	docker.modem.followProgress(buildStream, onFinished, onProgress);
 }
 
-setInterval(() => buildFromQueue(), ONE_SECOND);
+setInterval(() => buildFromQueue(), ONE_SECOND * 5);
 setInterval(() => warnOnQueueBuildup(), ONE_MINUTE);
