@@ -2,9 +2,10 @@ import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 import * as os from 'os';
 
-import { Shell } from './app-shell';
-import { humanSize, percent, round } from './util';
 import { ONE_MINUTE } from '../api';
+import { Shell } from './app-shell';
+import { promiseRejections } from '../index';
+import { humanSize, humanTime, percent, round } from './util';
 
 import { state as apiState } from '../api';
 import { BUILD_QUEUE } from '../builder';
@@ -67,6 +68,24 @@ const Debug = ( c: RenderContext ) => {
                         <p><em>Nothing is waiting in the queue</em></p>
                     ) }
                     <figcaption>Builder</figcaption>
+                </figure>
+
+                <figure>
+                    { promiseRejections.size ? (
+                        <ul>
+                            { Array.from( promiseRejections.values() ).map( ( [ ts, reason, ] ) => (
+                                <li>
+                                    <time dateTime={ ts.toISOString() } title={ ts.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }>
+                                        { humanTime( ts.getTime() / 1000 ) }
+                                    </time>
+                                    { reason }
+                                </li>
+                            ) ) }
+                        </ul>
+                    ) : (
+                        <p><em>No unhandled rejected promises</em></p>
+                    ) }
+                    <figcaption>Rejected Promises</figcaption>
                 </figure>
 
                 <figure>

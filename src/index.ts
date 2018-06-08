@@ -6,6 +6,7 @@ import * as useragent from 'useragent';
 
 // internal
 import {
+	ONE_MINUTE,
 	getCommitHashForBranch,
 	getKnownBranches,
 	hasHashLocally,
@@ -49,6 +50,26 @@ const startedServerAt = new Date();
 // and also proxies request to currently active container
 const calypsoServer = express();
 calypsoServer.use(session);
+
+// global node process junk - catched unhandled errors
+process.on('uncaughtException', error => l.log( { error }, 'Crashing on uncaught error' ) );
+
+export const promiseRejections: Map<Promise<any>, [Date, any, 'reported' | 'unreported']> = new Map();
+const logRejections = () => {
+	const now = new Date();
+	Array
+		.from( promiseRejections.entries() )
+		.filter( ( [ , [ ts, , status ] ] ) => 'unreported' === status && ts.getTime() - now.getTime() > ONE_MINUTE )
+		.forEach( ( [ promise, [ ts, reason ] ] ) => {
+			l.log( { reason }, 'Unhandled rejection sitting in queue for at least one minute' )
+			promiseRejections.set( promise, [ ts, reason, 'reported' ] );
+		} );
+
+	setTimeout( logRejections, ONE_MINUTE );
+}
+process.on('unhandledRejection', ( reason, promise ) => promiseRejections.set( promise, [ new Date(), reason, 'unreported' ] ) );
+process.on('rejectionHandled', promise => promiseRejections.delete( promise ) );
+logRejections();
 
 // get application log for debugging
 calypsoServer.get('/log', (req: express.Request, res: express.Response) => {
