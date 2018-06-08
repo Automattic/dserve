@@ -1,5 +1,6 @@
 import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
+import * as Dockerode from 'dockerode';
 import * as os from 'os';
 
 import { ONE_MINUTE } from '../api';
@@ -10,15 +11,16 @@ import { humanSize, humanTime, percent, round } from './util';
 import { state as apiState } from '../api';
 import { BUILD_QUEUE } from '../builder';
 
-const Debug = ( c: RenderContext ) => {
+const Debug = (c: RenderContext) => {
     const memUsage = process.memoryUsage();
     const heapU = memUsage.heapUsed;
     const heapT = memUsage.heapTotal;
     const memTotal = os.totalmem();
     const memUsed = memTotal - os.freemem();
+    const images = Array.from(apiState.localImages.entries()) as Array<[string, Dockerode.ImageInfo]>;
 
     return (
-        <Shell refreshInterval={ ONE_MINUTE } startedServerAt={ c.startedServerAt }>
+        <Shell refreshInterval={ONE_MINUTE} startedServerAt={c.startedServerAt}>
             <style
                 dangerouslySetInnerHTML={{
                     __html: `
@@ -44,59 +46,72 @@ const Debug = ( c: RenderContext ) => {
                         padding: 4px;
                         display: inline;
                     }
+
+                    .dserve-debug-cards strong {
+                        color: #00d8ff;
+                    }
                     `,
                 }}
             />
             <div className="dserve-debug-cards">
                 <figure>
-                    <p>CPU (x{ os.cpus().length }): { os.loadavg().map( a => round( a, 2 ) ).join( ', ' ) } (1m, 5m, 15m)</p>
+                    <p>CPU (x{os.cpus().length}): {os.loadavg().map(a => round(a, 2)).join(', ')} (1m, 5m, 15m)</p>
                     <p>Memory</p>
                     <ul>
-                        <li>heap: { humanSize( heapU ) } / { humanSize( heapT ) } ({ percent( heapU, heapT ) }%)</li>
-                        <li>system: { humanSize( memUsed ) } / { humanSize( memTotal ) } ({ percent( memUsed, memTotal ) }%)</li>
+                        <li>heap: {humanSize(heapU)} / {humanSize(heapT)} ({percent(heapU, heapT)}%)</li>
+                        <li>system: {humanSize(memUsed)} / {humanSize(memTotal)} ({percent(memUsed, memTotal)}%)</li>
                     </ul>
                     <figcaption>System Load</figcaption>
                 </figure>
 
                 <figure>
                     <p>Build Queue</p>
-                    { BUILD_QUEUE.length ? (
+                    {BUILD_QUEUE.length ? (
                         <ul>
-                            { BUILD_QUEUE.map( hash => <li>{ hash }</li> ) }
+                            {BUILD_QUEUE.map(hash => <li>{hash}</li>)}
                         </ul>
                     ) : (
-                        <p><em>Nothing is waiting in the queue</em></p>
-                    ) }
+                            <p><em>Nothing is waiting in the queue</em></p>
+                        )}
                     <figcaption>Builder</figcaption>
                 </figure>
 
                 <figure>
-                    { promiseRejections.size ? (
+                    {promiseRejections.size ? (
                         <ul>
-                            { Array.from( promiseRejections.values() ).map( ( [ ts, reason, ] ) => (
+                            {Array.from(promiseRejections.values()).map(([ts, reason,]) => (
                                 <li>
-                                    <time dateTime={ ts.toISOString() } title={ ts.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }>
-                                        { humanTime( ts.getTime() / 1000 ) }
+                                    <time dateTime={ts.toISOString()} title={ts.toLocaleTimeString(undefined, { timeZoneName: 'long', hour12: true })}>
+                                        {humanTime(ts.getTime() / 1000)}
                                     </time>
-                                    { reason }
+                                    {reason}
                                 </li>
-                            ) ) }
+                            ))}
                         </ul>
                     ) : (
-                        <p><em>No unhandled rejected promises</em></p>
-                    ) }
+                            <p><em>No unhandled rejected promises</em></p>
+                        )}
                     <figcaption>Rejected Promises</figcaption>
                 </figure>
 
                 <figure>
                     <p>Containers</p>
                     <ul>
-                        { Array.from( apiState.containers.entries() ).map( ( [ key, value ] ) => <li>{ key }<br />Names: { value.Names }<br />Image ID: { value.ImageID }<br />Id: { value.Id }<br />Status: { value.Status }</li> ) }
+                        {Array.from(apiState.containers.entries()).map(([key, value]) => (
+                            <li key={value.Id}>
+                                <strong>{value.Names}</strong><br />Image ID: {value.ImageID}<br />Id: {value.Id}<br />Status: {value.Status}
+                            </li>
+                        ))}
                     </ul>
 
                     <p>Images</p>
+                    <p>Total storage size: {humanSize(images.reduce((size, [, info]) => size + info.Size, 0))}</p>
                     <ul>
-                        { Array.from( apiState.localImages.entries() ).map( ( [ key, value ] ) => <li>{ key }<br />RepoTags: { value.RepoTags }<br />Id: { value.Id }<br />Size: { humanSize( value.Size ) }</li> ) }
+                        {images.map(([key, value]) => (
+                            <li key={value.Id}>
+                                RepoTags: <strong>{value.RepoTags}</strong><br />Id: {value.Id}<br />Size: {humanSize(value.Size)}
+                            </li>
+                        ))}
                     </ul>
 
                     <figcaption>API</figcaption>
@@ -110,5 +125,5 @@ type RenderContext = {
     startedServerAt: Date;
 };
 export default function renderDebug(renderContext: RenderContext) {
-	return ReactDOMServer.renderToStaticMarkup(<Debug {...renderContext} />);
+    return ReactDOMServer.renderToStaticMarkup(<Debug {...renderContext} />);
 }
