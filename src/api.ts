@@ -101,13 +101,13 @@ export async function deleteImage(hash: CommitHash) {
 }
 
 export async function startContainer(commitHash: CommitHash) {
-	l.log({ commitHash }, `Starting up container`);
+	l.log({ commitHash }, `Starting up container for ${commitHash}`);
 	const image = getImageName(commitHash);
 	let freePort: number;
 	try {
 		freePort = await portfinder.getPortPromise();
 	} catch (err) {
-		l.error({ err, commitHash }, `Error while attempting to find a free port`);
+		l.error({ err, commitHash }, `Error while attempting to find a free port for ${commitHash}`);
 		return;
 	}
 
@@ -123,8 +123,8 @@ export async function startContainer(commitHash: CommitHash) {
 			Tty: false,
 		},
 		(err, succ) => err
-			? l.error({ commitHash, freePort, err }, `failed starting container`)
-			: l.log({ commitHash, freePort }, `successfully started container: ${succ}`)
+			? l.error({ commitHash, freePort, err }, `Failed starting container for ${commitHash} on ${freePort}`)
+			: l.log({ commitHash, freePort }, `Successfully started container for ${commitHash} on ${freePort}`)
 	);
 	return;
 }
