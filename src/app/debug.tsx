@@ -9,7 +9,7 @@ import { promiseRejections } from '../index';
 import { humanSize, humanTime, percent, round } from './util';
 
 import { state as apiState } from '../api';
-import { BUILD_QUEUE } from '../builder';
+import { buildQueue } from '../builder';
 
 const Docker = new Dockerode();
 
@@ -86,9 +86,9 @@ const Debug = (c: RenderContext) => {
 
                 <figure>
                     <p>Build Queue</p>
-                    {BUILD_QUEUE.length ? (
+                    {buildQueue.length ? (
                         <ul>
-                            {BUILD_QUEUE.map(hash => <li>{hash}</li>)}
+                            {buildQueue.map(hash => <li>{hash}</li>)}
                         </ul>
                     ) : (
                             <p><em>Nothing is waiting in the queue</em></p>
