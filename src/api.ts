@@ -165,7 +165,6 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 	let repo: git.Repository;
 
 	const start = Date.now();
-	l.log({ repository: config.repo.project }, 'Refreshing branches list');
 
 	try {
 		if (!await fs.pathExists(repoDir)) {
@@ -207,11 +206,6 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 
 			return [ name, commitHash ] as [ string, CommitHash ];
 		} ) );
-
-		l.log(
-			{ repository: config.repo.project, refreshBranchTime: Date.now() - start },
-			'Finished refreshing branches'
-		);
 
 		repo.free();
 		return branchToCommitHashMap;
