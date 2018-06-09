@@ -131,7 +131,7 @@ const Debug = (c: RenderContext) => {
                     <ul>
                         {images.map(([key, info]) => (
                             <li key={info.Id}>
-                                RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
+                                RepoTags: <strong>{shortHash(info.RepoTags.join(', ') )}</strong><br />
                                 Id: {shortHash(info.Id)}<br />
                                 Size: {humanSize(info.Size)}<br />
                                 Created: {humanTime(info.Created)}
@@ -153,6 +153,9 @@ const Debug = (c: RenderContext) => {
                                         <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
                                         Image ID: {shortHash(info.ImageID)}<br />
                                         Status: {info.State} - {info.Status}
+                                        <form method="post">
+                                            <button formAction={ `/containers/${ info.Id }?action=delete` } type="submit">🤯 Remove</button>
+                                        </form>
                                     </li>
                                 ))
                         )}
@@ -165,10 +168,13 @@ const Debug = (c: RenderContext) => {
                                 .sort((a, b) => b.Created - a.Created)
                                 .map(info => (
                                     <li key={info.Id}>
-                                        RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
+                                        RepoTags: <strong>{shortHash(info.RepoTags.join(', ') )}</strong><br />
                                         Id: {shortHash(info.Id)}<br />
                                         Size: {humanSize(info.Size)}<br />
-                                        Created: {humanTime(info.Created)}
+                                        Created: {humanTime(info.Created)}<br />
+                                        <form method="post">
+                                            <button formAction={ `/images/${ info.Id }` } type="submit">🤯 Remove</button>
+                                        </form>
                                     </li>
                                 ))
                         )}

@@ -1,4 +1,5 @@
 // external
+import * as Dockerode from 'dockerode';
 import * as express from 'express';
 import * as fs from 'fs-extra';
 import * as striptags from 'striptags';
@@ -19,6 +20,7 @@ import {
 	deleteImage,
 	getLocalImages,
 	getBranchHashes,
+	ONE_SECOND,
 } from './api';
 import {
 	isBuildInProgress,
@@ -37,6 +39,9 @@ import { Writable } from 'stream';
 
 const startedServerAt = new Date();
 
+// Docker connction
+const Docker = new Dockerode();
+
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
 // and also proxies request to currently active container
@@ -44,31 +49,31 @@ const calypsoServer = express();
 calypsoServer.use(session);
 
 // global node process junk - catched unhandled errors
-process.on('uncaughtException', error => l.log( { error }, 'Crashing on uncaught error' ) );
+process.on('uncaughtException', error => l.log({ error }, 'Crashing on uncaught error'));
 
 export const promiseRejections: Map<Promise<any>, [Date, any, 'reported' | 'unreported']> = new Map();
 const logRejections = () => {
 	const now = new Date();
 	Array
-		.from( promiseRejections.entries() )
-		.filter( ( [ , [ ts, , status ] ] ) => 'unreported' === status && ts.getTime() - now.getTime() > ONE_MINUTE )
-		.forEach( ( [ promise, [ ts, reason ] ] ) => {
-			l.log( { reason }, 'Unhandled rejection sitting in queue for at least one minute' )
-			promiseRejections.set( promise, [ ts, reason, 'reported' ] );
-		} );
+		.from(promiseRejections.entries())
+		.filter(([, [ts, , status]]) => 'unreported' === status && ts.getTime() - now.getTime() > ONE_MINUTE)
+		.forEach(([promise, [ts, reason]]) => {
+			l.log({ reason }, 'Unhandled rejection sitting in queue for at least one minute')
+			promiseRejections.set(promise, [ts, reason, 'reported']);
+		});
 
-	setTimeout( logRejections, ONE_MINUTE );
+	setTimeout(logRejections, ONE_MINUTE);
 }
-process.on('unhandledRejection', ( reason, promise ) => promiseRejections.set( promise, [ new Date(), reason, 'unreported' ] ) );
-process.on('rejectionHandled', promise => promiseRejections.delete( promise ) );
+process.on('unhandledRejection', (reason, promise) => promiseRejections.set(promise, [new Date(), reason, 'unreported']));
+process.on('rejectionHandled', promise => promiseRejections.delete(promise));
 logRejections();
 
 // get application log for debugging
 calypsoServer.get('/log', (req: express.Request, res: express.Response) => {
 	const appLog = fs.readFileSync('./logs/log.txt', 'utf-8'); // todo change back from l
 
-	isBrowser( req )
-		? res.send( renderLog( { log: appLog, startedServerAt } ) )
+	isBrowser(req)
+		? res.send(renderLog({ log: appLog, startedServerAt }))
 		: res.send(appLog);
 });
 
@@ -77,21 +82,51 @@ calypsoServer.get('/localimages', (req: express.Request, res: express.Response) 
 	const knownBranches = getKnownBranches();
 	const localImages = Array
 		.from(getLocalImages())
-		.reduce( 
-			( images, [ repoTags, image ] ) => ( { ...images, [ repoTags ]: image } ), 
-			{} 
+		.reduce(
+			(images, [repoTags, image]) => ({ ...images, [repoTags]: image }),
+			{}
 		);
 
-	isBrowser( req )
-		? res.send( renderLocalImages( { branchHashes, knownBranches, localImages, startedServerAt } ) )
+	isBrowser(req)
+		? res.send(renderLocalImages({ branchHashes, knownBranches, localImages, startedServerAt }))
 		: res.send(JSON.stringify(localImages));
 });
 
 calypsoServer.get('/debug', async (req: express.Request, res: express.Response) => {
-	res.send( await renderDebug( {
+	res.send(await renderDebug({
 		startedServerAt,
-	} ) ) 
-} );
+	}));
+});
+
+let lastDestructiveOption = process.hrtime();
+calypsoServer.post('/:type(containers|images)/:id', async (req: express.Request, res: express.Response) => {
+	const back = '<p><a href="/debug">Back to debug</a></p>';
+
+	if (process.hrtime(lastDestructiveOption)[0] < 10 * ONE_SECOND) {
+		res.status(429).send(back);
+		return;
+	}
+
+	const type = req.params.type.slice(0, -1);
+	const id = req.params.id;
+
+	try {
+		switch (type) {
+			case 'container':
+				await Docker.getContainer(id).remove();
+				break;
+			case 'image':
+				await Docker.getImage(id).remove();
+				break;
+			default:
+				res.status(400).send(back);
+				return;
+		}
+		res.send(`<p>Deleted ${type} <strong>${id}</strong></p>${back}`);
+	} catch (error) {
+		res.status(409).send(`<p>Could not remove ${type} <strong>${id}</strong></p><pre><code>${JSON.stringify(error, null, 2)}</code></pre>${back}`);
+	}
+});
 
 calypsoServer.use(determineCommitHash);
 calypsoServer.get('/status', async (req: any, res: any) => {
@@ -149,11 +184,11 @@ calypsoServer.get('*', async (req: any, res: any) => {
 });
 
 calypsoServer.listen(3000, () => l.log(
-	`✅ dserve is listening on 3000 - started at ${ startedServerAt.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true }) }`)
+	`✅ dserve is listening on 3000 - started at ${startedServerAt.toLocaleTimeString(undefined, { timeZoneName: 'long', hour12: true })}`)
 );
 
-function isBrowser( req: express.Request ): Boolean {
-	const ua = useragent.lookup( req.header( 'user-agent' ) );
+function isBrowser(req: express.Request): Boolean {
+	const ua = useragent.lookup(req.header('user-agent'));
 	const family = ua.family.toLocaleLowerCase();
 
 	return (
