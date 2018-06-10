@@ -23,7 +23,13 @@ const pendingHashes: Set<CommitHash> = new Set();
 
 export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), config.build.logFilename);
 export async function isBuildInProgress(hash: CommitHash): Promise<boolean> {
-	return pendingHashes.has(hash) || await fs.pathExists(getBuildDir(hash));
+	if ( pendingHashes.has(hash)) {
+		return true;
+	}
+
+	const pathExists = await fs.pathExists(getBuildDir(hash));
+
+	return pendingHashes.has(hash) || pathExists;
 }
 
 export async function readBuildLog(hash: CommitHash): Promise<string | null> {
