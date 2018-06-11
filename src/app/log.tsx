@@ -14,6 +14,7 @@ const interestingDetails = new Set([
     'containerId',
     'cloneTime',
     'checkoutTime',
+    'success',
 ]);
 
 const LogDetails = ( { data  } : any ) => {
