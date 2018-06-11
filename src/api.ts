@@ -145,6 +145,8 @@ async function _startContainer( image: string, commitHash: CommitHash ): Promise
 
 	const exposedPort = `${config.build.exposedPort}/tcp`;
 	const dockerPromise = new Promise( ( resolve, reject ) => {
+		let runError: any;
+
 		docker.run(
 			image,
 			[],
@@ -155,10 +157,20 @@ async function _startContainer( image: string, commitHash: CommitHash ): Promise
 				PortBindings: { [exposedPort]: [{ HostPort: freePort.toString() }] },
 				Tty: false,
 			},
-			(err, succ) => err
-				? reject( { error: err, freePort } )
-				: resolve( { success: succ, freePort } )
+			err => {
+				runError = err;
+			}
 		);
+
+		// run will never callback for calypso when things work as intended.
+		// wait 5 seconds. If we don't see an error by then, assume run worked and resolve
+		setTimeout( () => {
+			if ( runError ) {
+				reject( { error: runError, freePort } );
+			} else {
+				resolve( { freePort } );
+			}
+		}, 5000 );
 	} )
 	return dockerPromise.then(
 		( { success, freePort } ) => {

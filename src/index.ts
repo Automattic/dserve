@@ -139,10 +139,17 @@ calypsoServer.get('*', async (req: any, res: any) => {
 		message = 'Starting build now';
 		addToBuildQueue(commitHash);
 	} else if (shouldStartContainer) {
-		message = 'Just started your hash, this page will restart automatically';
+		//message = 'Just started your hash, this page will restart automatically';
 		// TODO: fix race condition where multiple containers may be spun up
 		// within the same subsecond time period.
-		await startContainer(commitHash);
+		try { 
+			await startContainer(commitHash);
+			proxy( req, res );
+			return;
+		} catch( err ) {
+			message = 'Error starting that commit...';
+			l.error( { err }, 'Error starting commit' );
+		}
 	}
 
 	renderApp({ message, buildLog, startedServerAt }).pipe(res);
