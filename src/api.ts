@@ -100,33 +100,76 @@ export async function deleteImage(hash: CommitHash) {
 	}
 }
 
+const startingContainers: Map<CommitHash, Promise<ContainerInfo> > = new Map();
 export async function startContainer(commitHash: CommitHash) {
 	l.log({ commitHash }, `Starting up container for ${commitHash}`);
 	const image = getImageName(commitHash);
+
+	// do we have an existing container?
+	const existingContainer = getRunningContainerForHash( commitHash );
+	if ( existingContainer ) {
+		l.log( { commitHash, containerId: existingContainer.Id }, `Found a running container for ${commitHash}`);
+		return Promise.resolve( existingContainer );
+	}
+
+	// are we starting one already?
+	if( startingContainers.has( commitHash ) ) {
+		l.log( { commitHash, containerId: existingContainer.Id }, `Already starting a container for ${commitHash}`)
+		return startingContainers.get( commitHash );
+	}
+
+	const startPromise = _startContainer( image, commitHash );
+	startingContainers.set( commitHash, startPromise );
+	startPromise.then(
+		s => {
+			startingContainers.delete( commitHash );
+			return s;
+		},
+		err => {
+			startingContainers.delete( commitHash );
+			throw err;
+		}
+	)
+	return startPromise;
+}
+
+async function _startContainer( image: string, commitHash: CommitHash ): Promise<ContainerInfo> {
+	// ok, try to start one
 	let freePort: number;
 	try {
 		freePort = await portfinder.getPortPromise();
-	} catch (err) {
-		l.error({ err, commitHash }, `Error while attempting to find a free port for ${commitHash}`);
-		return;
+	} catch( err ) {
+		l.error( { err, image }, `Error while attempting to find a free port for ${image}`);
+		throw err;
 	}
 
 	const exposedPort = `${config.build.exposedPort}/tcp`;
-	docker.run(
-		image,
-		[],
-		process.stdout,
-		{
-			...config.build.containerCreateOptions,
-			ExposedPorts: { [exposedPort]: {} },
-			PortBindings: { [exposedPort]: [{ HostPort: freePort.toString() }] },
-			Tty: false,
+	const dockerPromise = new Promise( ( resolve, reject ) => {
+		docker.run(
+			image,
+			[],
+			process.stdout,
+			{
+				...config.build.containerCreateOptions,
+				ExposedPorts: { [exposedPort]: {} },
+				PortBindings: { [exposedPort]: [{ HostPort: freePort.toString() }] },
+				Tty: false,
+			},
+			(err, succ) => err
+				? reject( { error: err, freePort } )
+				: resolve( { success: succ, freePort } )
+		);
+	} )
+	return dockerPromise.then(
+		( { success, freePort } ) => {
+			l.log({ image, freePort }, `Successfully started container for ${image} on ${freePort}`);
+			return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
 		},
-		(err, succ) => err
-			? l.error({ commitHash, freePort, err }, `Failed starting container for ${commitHash} on ${freePort}`)
-			: l.log({ commitHash, freePort }, `Successfully started container for ${commitHash} on ${freePort}`)
+		( { error, freePort } ) => {
+			l.error({ image, freePort, error }, `Failed starting container for ${image} on ${freePort}`);
+			throw error;
+		} 
 	);
-	return;
 }
 
 export async function refreshRunningContainers() {
@@ -136,9 +179,9 @@ export async function refreshRunningContainers() {
 	) );
 }
 
-export function getRunningContainerForHash( hash: CommitHash ) {
+export function getRunningContainerForHash( hash: CommitHash ) : ContainerInfo | null {
 	const image = getImageName(hash);
-	return Array.from(state.containers.values()).find( ci => ci.Image === image );
+	return Array.from(state.containers.values()).find( ci => ci.Image === image && ci.State === 'running' );
 }
 
 export function isContainerRunning(hash: CommitHash): boolean {
