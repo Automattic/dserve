@@ -324,8 +324,8 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 }
 
 // stop any container that hasn't been accessed within ten minutes
-function cleanupExpiredContainers() {
-	const containers = Array.from( state.containers.values() );
+async function cleanupExpiredContainers() {
+	const containers = Array.from( await docker.listContainers( { all: true } ) );
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
 	expiredContainers.forEach(async (container: ContainerInfo) => {
 		const imageName: string = container.Image;
@@ -333,15 +333,19 @@ function cleanupExpiredContainers() {
 		l.log({
 			imageName,
 			containerId: container.Id
-		}, `Attempting to stop container because it hasn't been accessed in a while`);
+		}, 'Cleaning up stale container' );
 
 		try {
-			await docker.getContainer(container.Id).stop();
-			l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
+			if ( container.State === 'running' ) {
+				await docker.getContainer(container.Id).stop();
+				l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
+			}
+			await docker.getContainer(container.Id).remove();
+			l.log({ containerId: container.Id, imageName }, `Successfully removed container`);
 		} catch (err) {
-			l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container.');
+			l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container');
 		}
-	});
+	} );
 }
 
 const proxy = httpProxy.createProxyServer({}); // See (†)
