@@ -10,7 +10,8 @@ const interestingDetails = new Set([
     'freePort',
     'error',
     'err',
-    'imageName'
+    'imageName',
+    'containerId',
 ]);
 
 const LogDetails = ( { data  } : any ) => {

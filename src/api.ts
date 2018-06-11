@@ -62,7 +62,7 @@ export async function refreshLocalImages() {
 	const isTag = (tag: string) => tag.startsWith( config.build.tagPrefix );
 	const hasTag = (image: Docker.ImageInfo) => image.RepoTags && image.RepoTags.some( isTag );
 
-	state.localImages = new Map( images.filter( hasTag ).map( 
+	state.localImages = new Map( images.filter( hasTag ).map(
 		image => [ image.RepoTags.find( isTag ), image ] as [ string, Docker.ImageInfo ]
 	) );
 }
@@ -131,8 +131,8 @@ export async function startContainer(commitHash: CommitHash) {
 
 export async function refreshRunningContainers() {
 	const containers = await docker.listContainers();
-	state.containers = new Map( containers.map( 
-		container => [ container.Id, container ] as [ string, ContainerInfo ] 
+	state.containers = new Map( containers.map(
+		container => [ container.Id, container ] as [ string, ContainerInfo ]
 	) );
 }
 
@@ -272,12 +272,16 @@ function cleanupExpiredContainers() {
 	expiredContainers.forEach(async (container: ContainerInfo) => {
 		const imageName: string = container.Image;
 
-		l.log({ imageName }, `Attempting to stop container because it hasn't been accessed in a while`);
+		l.log({
+			imageName,
+			containerId: container.Id
+		}, `Attempting to stop container because it hasn't been accessed in a while`);
+
 		try {
 			await docker.getContainer(container.Id).stop();
 			l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
 		} catch (err) {
-			l.error({ err, imageName }, 'Failed to stop container.');
+			l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container.');
 		}
 	});
 }
