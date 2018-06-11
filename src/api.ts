@@ -25,6 +25,7 @@ type APIState = {
 	containers: Map<string, Docker.ContainerInfo>;
 	localImages: Map<string, Docker.ImageInfo>;
 	remoteBranches: Map<BranchName, CommitHash>;
+	startingContainers: Map<CommitHash, Promise<ContainerInfo>>;
 };
 
 export const state: APIState = {
@@ -32,7 +33,8 @@ export const state: APIState = {
 	branchHashes: new Map(),
 	containers: new Map(),
 	localImages: new Map(),
-	remoteBranches: new Map()
+	remoteBranches: new Map(),
+	startingContainers: new Map(),
 };
 
 export const docker = new Docker();
@@ -99,8 +101,6 @@ export async function deleteImage(hash: CommitHash) {
 		l.error({ err, commitHash: hash }, 'failed to remove image');
 	}
 }
-
-const startingContainers: Map<CommitHash, Promise<ContainerInfo> > = new Map();
 export async function startContainer(commitHash: CommitHash) {
 	l.log({ commitHash }, `Starting up container for ${commitHash}`);
 	const image = getImageName(commitHash);
@@ -113,20 +113,20 @@ export async function startContainer(commitHash: CommitHash) {
 	}
 
 	// are we starting one already?
-	if( startingContainers.has( commitHash ) ) {
+	if( state.startingContainers.has( commitHash ) ) {
 		l.log( { commitHash, containerId: existingContainer.Id }, `Already starting a container for ${commitHash}`)
-		return startingContainers.get( commitHash );
+		return state.startingContainers.get( commitHash );
 	}
 
 	const startPromise = _startContainer( image, commitHash );
-	startingContainers.set( commitHash, startPromise );
+	state.startingContainers.set( commitHash, startPromise );
 	startPromise.then(
 		s => {
-			startingContainers.delete( commitHash );
+			state.startingContainers.delete( commitHash );
 			return s;
 		},
 		err => {
-			startingContainers.delete( commitHash );
+			state.startingContainers.delete( commitHash );
 			throw err;
 		}
 	)
