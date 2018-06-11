@@ -12,6 +12,8 @@ const interestingDetails = new Set([
     'err',
     'imageName',
     'containerId',
+    'cloneTime',
+    'checkoutTime',
 ]);
 
 const LogDetails = ( { data  } : any ) => {
