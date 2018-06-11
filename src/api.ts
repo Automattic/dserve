@@ -102,7 +102,7 @@ export async function deleteImage(hash: CommitHash) {
 	}
 }
 export async function startContainer(commitHash: CommitHash) {
-	l.log({ commitHash }, `Starting up container for ${commitHash}`);
+	l.log({ commitHash }, `Request to starting a container for ${commitHash}`);
 	const image = getImageName(commitHash);
 
 	// do we have an existing container?
@@ -131,6 +131,8 @@ export async function startContainer(commitHash: CommitHash) {
 		const exposedPort = `${config.build.exposedPort}/tcp`;
 		const dockerPromise = new Promise( ( resolve, reject ) => {
 			let runError: any;
+
+			l.log( { commitHash }, `Starting a container for ${commitHash}` );
 
 			docker.run(
 				image,
