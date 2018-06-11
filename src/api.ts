@@ -114,11 +114,63 @@ export async function startContainer(commitHash: CommitHash) {
 
 	// are we starting one already?
 	if( state.startingContainers.has( commitHash ) ) {
-		l.log( { commitHash, containerId: existingContainer.Id }, `Already starting a container for ${commitHash}`)
+		l.log( { commitHash }, `Already starting a container for ${commitHash}`)
 		return state.startingContainers.get( commitHash );
 	}
 
-	const startPromise = _startContainer( image, commitHash );
+	async function start( image: string, commitHash: CommitHash ): Promise<ContainerInfo> {
+		// ok, try to start one
+		let freePort: number;
+		try {
+			freePort = await portfinder.getPortPromise();
+		} catch( err ) {
+			l.error( { err, image }, `Error while attempting to find a free port for ${image}`);
+			throw err;
+		}
+
+		const exposedPort = `${config.build.exposedPort}/tcp`;
+		const dockerPromise = new Promise( ( resolve, reject ) => {
+			let runError: any;
+
+			docker.run(
+				image,
+				[],
+				process.stdout,
+				{
+					...config.build.containerCreateOptions,
+					ExposedPorts: { [exposedPort]: {} },
+					PortBindings: { [exposedPort]: [{ HostPort: freePort.toString() }] },
+					Tty: false,
+				},
+				err => {
+					runError = err;
+				}
+			);
+
+			// run will never callback for calypso when things work as intended.
+			// wait 5 seconds. If we don't see an error by then, assume run worked and resolve
+			setTimeout( () => {
+				if ( runError ) {
+					reject( { error: runError, freePort } );
+				} else {
+					resolve( { freePort } );
+				}
+			}, 5000 );
+		} )
+		return dockerPromise.then(
+			( { success, freePort } ) => {
+				l.log({ image, freePort }, `Successfully started container for ${image} on ${freePort}`);
+				return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
+			},
+			( { error, freePort } ) => {
+				l.error({ image, freePort, error }, `Failed starting container for ${image} on ${freePort}`);
+				throw error;
+			}
+		);
+	};
+
+	const startPromise = start( image, commitHash );
+
 	state.startingContainers.set( commitHash, startPromise );
 	startPromise.then(
 		s => {
@@ -131,57 +183,6 @@ export async function startContainer(commitHash: CommitHash) {
 		}
 	)
 	return startPromise;
-}
-
-async function _startContainer( image: string, commitHash: CommitHash ): Promise<ContainerInfo> {
-	// ok, try to start one
-	let freePort: number;
-	try {
-		freePort = await portfinder.getPortPromise();
-	} catch( err ) {
-		l.error( { err, image }, `Error while attempting to find a free port for ${image}`);
-		throw err;
-	}
-
-	const exposedPort = `${config.build.exposedPort}/tcp`;
-	const dockerPromise = new Promise( ( resolve, reject ) => {
-		let runError: any;
-
-		docker.run(
-			image,
-			[],
-			process.stdout,
-			{
-				...config.build.containerCreateOptions,
-				ExposedPorts: { [exposedPort]: {} },
-				PortBindings: { [exposedPort]: [{ HostPort: freePort.toString() }] },
-				Tty: false,
-			},
-			err => {
-				runError = err;
-			}
-		);
-
-		// run will never callback for calypso when things work as intended.
-		// wait 5 seconds. If we don't see an error by then, assume run worked and resolve
-		setTimeout( () => {
-			if ( runError ) {
-				reject( { error: runError, freePort } );
-			} else {
-				resolve( { freePort } );
-			}
-		}, 5000 );
-	} )
-	return dockerPromise.then(
-		( { success, freePort } ) => {
-			l.log({ image, freePort }, `Successfully started container for ${image} on ${freePort}`);
-			return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
-		},
-		( { error, freePort } ) => {
-			l.error({ image, freePort, error }, `Failed starting container for ${image} on ${freePort}`);
-			throw error;
-		} 
-	);
 }
 
 export async function refreshRunningContainers() {
