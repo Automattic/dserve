@@ -318,15 +318,17 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 			return;
 		}
 
+		const createdAgo = Date.now() - ( container.Created * 1000 );
 		const lastAccessed = getAccessTime(extractCommitFromImage(imageName));
-		return _.isUndefined(lastAccessed) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME;
+
+		return createdAgo > CONTAINER_EXPIRY_TIME &&
+			( _.isUndefined(lastAccessed) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME );
 	});
 }
 
 // stop any container that hasn't been accessed within ten minutes
 async function cleanupExpiredContainers() {
 	const containers = Array.from( await docker.listContainers( { all: true } ) );
-	docker.pruneContainers()
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
 	expiredContainers.forEach(async (container: ContainerInfo) => {
 		const imageName: string = container.Image;
