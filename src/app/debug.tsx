@@ -20,6 +20,8 @@ const Debug = (c: RenderContext) => {
     const memTotal = os.totalmem();
     const memUsed = memTotal - os.freemem();
     const images = Array.from(apiState.localImages.entries()) as Array<[string, Dockerode.ImageInfo]>;
+    const apiContainers = Array.from(apiState.containers.entries());
+
 
     const shortHash = (hash: string, length = 30) => <span title={hash}>{hash.slice(0, length)}…</span>;
 
@@ -29,25 +31,51 @@ const Debug = (c: RenderContext) => {
                 dangerouslySetInnerHTML={{
                     __html: `
                     .dserve-debug-cards {
-                        display: flex;
-                        flex-direction: row;
-                        align-content: flex-start;
-                        justify-content: flex-start;
-                        flex-wrap: wrap;
+                        display: grid;
+                        grid-template-columns: repeat(6, 1fr);
+                        grid-gap: 10px;
+                        grid-auto-rows: minmax(100px, auto);
                     }
 
                     .dserve-debug-cards figure {
                         border: 1px solid gray;
                         border-radius: 4px;
                         padding: 8px;
-                        margin-bottom: auto;
+                        position: relative;
+                    }
+
+                    .system {
+                        grid-row: 1;
+                        grid-column: 1 / 3;
+                    }
+
+                    .queue {
+                        grid-row: 1;
+                        grid-column: 3 / 5;
+                    }
+
+                    .promises {
+                        grid-row: 1;
+                        grid-column: 5 / 7;
+                    }
+
+                    .api {
+                        grid-row: 2;
+                        grid-column: 1 / 4;
+                    }
+
+                    .docker {
+                        grid-row: 2;
+                        grid-column: 4 / 7;
                     }
 
                     .dserve-debug-cards figure figcaption {
                         border: 1px solid gray;
                         border-radius: 2px;
                         padding: 4px;
-                        display: inline;
+                        position: absolute;
+                        top: 2px;
+                        right: 2px;
                     }
 
                     .dserve-debug-cards strong {
@@ -74,7 +102,7 @@ const Debug = (c: RenderContext) => {
                 }}
             />
             <div className="dserve-debug-cards">
-                <figure>
+                <figure className="system">
                     <p>CPU (x{os.cpus().length}): {os.loadavg().map(a => round(a, 2)).join(', ')} (1m, 5m, 15m)</p>
                     <p>Memory</p>
                     <ul>
@@ -84,7 +112,7 @@ const Debug = (c: RenderContext) => {
                     <figcaption>System Load</figcaption>
                 </figure>
 
-                <figure>
+                <figure className="queue">
                     <p>Build Queue</p>
                     {buildQueue.length ? (
                         <ul>
@@ -96,7 +124,7 @@ const Debug = (c: RenderContext) => {
                     <figcaption>Builder</figcaption>
                 </figure>
 
-                <figure>
+                <figure className="promises">
                     {promiseRejections.size ? (
                         <ul>
                             {Array.from(promiseRejections.values()).map(([ts, reason,]) => (
@@ -114,22 +142,26 @@ const Debug = (c: RenderContext) => {
                     <figcaption>Rejected Promises</figcaption>
                 </figure>
 
-                <figure>
-                    <p>Containers</p>
+                <figure className="api">
+                    <p>Running Containers</p>
                     <ul>
-                        {Array.from(apiState.containers.entries()).map(([key, info]) => (
+                        {apiContainers.length === 0
+                        ? <li><em>No running containers</em></li>
+                        : ( apiContainers.map(([key, info]) => (
                             <li key={info.Id} className={info.State}>
                                 <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
                                 Image ID: {shortHash(info.ImageID)}<br />
                                 Status: {info.Status}
                             </li>
-                        ))}
+                        )))}
                     </ul>
 
-                    <p>Images</p>
+                    <p>DServe Images</p>
                     <p>Total storage size: {humanSize(images.reduce((size, [, info]) => size + info.Size, 0))}</p>
                     <ul>
-                        {images.map(([key, info]) => (
+                        {images.length === 0
+                        ? <li><em>No dserve images</em></li>
+                        : images.map(([key, info]) => (
                             <li key={info.Id}>
                                 RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
                                 Id: {shortHash(info.Id)}<br />
@@ -142,11 +174,13 @@ const Debug = (c: RenderContext) => {
                     <figcaption>API</figcaption>
                 </figure>
 
-                <figure>
-                    <p>Containers</p>
+                <figure className="docker">
+                    <p>All Containers</p>
                     <ul className="dserve-container-list">
                         {(
-                            c.docker.containers
+                            c.docker.containers.length === 0
+                            ? <li><em>No containers</em></li>
+                            : c.docker.containers
                                 .sort((a, b) => b.Created - a.Created)
                                 .map(info => (
                                     <li key={info.Id} className={info.State}>
@@ -158,10 +192,12 @@ const Debug = (c: RenderContext) => {
                         )}
                     </ul>
 
-                    <p>Images</p>
+                    <p>All Images</p>
                     <ul className="dserve-image-list">
                         {(
-                            c.docker.images
+                            c.docker.images.length === 0
+                            ? <li><em>No docker images</em></li>
+                            : c.docker.images
                                 .sort((a, b) => b.Created - a.Created)
                                 .map(info => (
                                     <li key={info.Id}>
