@@ -110,6 +110,8 @@ calypsoServer.get('/status', async (req: any, res: any) => {
 	res.end();
 });
 
+
+
 calypsoServer.get('*', async (req: any, res: any) => {
 	const commitHash = req.session.commitHash;
 	const hasLocally = await hasHashLocally(commitHash);
@@ -155,9 +157,26 @@ calypsoServer.get('*', async (req: any, res: any) => {
 	renderApp({ message, buildLog, startedServerAt }).pipe(res);
 });
 
-calypsoServer.listen(3000, () => l.log(
+// log errors
+calypsoServer.use( ( err : any, req: express.Request, res: any, next: any ) => {
+	if ( err ) {
+		l.error( err, `Error serving request for ${req.originalUrl}` );
+	}
+	next( err );
+})
+
+const server = calypsoServer.listen(3000, () => l.log(
 	`✅ dserve is listening on 3000 - started at ${ startedServerAt.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true }) }`)
 );
+
+server.on( 'error', err => {
+	console.log( 'err' );
+	l.error( err, 'Error serving request' );
+} );
+server.on("close", () => {
+	console.log('close');
+	l.log( {}, 'Server shutting down' );
+})
 
 function isBrowser( req: express.Request ): Boolean {
 	const ua = useragent.lookup( req.header( 'user-agent' ) );

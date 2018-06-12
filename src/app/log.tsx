@@ -18,6 +18,7 @@ const interestingDetails = new Set([
 ]);
 
 const LogDetails = ( { data  } : any ) => {
+
     const details = new Map();
     for( let detail of interestingDetails ) {
         if ( data[ detail ] ) {
@@ -29,7 +30,7 @@ const LogDetails = ( { data  } : any ) => {
     }
     return (
         <div className="details">
-            { 
+            {
                 Array.from( details.entries() ).map( ( [ key, value ] ) => <pre key={key}>{ key }: { typeof value === 'object' ? JSON.stringify( value, null, 2 ) : value.toString() }</pre> )
             }
         </div>
@@ -44,7 +45,7 @@ const Log = ({ log, startedServerAt }: RenderContext) => (
                 .dserve-log-lines {
                     list-style: none;
                 }
-                
+
                 .dserve-log-line {
                     color: #00d8ff;
                     margin-bottom: 4px;
@@ -85,7 +86,7 @@ const Log = ({ log, startedServerAt }: RenderContext) => (
             } catch ( e ) {
                 return <li className="dserve-log-line" key={ `${ i }-${ line }` }>Unparseable log item - »<pre>{ line }</pre>«</li>
             }
-            
+
             const at = Date.parse( data.time );
 
             return (

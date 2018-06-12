@@ -45,7 +45,7 @@
 		"test": "jest",
 		"start": "yarn run build-ts && yarn run serve",
 		"serve": "node build/index.js",
-		"serve:forever": "forever build/index.js",
+		"serve:forever": "forever -l logs/forever.log build/index.js",
 		"build-ts": "tsc",
 		"watch-ts": "tsc -w"
 	},
