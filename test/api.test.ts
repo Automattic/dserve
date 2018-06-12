@@ -23,7 +23,10 @@ describe('api', () => {
 		});
 
 		test('returns the whole list if everything is expired', () => {
-			expect(getExpiredContainers(images as any, () => CONTAINER_EXPIRY_TIME)).toEqual(images);
+			const expiredImages = images.map( image => {
+				return Object.assign( {}, image, { Created: EXPIRED_TIME / 1000 } );
+			} );
+			expect(getExpiredContainers(expiredImages as any, () => CONTAINER_EXPIRY_TIME)).toEqual(expiredImages);
 		});
 
 		test('returns empty list if everything is before expiry', () => {
@@ -35,8 +38,19 @@ describe('api', () => {
 				.fn()
 				.mockReturnValueOnce(EXPIRED_TIME)
 				.mockReturnValueOnce(GOOD_TIME);
-			expect(getExpiredContainers(images as any, getAccessTime)).toEqual([].concat(images[0]));
+			const oldImages = images.map( image => {
+					return Object.assign( {}, image, { Created: EXPIRED_TIME / 1000 } );
+				} );
+			expect(getExpiredContainers(oldImages as any, getAccessTime)).toEqual([].concat(oldImages[0]));
 		});
+
+		test('young images are not returned, regardless of access time', () => {
+			const expiredImages = images.map( image => {
+				return Object.assign( {}, image, { Created: EXPIRED_TIME / 1000 } );
+			} );
+			expiredImages[0].Created = Date.now() / 1000;
+			expect(getExpiredContainers(expiredImages as any, () => CONTAINER_EXPIRY_TIME)).toEqual([].concat( expiredImages[1] ));
+		})
 	});
 
 	describe('commitAccessTimes', () => {
