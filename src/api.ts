@@ -102,7 +102,7 @@ export async function deleteImage(hash: CommitHash) {
 	}
 }
 export async function startContainer(commitHash: CommitHash) {
-	l.log({ commitHash }, `Request to starting a container for ${commitHash}`);
+	l.log({ commitHash }, `Request to start a container for ${commitHash}`);
 	const image = getImageName(commitHash);
 
 	// do we have an existing container?
@@ -124,7 +124,7 @@ export async function startContainer(commitHash: CommitHash) {
 		try {
 			freePort = await portfinder.getPortPromise();
 		} catch( err ) {
-			l.error( { err, image }, `Error while attempting to find a free port for ${image}`);
+			l.error( { err, image, commitHash }, `Error while attempting to find a free port for ${image}`);
 			throw err;
 		}
 
@@ -132,7 +132,7 @@ export async function startContainer(commitHash: CommitHash) {
 		const dockerPromise = new Promise( ( resolve, reject ) => {
 			let runError: any;
 
-			l.log( { commitHash }, `Starting a container for ${commitHash}` );
+			l.log( { image, commitHash }, `Starting a container for ${commitHash}` );
 
 			docker.run(
 				image,
@@ -161,11 +161,11 @@ export async function startContainer(commitHash: CommitHash) {
 		} )
 		return dockerPromise.then(
 			( { success, freePort } ) => {
-				l.log({ image, freePort }, `Successfully started container for ${image} on ${freePort}`);
+				l.log({ image, freePort, commitHash }, `Successfully started container for ${image} on ${freePort}`);
 				return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
 			},
 			( { error, freePort } ) => {
-				l.error({ image, freePort, error }, `Failed starting container for ${image} on ${freePort}`);
+				l.error({ image, freePort, error, commitHash }, `Failed starting container for ${image} on ${freePort}`);
 				throw error;
 			}
 		);
@@ -326,6 +326,7 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 // stop any container that hasn't been accessed within ten minutes
 async function cleanupExpiredContainers() {
 	const containers = Array.from( await docker.listContainers( { all: true } ) );
+	docker.pruneContainers()
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
 	expiredContainers.forEach(async (container: ContainerInfo) => {
 		const imageName: string = container.Image;
