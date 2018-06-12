@@ -12,30 +12,30 @@ import {
 	FIVE_MINUTES,
 	getImageName,
 	docker,
+	BranchName,
 } from './api';
-import {config} from './config';
+import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
 
-type BuildQueue = Array<CommitHash>;
-
 export const MAX_CONCURRENT_BUILDS = 3;
-export const BUILD_QUEUE: BuildQueue = [];
-const pendingHashes = new Set();
+export const buildQueue: Array<CommitHash> = [];
+const pendingHashes: Set<CommitHash> = new Set();
 
 export const getLogPath = (hash: CommitHash) => path.join(getBuildDir(hash), config.build.logFilename);
-export async function isBuildInProgress(
-	hash: CommitHash,
-	currentBuilds = getCurrentBuilds()
-): Promise<boolean> {
-	return (await fs.pathExists(getBuildDir(hash))) || currentBuilds.has(hash);
+export async function isBuildInProgress(hash: CommitHash): Promise<boolean> {
+	if ( pendingHashes.has(hash)) {
+		return true;
+	}
+
+	const pathExists = await fs.pathExists(getBuildDir(hash));
+
+	return pendingHashes.has(hash) || pathExists;
 }
-const getCurrentBuilds = () => pendingHashes;
 
 export async function readBuildLog(hash: CommitHash): Promise<string | null> {
-	if (await fs.pathExists(getLogPath(hash))) {
-		return fs.readFile(getLogPath(hash), 'utf-8');
-	}
-	return null;
+	return (await fs.pathExists(getLogPath(hash)))
+		? fs.readFile(getLogPath(hash), 'utf-8')
+		: null;
 }
 
 export function getBuildDir(hash: CommitHash) {
@@ -49,62 +49,16 @@ export async function cleanupBuildDir(hash: CommitHash) {
 	return fs.remove(buildDir);
 }
 
-function warnOnQueueBuildup(buildQueue = BUILD_QUEUE) {
-	if (buildQueue.length > 0) {
-		l.log(
-			{ buildQueueSize: buildQueue.length },
-			'There are images waiting to be built that are stuck because of too many concurrent builds'
-		);
-	}
-}
-
-export function buildFromQueue({
-	buildQueue = BUILD_QUEUE,
-	currentBuilds = getCurrentBuilds(),
-	builder = buildImageForHash,
-} = {}) {
-	if (buildQueue.length == 0) {
-		return;
-	}
-
-	if (currentBuilds.size < MAX_CONCURRENT_BUILDS) {
-		const commit = buildQueue.shift();
-		l.log(
-			{ buildQueueSize: buildQueue.length, commitHash: commit },
-			'Popping a commitHash off of the buildQueue'
-		);
-		builder(commit, {
-			onBuildComplete: () => {
-				currentBuilds.delete(commit);
-			},
-			currentBuilds,
-		});
-	}
-}
-
-export function addToBuildQueue(
-	commitHash: CommitHash,
-	buildQueue: BuildQueue = BUILD_QUEUE,
-	currentBuilds: Set<CommitHash> = getCurrentBuilds()
-) {
-	if (buildQueue.includes(commitHash) || currentBuilds.has(commitHash)) {
-		l.log(
-			{ buildQueueSize: buildQueue.length, commitHash },
-			'Skipping the build queue since it is already in it'
-		);
+export function addToBuildQueue(commitHash: CommitHash) {
+	if (buildQueue.includes(commitHash) || pendingHashes.has(commitHash)) {
+		l.log({ buildQueueSize: buildQueue.length, commitHash }, 'Skipping the build queue since it is already in it');
 		return;
 	}
 	l.log({ buildQueueSize: buildQueue.length, commitHash }, 'Adding a commitHash to the buildQueue');
 	return buildQueue.push(commitHash);
 }
 
-export async function buildImageForHash(
-	commitHash: CommitHash,
-	{
-		onBuildComplete,
-		currentBuilds = getCurrentBuilds(),
-	}: { onBuildComplete: Function; currentBuilds?: Set<CommitHash> }
-): Promise<void> {
+export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 	let buildStream: Readable;
 
 	const buildDir = getBuildDir(commitHash);
@@ -113,7 +67,7 @@ export async function buildImageForHash(
 	const imageName = getImageName(commitHash);
 	let imageStart: number;
 
-	if (await isBuildInProgress(commitHash, currentBuilds)) {
+	if (await isBuildInProgress(commitHash)) {
 		l.log({ commitHash, buildDir }, 'Skipping build because a build is already in progress');
 		return;
 	}
@@ -124,6 +78,8 @@ export async function buildImageForHash(
 		await fs.mkdir(buildDir);
 	} catch (err) {
 		l.error({ err, buildDir, commitHash }, 'Could not create directory for the build');
+		pendingHashes.delete(commitHash);
+		return;
 	}
 	const buildLogger = getLoggerForBuild(commitHash);
 
@@ -145,14 +101,9 @@ export async function buildImageForHash(
 		buildLogger.info('Checked out the correct branch');
 
 		buildLogger.info('Placing all the contents into a tarball stream for docker\n');
-		l.log(
-			{ repoDir, imageName },
-			'Placing contents of repoDir into a tarball and sending to docker for a build'
-		);
+		l.log({ repoDir, imageName }, 'Placing contents of repoDir into a tarball and sending to docker for a build');
 		const tarStream = tar.pack(repoDir);
-		buildLogger.info('Reticulating splines\n');
 		buildLogger.info('Handing off tarball to Docker for the rest of the legwork\n');
-		buildLogger.info('---------------- DOCKER START ----------------');
 
 		imageStart = Date.now();
 		buildStream = await docker.buildImage(tarStream, {
@@ -163,27 +114,21 @@ export async function buildImageForHash(
 			},
 		});
 	} catch (err) {
-		buildLogger.error(
-			{ err },
-			`Encountered error while git checking out, tarballing, or handing to docker`
-		);
+		buildLogger.error({ err }, `Encountered error while git checking out, tarballing, or handing to docker`);
 		l.error({ err }, `Encountered error while git checking out, tarballing, or handing to docker`);
 		pendingHashes.delete(commitHash);
 	}
 
 	if (!buildStream) {
-		l.error({buildStream}, "Failed to build image but didn't throw an error" );
+		l.error({ buildStream }, "Failed to build image but didn't throw an error");
 		return;
 	}
 
 	function onFinished(err: Error) {
-		onBuildComplete();
+		pendingHashes.delete(commitHash);
+
 		if (!err) {
-			l.log(
-				{ commitHash, buildImageTime: Date.now() - imageStart, repoDir, imageName },
-				`Successfully built image. Now cleaning up build directory`
-			);
-			// TODO: maybe re-enable cleanup.  disabled for now to aid in debugging
+			l.log({ commitHash, buildImageTime: Date.now() - imageStart, repoDir, imageName }, `Successfully built image. Now cleaning up build directory`);
 			// cleanupBuildDir(commitHash);
 		} else {
 			buildLogger.error({ err }, 'Encountered error when building image');
@@ -203,5 +148,27 @@ export async function buildImageForHash(
 	docker.modem.followProgress(buildStream, onFinished, onProgress);
 }
 
-setInterval(() => buildFromQueue(), ONE_SECOND);
-setInterval(() => warnOnQueueBuildup(), ONE_MINUTE);
+// Background tasks
+
+const loop = (f: Function, delay: number) => {
+	const run = () => (f(), setTimeout(run, delay));
+
+	run();
+}
+
+function warnOnQueueBuildup() {
+	if (buildQueue.length > MAX_CONCURRENT_BUILDS) {
+		l.log({ buildQueue }, 'There are images waiting to be built that are stuck because of too many concurrent builds');
+	}
+}
+export function buildFromQueue() {
+	buildQueue
+		.splice(0, MAX_CONCURRENT_BUILDS - pendingHashes.size) // grab the next batch of builds
+		.forEach(commitHash => {
+			l.log({ commitHash }, 'Popping a commitHash off of the buildQueue');
+			buildImageForHash(commitHash);
+		})
+}
+
+loop(warnOnQueueBuildup, ONE_MINUTE);
+loop(buildFromQueue, ONE_SECOND);
