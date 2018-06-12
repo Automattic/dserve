@@ -8,7 +8,7 @@ import { Shell } from './app-shell';
 import { promiseRejections } from '../index';
 import { humanSize, humanTime, percent, round } from './util';
 
-import { state as apiState } from '../api';
+import { state as apiState, getCommitAccessTime, extractCommitFromImage } from '../api';
 import { buildQueue } from '../builder';
 
 const Docker = new Dockerode();
@@ -151,7 +151,10 @@ const Debug = (c: RenderContext) => {
                             <li key={info.Id} className={info.State}>
                                 <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
                                 Image ID: {shortHash(info.ImageID)}<br />
-                                Status: {info.Status}
+                                Status: {info.Status}<br />
+                                Last Access: { getCommitAccessTime( extractCommitFromImage( info.Image ) ) 
+                                ? humanTime( getCommitAccessTime( extractCommitFromImage( info.Image ) ) / 1000 )
+                                : 'never' }
                             </li>
                         )))}
                     </ul>
