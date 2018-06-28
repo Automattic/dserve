@@ -327,7 +327,7 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 }
 
 // stop any container that hasn't been accessed within ten minutes
-async function cleanupExpiredContainers() {
+export async function cleanupExpiredContainers() {
 	l.log( 'looking for expired containers' );
 	const containers = Array.from( await docker.listContainers( { all: true } ) );
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
@@ -370,20 +370,4 @@ export async function proxyRequestToHash(req: any, res: any) {
 	});
 }
 
-if (process.env.NODE_ENV !== 'test') {
-	const loop = ( f: Function, delay: number ) => {
-		const run = async () => ( await f(), setTimeout( run, delay ) );
 
-		run();
-	}
-
-	loop( refreshLocalImages, 5 * ONE_SECOND );
-	loop( refreshRunningContainers, 5 * ONE_SECOND );
-	loop( refreshRemoteBranches, ONE_MINUTE );
-	// Wait a bit before starting the expired container cleanup.
-	// This gives us some time to accumulate accesses to existing containers across app restarts
-	setTimeout( 
-		() => loop( cleanupExpiredContainers, ONE_MINUTE ), 
-		2 * ONE_MINUTE 
-	);
-}
