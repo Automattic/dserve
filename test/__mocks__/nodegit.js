@@ -3,3 +3,4 @@
  * This makes it so that it never actually gets used in any test...whatsoever
  */
 module.exports = jest.fn();
+module.exports.enableThreadSafety = jest.fn();
