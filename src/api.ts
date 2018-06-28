@@ -310,7 +310,7 @@ export function getCommitAccessTime( hash: CommitHash ): number | undefined {
  * Expired means have not been accessed in EXPIRED_DURATION
  */
 export function getExpiredContainers(containers: Array<ContainerInfo>, getAccessTime: Function) {
-	return _.uniqBy( containers.filter((container: ContainerInfo) => {
+	return containers.filter((container: ContainerInfo) => {
 		const imageName: string = container.Image;
 
 		// exclude container if it wasnt created by this app
@@ -323,7 +323,7 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 
 		return createdAgo > CONTAINER_EXPIRY_TIME &&
 			( _.isUndefined(lastAccessed) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME );
-	} ), ci => ci.Id );
+	} );
 }
 
 // stop any container that hasn't been accessed within ten minutes
