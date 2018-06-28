@@ -310,7 +310,7 @@ export function getCommitAccessTime( hash: CommitHash ): number | undefined {
  * Expired means have not been accessed in EXPIRED_DURATION
  */
 export function getExpiredContainers(containers: Array<ContainerInfo>, getAccessTime: Function) {
-	return containers.filter((container: ContainerInfo) => {
+	return _.uniqBy( containers.filter((container: ContainerInfo) => {
 		const imageName: string = container.Image;
 
 		// exclude container if it wasnt created by this app
@@ -323,11 +323,12 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 
 		return createdAgo > CONTAINER_EXPIRY_TIME &&
 			( _.isUndefined(lastAccessed) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME );
-	});
+	} ), ci => ci.Id );
 }
 
 // stop any container that hasn't been accessed within ten minutes
 async function cleanupExpiredContainers() {
+	l.log( 'looking for expired containers' );
 	const containers = Array.from( await docker.listContainers( { all: true } ) );
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
 	expiredContainers.forEach(async (container: ContainerInfo) => {
@@ -349,6 +350,7 @@ async function cleanupExpiredContainers() {
 			l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container');
 		}
 	} );
+	l.log( 'completed expired cleanup' );
 }
 
 const proxy = httpProxy.createProxyServer({}); // See (†)
@@ -378,5 +380,10 @@ if (process.env.NODE_ENV !== 'test') {
 	loop( refreshLocalImages, 5 * ONE_SECOND );
 	loop( refreshRunningContainers, 5 * ONE_SECOND );
 	loop( refreshRemoteBranches, ONE_MINUTE );
-	loop( cleanupExpiredContainers, 30 * ONE_SECOND );
+	// Wait a bit before starting the expired container cleanup.
+	// This gives us some time to accumulate accesses to existing containers across app restarts
+	setTimeout( 
+		() => loop( cleanupExpiredContainers, ONE_MINUTE ), 
+		2 * ONE_MINUTE 
+	);
 }
