@@ -17,6 +17,11 @@ import {
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
 
+
+// hidden method in nodegit that turns on thread safety
+// see https://github.com/nodegit/nodegit/pull/836
+(git as any).enableThreadSafety();
+
 export const MAX_CONCURRENT_BUILDS = 3;
 export const buildQueue: Array<CommitHash> = [];
 const pendingHashes: Set<CommitHash> = new Set();
