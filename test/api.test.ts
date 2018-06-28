@@ -16,7 +16,7 @@ describe('api', () => {
 
 		const EXPIRED_TIME = Date.now() - CONTAINER_EXPIRY_TIME - 1;
 		const GOOD_TIME = Date.now() - CONTAINER_EXPIRY_TIME + 1;
-		const images = [{ Image: getImageName('1') }, { Image: getImageName('2') }];
+		const images = [{ Image: getImageName('1'), Id: 1 }, { Image: getImageName('2'), Id: 2 }];
 
 		test('returns nothing for empty list of containers', () => {
 			expect(getExpiredContainers([], () => 0)).toEqual([]);
