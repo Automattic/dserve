@@ -7,6 +7,7 @@ import * as useragent from 'useragent';
 // internal
 import {
 	ONE_MINUTE,
+	ONE_SECOND,
 	getCommitHashForBranch,
 	getKnownBranches,
 	hasHashLocally,
@@ -34,6 +35,7 @@ import renderLog from './app/log';
 import renderDebug from './app/debug';
 import { l } from './logger';
 import { Writable } from 'stream';
+import { refreshLocalImages, refreshRemoteBranches, refreshRunningContainers, cleanupExpiredContainers } from './api';
 
 const startedServerAt = new Date();
 
@@ -188,5 +190,23 @@ function isBrowser( req: express.Request ): Boolean {
 		family === 'firefox' ||
 		family === 'chrome mobile' ||
 		family === 'mobile safari'
+	);
+}
+
+if (process.env.NODE_ENV !== 'test') {
+	const loop = ( f: Function, delay: number ) => {
+		const run = async () => ( await f(), setTimeout( run, delay ) );
+
+		run();
+	}
+
+	loop( refreshLocalImages, 5 * ONE_SECOND );
+	loop( refreshRunningContainers, 5 * ONE_SECOND );
+	loop( refreshRemoteBranches, ONE_MINUTE );
+	// Wait a bit before starting the expired container cleanup.
+	// This gives us some time to accumulate accesses to existing containers across app restarts
+	setTimeout( 
+		() => loop( cleanupExpiredContainers, ONE_MINUTE ), 
+		2 * ONE_MINUTE 
 	);
 }
