@@ -15,37 +15,60 @@ import {
 	touchCommit,
 } from './api';
 
-export async function determineCommitHash(req: any, res: any, next: any) {
-	const isHashInSession = !!req.session.commitHash;
-	const isHashSpecified = req.query && (req.query.hash || req.query.branch);
-	let commitHash;
+function assembleSubdomainUrlForHash(req: any, commitHash: any) {
+    const protocol = (req.secure ? 'https' : 'http');
 
-	if (isHashInSession && !isHashSpecified) {
+    return protocol + '://' + commitHash + '.' + req.headers.host;
+}
+
+function getCommitHashFromSubdomain(req: any) {
+    return req.headers.host.substring(0, req.headers.host.indexOf('.'));
+}
+
+export async function redirectHashFromQueryStringToSubdomain(req: any, res: any, next: any) {
+    const isHashSpecified = req.query && (req.query.hash || req.query.branch);
+
+    let commitHash;
+
+    if (!isHashSpecified) {
+        next();
+        return;
+    }
+
+    if (req.query.hash) {
+		commitHash = req.query.hash;
+	} else if (req.query.branch) {
+		commitHash = getCommitHashForBranch(req.query.branch);
+    }
+
+    res.writeHead(
+        302,
+        {
+            'Location': assembleSubdomainUrlForHash(req, commitHash)
+        }
+    );
+
+    res.end();
+}
+
+export async function determineCommitHash(req: any, res: any, next: any) {
+    const isHashInSession     = !!req.session.commitHash;
+    const subdomainCommitHash = getCommitHashFromSubdomain(req);
+
+	if (isHashInSession && !subdomainCommitHash) {
 		next();
 		return;
 	}
 
-	if (!isHashSpecified) {
+    if (!subdomainCommitHash) {
+        // @todo Render a nicer page here.
 		res.send('Please specify a branch to load');
 		return;
 	}
 
-	if (req.query.hash) {
-		commitHash = req.query.hash;
-	} else if (req.query.branch) {
-		commitHash = getCommitHashForBranch(req.query.branch);
-	}
+	req.session.commitHash = subdomainCommitHash;
 
-	if (commitHash instanceof Error) {
-		res.send(striptags('Calypso Server: ' + commitHash.message));
-		return;
-	} else if (req.query.branch && _.isUndefined(commitHash)) {
-		res.send(striptags(`Please specify a valid branch.  Could not find: ${req.query.branch}`));
-		return;
-	}
-
-	req.session.commitHash = commitHash;
-	touchCommit(commitHash);
+    touchCommit(subdomainCommitHash);
 
 	next();
 }
@@ -56,3 +79,4 @@ export const session = expressSession({
 	resave: false,
 	saveUninitialized: true,
 });
+
