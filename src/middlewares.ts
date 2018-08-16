@@ -15,14 +15,39 @@ import {
 	touchCommit,
 } from './api';
 
-function assembleSubdomainUrlForHash(req: any, commitHash: any) {
+function assembleSubdomainUrlForHash(req: any, commitHash: string) {
     const protocol = (req.secure ? 'https' : 'http');
 
-    return protocol + '://' + commitHash + '.' + req.headers.host;
+    return protocol + '://hash-' + commitHash + '.' + stripCommitHashSubdomainFromHost(req.headers.host);
+}
+
+function stripCommitHashSubdomainFromHost(host: string) {
+    let segments = host.split('.'),
+        commitHashIndex = null;
+
+    for (let i = 0; i < segments.length; i += 1) {
+        if (0 === segments[i].indexOf('hash-')) {
+            commitHashIndex = i;
+            break;
+        }
+    }
+
+    if (null === commitHashIndex) {
+        return host;
+    }
+
+    return segments.slice(commitHashIndex + 1).join('.');
 }
 
 function getCommitHashFromSubdomain(req: any) {
-    return req.headers.host.substring(0, req.headers.host.indexOf('.'));
+    const commitHash = _.find(
+        req.headers.host.split('.'),
+        function (hostSegment) {
+            return 0 === hostSegment.indexOf('hash-');
+        }
+    );
+
+    return commitHash.replace(/^hash-/, '');
 }
 
 export async function redirectHashFromQueryStringToSubdomain(req: any, res: any, next: any) {
