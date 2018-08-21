@@ -33,6 +33,7 @@
 		"node-fetch": "^1.7.3",
 		"nodegit": "^0.23.0",
 		"portfinder": "^1.0.16",
+		"prettier": "github:Automattic/wp-prettier#wp-prettier-1.14.0",
 		"react": "^16.4.2",
 		"react-dom": "^16.4.2",
 		"strip-ansi": "^4.0.0",
@@ -48,7 +49,8 @@
 		"serve": "node build/index.js",
 		"serve:forever": "node build/daemon.js",
 		"build-ts": "tsc",
-		"watch-ts": "tsc -w"
+		"watch-ts": "tsc -w",
+		"reformat-files": "./node_modules/.bin/prettier --write --require-pragma \"src/**/*.{ts,tsx,scss}\""
 	},
 	"repository": {
 		"type": "git",
