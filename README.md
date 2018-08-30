@@ -48,8 +48,9 @@ Here is an example flow of what happens when requesting a never-requested-before
 
 **middlewares.ts** this file contains all of the middlewares that dserve uses.
 
-  1. _determineCommitHash_: every request to dserve needs to be associated with a commit hash or else it cannot be fulfilled.  this middleware will attach a `commitHash` to the express request based on: session, and query params (branch or hash).
-  2. _session_: standard session middleware so that each request doesn't need to specify a hash with a query param.
+  1. _redirectHashFromQueryStringToSubdomain_: This middleware will look for a branch or hash in the query string and redirect to a corresponding subdomain matching the commit hash.
+  2. _determineCommitHash_: Every request to dserve needs to be associated with a commit hash or else it cannot be fulfilled.  this middleware will attach a `commitHash` to the express request based on the subdomain.
+  3. _session_: Standard session middleware so that each request doesn't need to specify a hash with a query param.
 
 **api.ts**: Contains all of the code that interfaces with external things like the fs, docker, or github.  there are two kinds of entities that exist in this file, those that periodically update data and the other is helper functions for things that need to be done on-demand.
 
