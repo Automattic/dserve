@@ -1,17 +1,10 @@
 // external
-import * as express from "express";
-import * as httpProxy from "http-proxy";
 import * as expressSession from "express-session";
-import * as _ from "lodash";
-import * as striptags from "striptags";
 
 // internal
 import {
   getCommitHashForBranch,
-  hasHashLocally,
   CommitHash,
-  NotFound,
-  getPortForContainer,
   touchCommit
 } from "./api";
 
