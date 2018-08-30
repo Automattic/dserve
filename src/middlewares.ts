@@ -17,7 +17,7 @@ import {
 
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 
-function assembleSubdomainUrlForHash(req: any, commitHash: string) {
+function assembleSubdomainUrlForHash(req: any, commitHash: CommitHash) {
   const protocol = req.secure ? "https" : "http";
 
   return (
