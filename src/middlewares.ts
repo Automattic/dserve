@@ -15,6 +15,8 @@ import {
   touchCommit
 } from "./api";
 
+const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
+
 function assembleSubdomainUrlForHash(req: any, commitHash: string) {
   const protocol = req.secure ? "https" : "http";
 
@@ -28,29 +30,18 @@ function assembleSubdomainUrlForHash(req: any, commitHash: string) {
 }
 
 function stripCommitHashSubdomainFromHost(host: string) {
-  let segments = host.split("."),
-    commitHashIndex = null;
-
-  for (let i = 0; i < segments.length; i += 1) {
-    if (0 === segments[i].indexOf("hash-")) {
-      commitHashIndex = i;
-      break;
-    }
-  }
-
-  if (null === commitHashIndex) {
-    return host;
-  }
-
-  return segments.slice(commitHashIndex + 1).join(".");
+  return host.replace( hashPattern, '' );
 }
 
-function getCommitHashFromSubdomain(req: any) {
-  const commitHash = _.find(req.headers.host.split("."), function(hostSegment) {
-    return 0 === hostSegment.indexOf("hash-");
-  });
+function getCommitHashFromSubdomain(host: string) {
+  const match = host.match( hashPattern );
 
-  return commitHash.replace(/^hash-/, "");
+  if ( ! match ) {
+    return null;
+  }
+
+  const [ /* full match */, hash ] = match;
+  return hash;
 }
 
 export async function redirectHashFromQueryStringToSubdomain(
@@ -80,7 +71,7 @@ export async function redirectHashFromQueryStringToSubdomain(
 
 export async function determineCommitHash(req: any, res: any, next: any) {
   const isHashInSession = !!req.session.commitHash;
-  const subdomainCommitHash = getCommitHashFromSubdomain(req);
+  const subdomainCommitHash = getCommitHashFromSubdomain(req.headers.host);
 
   if (isHashInSession && !subdomainCommitHash) {
     next();
