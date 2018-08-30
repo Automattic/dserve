@@ -37,7 +37,7 @@ function getCommitHashFromSubdomain(host: string) {
   return hash;
 }
 
-export async function redirectHashFromQueryStringToSubdomain(
+export function redirectHashFromQueryStringToSubdomain(
   req: any,
   res: any,
   next: any
@@ -56,7 +56,7 @@ export async function redirectHashFromQueryStringToSubdomain(
   res.end();
 }
 
-export async function determineCommitHash(req: any, res: any, next: any) {
+export function determineCommitHash(req: any, res: any, next: any) {
   const isHashInSession = !!req.session.commitHash;
   const subdomainCommitHash = getCommitHashFromSubdomain(req.headers.host);
 
