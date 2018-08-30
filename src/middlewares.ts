@@ -44,18 +44,12 @@ export async function redirectHashFromQueryStringToSubdomain(
 ) {
   const isHashSpecified = req.query && (req.query.hash || req.query.branch);
 
-  let commitHash;
-
   if (!isHashSpecified) {
     next();
     return;
   }
 
-  if (req.query.hash) {
-    commitHash = req.query.hash;
-  } else if (req.query.branch) {
-    commitHash = getCommitHashForBranch(req.query.branch);
-  }
+  const commitHash = req.query.hash || getCommitHashForBranch(req.query.branch);
 
   res.redirect(assembleSubdomainUrlForHash(req, commitHash));
 
