@@ -11,7 +11,7 @@ import {
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 
 function assembleSubdomainUrlForHash(req: any, commitHash: CommitHash) {
-  const protocol = req.secure ? "https" : "http";
+  const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? "https" : "http";
 
   return (
     protocol +
