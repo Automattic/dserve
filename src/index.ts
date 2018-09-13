@@ -21,6 +21,7 @@ import {
   getLocalImages,
   getBranchHashes
 } from "./api";
+
 import {
   isBuildInProgress,
   buildImageForHash,
@@ -28,13 +29,20 @@ import {
   addToBuildQueue,
   cleanupBuildDir
 } from "./builder";
-import { determineCommitHash, session } from "./middlewares";
+
+import {
+  redirectHashFromQueryStringToSubdomain,
+  determineCommitHash,
+  session
+} from "./middlewares";
+
 import renderApp from "./app/index";
 import renderLocalImages from "./app/local-images";
 import renderLog from "./app/log";
 import renderDebug from "./app/debug";
 import { l } from "./logger";
 import { Writable } from "stream";
+
 import {
   refreshLocalImages,
   refreshRemoteBranches,
@@ -125,7 +133,9 @@ calypsoServer.get(
   }
 );
 
+calypsoServer.use(redirectHashFromQueryStringToSubdomain);
 calypsoServer.use(determineCommitHash);
+
 calypsoServer.get("/status", async (req: any, res: any) => {
   const commitHash = req.session.commitHash;
   let status;

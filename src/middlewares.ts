@@ -1,58 +1,86 @@
 // external
-import * as express from 'express';
-import * as httpProxy from 'http-proxy';
-import * as expressSession from 'express-session';
-import * as _ from 'lodash';
-import * as striptags from 'striptags';
+import * as expressSession from "express-session";
 
 // internal
 import {
-	getCommitHashForBranch,
-	hasHashLocally,
-	CommitHash,
-	NotFound,
-	getPortForContainer,
-	touchCommit,
-} from './api';
+  getCommitHashForBranch,
+  CommitHash,
+  touchCommit
+} from "./api";
 
-export async function determineCommitHash(req: any, res: any, next: any) {
-	const isHashInSession = !!req.session.commitHash;
-	const isHashSpecified = req.query && (req.query.hash || req.query.branch);
-	let commitHash;
+const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 
-	if (isHashInSession && !isHashSpecified) {
-		next();
-		return;
-	}
+function assembleSubdomainUrlForHash(req: any, commitHash: CommitHash) {
+  const protocol = req.secure ? "https" : "http";
 
-	if (!isHashSpecified) {
-		res.send('Please specify a branch to load');
-		return;
-	}
+  return (
+    protocol +
+    "://hash-" +
+    commitHash +
+    "." +
+    stripCommitHashSubdomainFromHost(req.headers.host)
+  );
+}
 
-	if (req.query.hash) {
-		commitHash = req.query.hash;
-	} else if (req.query.branch) {
-		commitHash = getCommitHashForBranch(req.query.branch);
-	}
+function stripCommitHashSubdomainFromHost(host: string) {
+  return host.replace( hashPattern, '' );
+}
 
-	if (commitHash instanceof Error) {
-		res.send(striptags('Calypso Server: ' + commitHash.message));
-		return;
-	} else if (req.query.branch && _.isUndefined(commitHash)) {
-		res.send(striptags(`Please specify a valid branch.  Could not find: ${req.query.branch}`));
-		return;
-	}
+function getCommitHashFromSubdomain(host: string) {
+  const match = host.match( hashPattern );
 
-	req.session.commitHash = commitHash;
-	touchCommit(commitHash);
+  if ( ! match ) {
+    return null;
+  }
 
-	next();
+  const [ /* full match */, hash ] = match;
+  return hash;
+}
+
+export function redirectHashFromQueryStringToSubdomain(
+  req: any,
+  res: any,
+  next: any
+) {
+  const isHashSpecified = req.query && (req.query.hash || req.query.branch);
+
+  if (!isHashSpecified) {
+    next();
+    return;
+  }
+
+  const commitHash = req.query.hash || getCommitHashForBranch(req.query.branch);
+
+  res.redirect(assembleSubdomainUrlForHash(req, commitHash));
+
+  res.end();
+}
+
+export function determineCommitHash(req: any, res: any, next: any) {
+  const isHashInSession = !!req.session.commitHash;
+  const subdomainCommitHash = getCommitHashFromSubdomain(req.headers.host);
+
+  if (isHashInSession && !subdomainCommitHash) {
+    next();
+    return;
+  }
+
+  if (!subdomainCommitHash) {
+    // @todo Render a nicer page here.
+    res.send("Please specify a branch to load");
+    return;
+  }
+
+  req.session.commitHash = subdomainCommitHash;
+
+  touchCommit(subdomainCommitHash);
+
+  next();
 }
 
 export const session = expressSession({
-	secret: 'keyboard cat',
-	cookie: {},
-	resave: false,
-	saveUninitialized: true,
+  secret: "keyboard cat",
+  cookie: {},
+  resave: false,
+  saveUninitialized: true
 });
