@@ -1,4 +1,5 @@
 // external
+import * as express from 'express';
 import * as expressSession from 'express-session';
 
 // internal
@@ -13,7 +14,7 @@ import { RSA_NO_PADDING } from 'constants';
 
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 
-function assembleSubdomainUrlForHash( req: any, commitHash: CommitHash ) {
+function assembleSubdomainUrlForHash( req: express.Request, commitHash: CommitHash ) {
 	const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? 'https' : 'http';
 
 	return (
@@ -42,9 +43,9 @@ function getCommitHashFromSubdomain( host: string ) {
 }
 
 export function redirectHashFromQueryStringToSubdomain(
-	req: any,
-	res: any,
-	next: any,
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
 	retry: number = 2
 ) {
 	const isHashSpecified = req.query && ( req.query.hash || req.query.branch );
@@ -79,7 +80,11 @@ export function redirectHashFromQueryStringToSubdomain(
 	res.end();
 }
 
-export function determineCommitHash( req: any, res: any, next: any ) {
+export function determineCommitHash(
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction
+) {
 	const isHashInSession = !! req.session.commitHash;
 	const subdomainCommitHash = getCommitHashFromSubdomain( req.headers.host );
 
