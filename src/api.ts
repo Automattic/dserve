@@ -328,7 +328,7 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 
 // stop any container that hasn't been accessed within ten minutes
 export async function cleanupExpiredContainers() {
-	const containers = Array.from( await docker.listContainers( { all: true } ) );
+	const containers = Array.from(await docker.listContainers({ all: true }));
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
 	expiredContainers.forEach(async (container: ContainerInfo) => {
 		const imageName: string = container.Image;
@@ -336,19 +336,25 @@ export async function cleanupExpiredContainers() {
 		l.log({
 			imageName,
 			containerId: container.Id
-		}, 'Cleaning up stale container' );
+		}, 'Cleaning up stale container');
 
-		try {
-			if ( container.State === 'running' ) {
+
+		if (container.State === 'running') {
+			try {
 				await docker.getContainer(container.Id).stop();
 				l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
+			} catch (err) {
+				l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container');
 			}
+		}
+		try {
 			await docker.getContainer(container.Id).remove();
 			l.log({ containerId: container.Id, imageName }, `Successfully removed container`);
 		} catch (err) {
-			l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container');
+			l.error({ err, imageName, containerId: container.Id }, 'Failed to remove container');
 		}
-	} );
+
+	});
 }
 
 const proxy = httpProxy.createProxyServer({}); // See (†)
