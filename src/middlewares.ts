@@ -18,7 +18,8 @@ function assembleSubdomainUrlForHash(req: any, commitHash: CommitHash) {
     "://hash-" +
     commitHash +
     "." +
-    stripCommitHashSubdomainFromHost(req.headers.host)
+    stripCommitHashSubdomainFromHost(req.headers.host) +
+    req.path
   );
 }
 
