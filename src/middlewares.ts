@@ -45,7 +45,7 @@ export function redirectHashFromQueryStringToSubdomain(
   req: any,
   res: any,
   next: any,
-  retry: boolean = true
+  retry: number = 2
 ) {
   const isHashSpecified = req.query && (req.query.hash || req.query.branch);
 
@@ -63,9 +63,9 @@ export function redirectHashFromQueryStringToSubdomain(
 
   if (!commitHash) {
     // could not find a hash for the branch... refresh the remotes and try again
-    if (retry) {
+    if (retry > 0) {
       refreshRemoteBranches().then(() => {
-        redirectHashFromQueryStringToSubdomain(req, res, next, false);
+        redirectHashFromQueryStringToSubdomain(req, res, next, retry - 1);
       }).catch(sendError);
       return;
     }
