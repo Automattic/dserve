@@ -273,16 +273,31 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 	}
 }
 
+let refreshingPromise: Promise<any> = null;
 export async function refreshRemoteBranches() {
-	const branches = await getRemoteBranches();
-
-	if ( branches ) {
-		state.branchHashes = new Map(
-			Array.from( branches ).map( ( [ a, b ] ) => [ b, a ] as [ CommitHash, BranchName ] )
-		);
-
-		state.remoteBranches = branches;
+	if (refreshingPromise) {
+		return refreshingPromise;
 	}
+
+	refreshingPromise = (async () => {
+		const branches = await getRemoteBranches();
+
+		if (branches) {
+			state.branchHashes = new Map(
+				Array.from(branches).map(([a, b]) => [b, a] as [CommitHash, BranchName])
+			);
+
+			state.remoteBranches = branches;
+		}
+	})();
+
+	function letItGo() {
+		refreshingPromise = null;
+	}
+
+	refreshingPromise.then( letItGo, letItGo ); // errors never bothered me anyway
+
+	return refreshingPromise;
 }
 
 export function getBranchHashes() {

@@ -4,9 +4,12 @@ import * as expressSession from "express-session";
 // internal
 import {
   getCommitHashForBranch,
+  refreshRemoteBranches,
   CommitHash,
-  touchCommit
+  touchCommit,
+  ONE_MINUTE
 } from "./api";
+import { RSA_NO_PADDING } from "constants";
 
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 
@@ -41,7 +44,8 @@ function getCommitHashFromSubdomain(host: string) {
 export function redirectHashFromQueryStringToSubdomain(
   req: any,
   res: any,
-  next: any
+  next: any,
+  retry: number = 2
 ) {
   const isHashSpecified = req.query && (req.query.hash || req.query.branch);
 
@@ -51,6 +55,22 @@ export function redirectHashFromQueryStringToSubdomain(
   }
 
   const commitHash = req.query.hash || getCommitHashForBranch(req.query.branch);
+
+  const sendError = () => {
+    res.send('could not find a hash for that branch');
+    res.end();
+  }
+
+  if (!commitHash) {
+    // could not find a hash for the branch... refresh the remotes and try again
+    if (retry > 0) {
+      refreshRemoteBranches().then(() => {
+        redirectHashFromQueryStringToSubdomain(req, res, next, retry - 1);
+      }).catch(sendError);
+      return;
+    }
+    sendError();
+  }
 
   res.redirect(assembleSubdomainUrlForHash(req, commitHash));
 
