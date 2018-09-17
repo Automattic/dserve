@@ -9,7 +9,7 @@ import {
 describe('api', () => {
 	describe('getExpiredContainers', () => {
 		const RealNow = Date.now;
-		Date.now = () => 1000000;
+		Date.now = () => 10000000;
 		afterAll(() => {
 			Date.now = RealNow;
 		});
