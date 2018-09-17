@@ -50,7 +50,7 @@ export const ONE_SECOND = 1000;
 export const ONE_MINUTE = 60 * ONE_SECOND;
 export const FIVE_MINUTES = 5 * ONE_MINUTE;
 export const TEN_MINUTES = 10 * ONE_MINUTE;
-export const CONTAINER_EXPIRY_TIME = FIVE_MINUTES;
+export const CONTAINER_EXPIRY_TIME = 20 * ONE_MINUTE;
 
 export const getImageName = (hash: CommitHash) => `${config.build.tagPrefix}:${hash}`;
 export const extractCommitFromImage = (imageName: string): CommitHash => imageName.split(':')[1];
@@ -330,7 +330,17 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 
 		// exclude container if it wasnt created by this app
 		if (!imageName.startsWith(config.build.tagPrefix)) {
-			return;
+			return false;
+		}
+
+		if ( container.State === 'dead' ) {
+			// ignore dead containers
+			return false;
+		}
+
+		if ( container.State === 'exited' ) {
+			// these are done, remove 'em
+			return true;
 		}
 
 		const createdAgo = Date.now() - ( container.Created * 1000 );
@@ -345,14 +355,13 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 export async function cleanupExpiredContainers() {
 	const containers = Array.from(await docker.listContainers({ all: true }));
 	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
-	expiredContainers.forEach(async (container: ContainerInfo) => {
+	for( let container of expiredContainers ) {
 		const imageName: string = container.Image;
 
 		l.log({
 			imageName,
 			containerId: container.Id
 		}, 'Cleaning up stale container');
-
 
 		if (container.State === 'running') {
 			try {
@@ -368,8 +377,7 @@ export async function cleanupExpiredContainers() {
 		} catch (err) {
 			l.error({ err, imageName, containerId: container.Id }, 'Failed to remove container');
 		}
-
-	});
+	}
 }
 
 const proxy = httpProxy.createProxyServer({}); // See (†)
