@@ -64,7 +64,7 @@ export function addToBuildQueue(commitHash: CommitHash) {
 }
 
 export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
-	let buildStream: Readable;
+	let buildStream: NodeJS.ReadableStream;
 
 	const buildDir = getBuildDir(commitHash);
 	const repoDir = path.join(buildDir, 'repo');
