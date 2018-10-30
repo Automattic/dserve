@@ -94,6 +94,7 @@ export const Shell = ({ refreshInterval, startedServerAt, children }: any) => (
 					>{ humanTime( startedServerAt / 1000 ) }</time>
 				) }
 				<div className="dserve-toolbar">
+					          <a href="/?reset=true">Reset Branch</a>
                     <a href="/log">Logs</a>
                     <a href="/localimages">Local Images</a>
 					<a href="https://github.com/Automattic/dserve/issues">Report issues</a>

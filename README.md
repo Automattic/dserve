@@ -14,6 +14,7 @@ while, proxy requests to the right container based on query params, etc.
 ```bash
 git clone git@github.com:Automattic/dserve.git
 cd dserve
+nvm use
 yarn
 yarn start
 ```

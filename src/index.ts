@@ -164,7 +164,7 @@ calypsoServer.get("*", async (req: any, res: any) => {
   if (shouldReset) {
     await deleteImage(commitHash);
     await cleanupBuildDir(commitHash);
-    const response = `hard resetting hash: ${commitHash}`;
+    const response = `hard resetting hash: ${commitHash} please try to access branch again`;
     res.send(striptags(response));
     return;
   }
