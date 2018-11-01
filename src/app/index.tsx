@@ -23,7 +23,7 @@ class BuildLog extends React.Component<{ log: string }> {
 }
 
 const App = ({ buildLog, message, startedServerAt }: RenderContext) => (
-	<Shell refreshInterval={ 3 * ONE_SECOND } startedServerAt={ startedServerAt }>
+	<Shell refreshInterval={ 3 * ONE_SECOND } startedServerAt={ startedServerAt } showReset={ true }>
 		<div dangerouslySetInnerHTML={ { __html: `
 			<style>
                 .dserve-toolbar a {
