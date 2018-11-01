@@ -18,7 +18,7 @@ class Reloader extends React.Component<{ milliseconds: number }> {
 	}
 }
 
-export const Shell = ({ refreshInterval, startedServerAt, children }: any) => (
+export const Shell = ({ refreshInterval, startedServerAt, showReset=false, children }: any) => (
 	<html>
 		<head>
             { 'number' === typeof refreshInterval && <Reloader milliseconds={ refreshInterval } /> }
@@ -94,6 +94,7 @@ export const Shell = ({ refreshInterval, startedServerAt, children }: any) => (
 					>{ humanTime( startedServerAt / 1000 ) }</time>
 				) }
 				<div className="dserve-toolbar">
+					{ showReset && <a href="/?reset=true">Reset Branch</a> }
                     <a href="/log">Logs</a>
                     <a href="/localimages">Local Images</a>
 					<a href="https://github.com/Automattic/dserve/issues">Report issues</a>
