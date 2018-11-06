@@ -1,8 +1,8 @@
 jest.mock('bunyan');
 
 describe('logger', () => {
-	let logger;
-	let createLogger;
+	let logger: any;
+	let createLogger: any;
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.resetModules();

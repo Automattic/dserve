@@ -99,7 +99,7 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 
 		const checkoutStart = Date.now();
 		const commit = await repo.getCommit(commitHash);
-		const branch = await repo.createBranch('dserve', commit, true, undefined, undefined);
+		const branch = await repo.createBranch('dserve', commit, true);
 		await repo.checkoutBranch(branch);
 		repo.free();
 		l.log({ commitHash, checkoutTime: checkoutStart - Date.now() }, 'Checked out branch' );
