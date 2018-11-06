@@ -1,3 +1,5 @@
+/** @format */
+
 import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 
@@ -5,46 +7,48 @@ import { Shell } from './app-shell';
 import { errorClass, humanTime } from './util';
 import { ONE_MINUTE } from '../api';
 
-const interestingDetails = new Set([
-    'commitHash',
-    'freePort',
-    'error',
-    'err',
-    'imageName',
-    'containerId',
-    'cloneTime',
-    'checkoutTime',
-    'success',
-    'code',
-    'signal',
-    'data',
-]);
+const interestingDetails = new Set( [
+	'commitHash',
+	'freePort',
+	'error',
+	'err',
+	'imageName',
+	'containerId',
+	'cloneTime',
+	'checkoutTime',
+	'success',
+	'code',
+	'signal',
+	'data',
+] );
 
-const LogDetails = ( { data  } : any ) => {
+const LogDetails = ( { data }: any ) => {
+	const details = new Map();
+	for ( let detail of interestingDetails ) {
+		if ( data[ detail ] ) {
+			details.set( detail, data[ detail ] );
+		}
+	}
+	if ( details.size === 0 ) {
+		return null;
+	}
+	return (
+		<div className="details">
+			{ Array.from( details.entries() ).map( ( [ key, value ] ) => (
+				<pre key={ key }>
+					{ key }:{' '}
+					{ typeof value === 'object' ? JSON.stringify( value, null, 2 ) : value.toString() }
+				</pre>
+			) ) }
+		</div>
+	);
+};
 
-    const details = new Map();
-    for( let detail of interestingDetails ) {
-        if ( data[ detail ] ) {
-            details.set( detail, data[ detail ] );
-        }
-    }
-    if ( details.size === 0 ) {
-        return null;
-    }
-    return (
-        <div className="details">
-            {
-                Array.from( details.entries() ).map( ( [ key, value ] ) => <pre key={key}>{ key }: { typeof value === 'object' ? JSON.stringify( value, null, 2 ) : value.toString() }</pre> )
-            }
-        </div>
-    )
-}
-
-const Log = ({ log, startedServerAt }: RenderContext) => (
-    <Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
-        <style
-            dangerouslySetInnerHTML={{
-                __html: `
+const Log = ( { log, startedServerAt }: RenderContext ) => (
+	<Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
+		<style
+			dangerouslySetInnerHTML={ {
+				__html: `
                 .dserve-log-lines {
                     list-style: none;
                 }
@@ -79,34 +83,51 @@ const Log = ({ log, startedServerAt }: RenderContext) => (
                     margin: 0;
                 }
         `,
-            }}
-        />
-        <ol className="dserve-log-lines">
-        { log.split( '\n' ).filter( l => l.length > 0 ).reverse().map( ( line, i ) => {
-            let data;
-            try {
-                data = JSON.parse( line );
-            } catch ( e ) {
-                return <li className="dserve-log-line" key={ `${ i }-${ line }` }>Unparseable log item - »<pre>{ line }</pre>«</li>
-            }
+			} }
+		/>
+		<ol className="dserve-log-lines">
+			{ log
+				.split( '\n' )
+				.filter( l => l.length > 0 )
+				.reverse()
+				.map( ( line, i ) => {
+					let data;
+					try {
+						data = JSON.parse( line );
+					} catch ( e ) {
+						return (
+							<li className="dserve-log-line" key={ `${ i }-${ line }` }>
+								Unparseable log item - »<pre>{ line }</pre>«
+							</li>
+						);
+					}
 
-            const at = Date.parse( data.time );
+					const at = Date.parse( data.time );
 
-            return (
-                <li className={ `dserve-log-line ${ errorClass( data.level ) }` } key={ `${ i }-${ line }` }>
-                    <time
-                        dateTime={ new Date( at ).toISOString() }
-                        title={ new Date( at ).toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }
-                    >{ humanTime( at / 1000 ) }</time> <span className="info">{ data.msg }</span>
-                    <LogDetails data={ data } />
-                </li>
-            );
-        } ) }
-        </ol>
-    </Shell>
+					return (
+						<li
+							className={ `dserve-log-line ${ errorClass( data.level ) }` }
+							key={ `${ i }-${ line }` }
+						>
+							<time
+								dateTime={ new Date( at ).toISOString() }
+								title={ new Date( at ).toLocaleTimeString( undefined, {
+									timeZoneName: 'long',
+									hour12: true,
+								} ) }
+							>
+								{ humanTime( at / 1000 ) }
+							</time>{' '}
+							<span className="info">{ data.msg }</span>
+							<LogDetails data={ data } />
+						</li>
+					);
+				} ) }
+		</ol>
+	</Shell>
 );
 
-type RenderContext = { log: string, startedServerAt: Date };
-export default function renderLog(renderContext: RenderContext) {
-	return ReactDOMServer.renderToStaticMarkup(<Log {...renderContext} />);
+type RenderContext = { log: string; startedServerAt: Date };
+export default function renderLog( renderContext: RenderContext ) {
+	return ReactDOMServer.renderToStaticMarkup( <Log { ...renderContext } /> );
 }

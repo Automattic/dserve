@@ -1,29 +1,31 @@
+/** @format */
+
 import * as React from 'react';
 import { start } from 'repl';
 import { humanTime } from './util';
 
-class Reloader extends React.Component<{ milliseconds: number }> {
+class Reloader extends React.Component< { milliseconds: number } > {
 	render() {
 		return (
 			<div
-				dangerouslySetInnerHTML={{
+				dangerouslySetInnerHTML={ {
 					__html: `
 					<script>
-						setTimeout(() => window.location.reload(), ${this.props.milliseconds});
+						setTimeout(() => window.location.reload(), ${ this.props.milliseconds });
 					</script>
 				`,
-				}}
+				} }
 			/>
 		);
 	}
 }
 
-export const Shell = ({ refreshInterval, startedServerAt, showReset=false, children }: any) => (
+export const Shell = ( { refreshInterval, startedServerAt, showReset = false, children }: any ) => (
 	<html>
 		<head>
-            { 'number' === typeof refreshInterval && <Reloader milliseconds={ refreshInterval } /> }
+			{ 'number' === typeof refreshInterval && <Reloader milliseconds={ refreshInterval } /> }
 			<style
-				dangerouslySetInnerHTML={{
+				dangerouslySetInnerHTML={ {
 					__html: `
 					body {
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen-Sans", "Ubuntu", "Cantarell", "Helvetica Neue", sans-serif;
@@ -82,27 +84,31 @@ export const Shell = ({ refreshInterval, startedServerAt, showReset=false, child
 						padding: 86px 20px 10px 20px;
 					}
 			`,
-				}}
+				} }
 			/>
-        </head>
+		</head>
 		<body>
 			<div className="dserve-message">
-				DServe Calypso - { (
+				DServe Calypso -{' '}
+				{
 					<time
 						dateTime={ startedServerAt.toISOString() }
-						title={ startedServerAt.toLocaleTimeString( undefined, { timeZoneName: 'long', hour12: true } ) }
-					>{ humanTime( startedServerAt / 1000 ) }</time>
-				) }
+						title={ startedServerAt.toLocaleTimeString( undefined, {
+							timeZoneName: 'long',
+							hour12: true,
+						} ) }
+					>
+						{ humanTime( startedServerAt / 1000 ) }
+					</time>
+				}
 				<div className="dserve-toolbar">
 					{ showReset && <a href="/?reset=true">Reset Branch</a> }
-                    <a href="/log">Logs</a>
-                    <a href="/localimages">Local Images</a>
+					<a href="/log">Logs</a>
+					<a href="/localimages">Local Images</a>
 					<a href="https://github.com/Automattic/dserve/issues">Report issues</a>
 				</div>
 			</div>
-			<div className="dserve-main-contents">
-                { children }
-			</div>
+			<div className="dserve-main-contents">{ children }</div>
 		</body>
 	</html>
 );

@@ -1,3 +1,5 @@
+/** @format */
+
 import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 import * as Dockerode from 'dockerode';
@@ -13,23 +15,26 @@ import { buildQueue } from '../builder';
 
 const Docker = new Dockerode();
 
-const Debug = (c: RenderContext) => {
-    const memUsage = process.memoryUsage();
-    const heapU = memUsage.heapUsed;
-    const heapT = memUsage.heapTotal;
-    const memTotal = os.totalmem();
-    const memUsed = memTotal - os.freemem();
-    const images = Array.from(apiState.localImages.entries()) as Array<[string, Dockerode.ImageInfo]>;
-    const apiContainers = Array.from(apiState.containers.entries());
+const Debug = ( c: RenderContext ) => {
+	const memUsage = process.memoryUsage();
+	const heapU = memUsage.heapUsed;
+	const heapT = memUsage.heapTotal;
+	const memTotal = os.totalmem();
+	const memUsed = memTotal - os.freemem();
+	const images = Array.from( apiState.localImages.entries() ) as Array<
+		[string, Dockerode.ImageInfo]
+	>;
+	const apiContainers = Array.from( apiState.containers.entries() );
 
+	const shortHash = ( hash: string, length = 30 ) => (
+		<span title={ hash }>{ hash.slice( 0, length ) }…</span>
+	);
 
-    const shortHash = (hash: string, length = 30) => <span title={hash}>{hash.slice(0, length)}…</span>;
-
-    return (
-        <Shell refreshInterval={ONE_MINUTE} startedServerAt={c.startedServerAt}>
-            <style
-                dangerouslySetInnerHTML={{
-                    __html: `
+	return (
+		<Shell refreshInterval={ ONE_MINUTE } startedServerAt={ c.startedServerAt }>
+			<style
+				dangerouslySetInnerHTML={ {
+					__html: `
                     .dserve-debug-cards {
                         display: grid;
                         grid-template-columns: repeat(6, 1fr);
@@ -99,142 +104,195 @@ const Debug = (c: RenderContext) => {
                         content: '✅ ';
                     }
                     `,
-                }}
-            />
-            <div className="dserve-debug-cards">
-                <figure className="system">
-                    <p>CPU (x{os.cpus().length}): {os.loadavg().map(a => round(a, 2)).join(', ')} (1m, 5m, 15m)</p>
-                    <p>Memory</p>
-                    <ul>
-                        <li>heap: {humanSize(heapU)} / {humanSize(heapT)} ({percent(heapU, heapT)}%)</li>
-                        <li>system: {humanSize(memUsed)} / {humanSize(memTotal)} ({percent(memUsed, memTotal)}%)</li>
-                    </ul>
-                    <figcaption>System Load</figcaption>
-                </figure>
+				} }
+			/>
+			<div className="dserve-debug-cards">
+				<figure className="system">
+					<p>
+						CPU (x
+						{ os.cpus().length }
+						):{' '}
+						{ os
+							.loadavg()
+							.map( a => round( a, 2 ) )
+							.join( ', ' ) }{' '}
+						(1m, 5m, 15m)
+					</p>
+					<p>Memory</p>
+					<ul>
+						<li>
+							heap: { humanSize( heapU ) } / { humanSize( heapT ) } ({ percent( heapU, heapT ) }
+							%)
+						</li>
+						<li>
+							system: { humanSize( memUsed ) } / { humanSize( memTotal ) } (
+							{ percent( memUsed, memTotal ) }
+							%)
+						</li>
+					</ul>
+					<figcaption>System Load</figcaption>
+				</figure>
 
-                <figure className="queue">
-                    <p>Build Queue</p>
-                    {buildQueue.length ? (
-                        <ul>
-                            {buildQueue.map(hash => <li>{hash}</li>)}
-                        </ul>
-                    ) : (
-                            <p><em>Nothing is waiting in the queue</em></p>
-                        )}
-                    <figcaption>Builder</figcaption>
-                </figure>
+				<figure className="queue">
+					<p>Build Queue</p>
+					{ buildQueue.length ? (
+						<ul>
+							{ buildQueue.map( hash => (
+								<li>{ hash }</li>
+							) ) }
+						</ul>
+					) : (
+						<p>
+							<em>Nothing is waiting in the queue</em>
+						</p>
+					) }
+					<figcaption>Builder</figcaption>
+				</figure>
 
-                <figure className="promises">
-                    {promiseRejections.size ? (
-                        <ul>
-                            {Array.from(promiseRejections.values()).map(([ts, reason,]) => (
-                                <li>
-                                    <time dateTime={ts.toISOString()} title={ts.toLocaleTimeString(undefined, { timeZoneName: 'long', hour12: true })}>
-                                        {humanTime(ts.getTime() / 1000)}
-                                    </time>
-                                    {reason}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                            <p><em>No unhandled rejected promises</em></p>
-                        )}
-                    <figcaption>Rejected Promises</figcaption>
-                </figure>
+				<figure className="promises">
+					{ promiseRejections.size ? (
+						<ul>
+							{ Array.from( promiseRejections.values() ).map( ( [ ts, reason ] ) => (
+								<li>
+									<time
+										dateTime={ ts.toISOString() }
+										title={ ts.toLocaleTimeString( undefined, {
+											timeZoneName: 'long',
+											hour12: true,
+										} ) }
+									>
+										{ humanTime( ts.getTime() / 1000 ) }
+									</time>
+									{ reason }
+								</li>
+							) ) }
+						</ul>
+					) : (
+						<p>
+							<em>No unhandled rejected promises</em>
+						</p>
+					) }
+					<figcaption>Rejected Promises</figcaption>
+				</figure>
 
-                <figure className="api">
-                    <p>Running Containers</p>
-                    <ul>
-                        {apiContainers.length === 0
-                        ? <li><em>No running containers</em></li>
-                        : ( apiContainers.map(([key, info]) => (
-                            <li key={info.Id} className={info.State}>
-                                <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
-                                Image ID: {shortHash(info.ImageID)}<br />
-                                Status: {info.Status}<br />
-                                Last Access: { getCommitAccessTime( extractCommitFromImage( info.Image ) ) 
-                                ? humanTime( getCommitAccessTime( extractCommitFromImage( info.Image ) ) / 1000 )
-                                : 'never' }
-                            </li>
-                        )))}
-                    </ul>
+				<figure className="api">
+					<p>Running Containers</p>
+					<ul>
+						{ apiContainers.length === 0 ? (
+							<li>
+								<em>No running containers</em>
+							</li>
+						) : (
+							apiContainers.map( ( [ key, info ] ) => (
+								<li key={ info.Id } className={ info.State }>
+									<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
+									<br />
+									Image ID: { shortHash( info.ImageID ) }
+									<br />
+									Status: { info.Status }
+									<br />
+									Last Access:{' '}
+									{ getCommitAccessTime( extractCommitFromImage( info.Image ) )
+										? humanTime(
+												getCommitAccessTime( extractCommitFromImage( info.Image ) ) / 1000
+										  )
+										: 'never' }
+								</li>
+							) )
+						) }
+					</ul>
 
-                    <p>DServe Images</p>
-                    <p>Total storage size: {humanSize(images.reduce((size, [, info]) => size + info.Size, 0))}</p>
-                    <ul>
-                        {images.length === 0
-                        ? <li><em>No dserve images</em></li>
-                        : images.map(([key, info]) => (
-                            <li key={info.Id}>
-                                RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
-                                Id: {shortHash(info.Id)}<br />
-                                Size: {humanSize(info.Size)}<br />
-                                Created: {humanTime(info.Created)}
-                            </li>
-                        ))}
-                    </ul>
+					<p>DServe Images</p>
+					<p>
+						Total storage size:{' '}
+						{ humanSize( images.reduce( ( size, [ , info ] ) => size + info.Size, 0 ) ) }
+					</p>
+					<ul>
+						{ images.length === 0 ? (
+							<li>
+								<em>No dserve images</em>
+							</li>
+						) : (
+							images.map( ( [ key, info ] ) => (
+								<li key={ info.Id }>
+									RepoTags: <strong>{ shortHash( info.RepoTags.join( ', ' ), 38 ) }</strong>
+									<br />
+									Id: { shortHash( info.Id ) }
+									<br />
+									Size: { humanSize( info.Size ) }
+									<br />
+									Created: { humanTime( info.Created ) }
+								</li>
+							) )
+						) }
+					</ul>
 
-                    <figcaption>API</figcaption>
-                </figure>
+					<figcaption>API</figcaption>
+				</figure>
 
-                <figure className="docker">
-                    <p>All Containers</p>
-                    <ul className="dserve-container-list">
-                        {(
-                            c.docker.containers.length === 0
-                            ? <li><em>No containers</em></li>
-                            : c.docker.containers
-                                .sort((a, b) => b.Created - a.Created)
-                                .map(info => (
-                                    <li key={info.Id} className={info.State}>
-                                        <strong>{info.Names}</strong> - {shortHash(info.Id)}<br />
-                                        Image ID: {shortHash(info.ImageID)}<br />
-                                        Status: {info.State} - {info.Status}
-                                    </li>
-                                ))
-                        )}
-                    </ul>
+				<figure className="docker">
+					<p>All Containers</p>
+					<ul className="dserve-container-list">
+						{ c.docker.containers.length === 0 ? (
+							<li>
+								<em>No containers</em>
+							</li>
+						) : (
+							c.docker.containers.sort( ( a, b ) => b.Created - a.Created ).map( info => (
+								<li key={ info.Id } className={ info.State }>
+									<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
+									<br />
+									Image ID: { shortHash( info.ImageID ) }
+									<br />
+									Status: { info.State } - { info.Status }
+								</li>
+							) )
+						) }
+					</ul>
 
-                    <p>All Images</p>
-                    <ul className="dserve-image-list">
-                        {(
-                            c.docker.images.length === 0
-                            ? <li><em>No docker images</em></li>
-                            : c.docker.images
-                                .sort((a, b) => b.Created - a.Created)
-                                .map(info => (
-                                    <li key={info.Id}>
-                                        RepoTags: <strong>{shortHash(info.RepoTags.join(', '), 38)}</strong><br />
-                                        Id: {shortHash(info.Id)}<br />
-                                        Size: {humanSize(info.Size)}<br />
-                                        Created: {humanTime(info.Created)}
-                                    </li>
-                                ))
-                        )}
-                    </ul>
-                    <figcaption>Docker</figcaption>
-                </figure>
-            </div>
-        </Shell>
-    );
+					<p>All Images</p>
+					<ul className="dserve-image-list">
+						{ c.docker.images.length === 0 ? (
+							<li>
+								<em>No docker images</em>
+							</li>
+						) : (
+							c.docker.images.sort( ( a, b ) => b.Created - a.Created ).map( info => (
+								<li key={ info.Id }>
+									RepoTags: <strong>{ shortHash( info.RepoTags.join( ', ' ), 38 ) }</strong>
+									<br />
+									Id: { shortHash( info.Id ) }
+									<br />
+									Size: { humanSize( info.Size ) }
+									<br />
+									Created: { humanTime( info.Created ) }
+								</li>
+							) )
+						) }
+					</ul>
+					<figcaption>Docker</figcaption>
+				</figure>
+			</div>
+		</Shell>
+	);
 };
 
 type RenderContext = {
-    startedServerAt: Date;
-    docker: {
-        containers: Array<Dockerode.ContainerInfo>;
-        images: Array<Dockerode.ImageInfo>;
-    };
-}
+	startedServerAt: Date;
+	docker: {
+		containers: Array< Dockerode.ContainerInfo >;
+		images: Array< Dockerode.ImageInfo >;
+	};
+};
 
-export default async function renderDebug({ startedServerAt }: { startedServerAt: Date }) {
-    return ReactDOMServer.renderToStaticMarkup((
-        <Debug
-            startedServerAt={startedServerAt}
-            docker={{
-                containers: await Docker.listContainers({ all: true }),
-                images: await Docker.listImages(),
-            }}
-        />
-    ));
+export default async function renderDebug( { startedServerAt }: { startedServerAt: Date } ) {
+	return ReactDOMServer.renderToStaticMarkup(
+		<Debug
+			startedServerAt={ startedServerAt }
+			docker={ {
+				containers: await Docker.listContainers( { all: true } ),
+				images: await Docker.listImages(),
+			} }
+		/>
+	);
 }
