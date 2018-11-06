@@ -34,7 +34,7 @@ const toPrettify = files.filter( file => ! dirtyFiles.has( file ) );
 toPrettify.forEach( file => console.log( `Prettier formatting staged file: ${ file }` ) );
 
 if ( toPrettify.length ) {
-    execSync( `./node_modules/.bin/prettier --write --require-pragma ${ toPrettify.join( ' ' ) }` );
+    execSync( `./node_modules/.bin/prettier --write ${ toPrettify.join( ' ' ) }` );
     execSync( `git add ${ toPrettify.join( ' ' ) }` );
 }
 
