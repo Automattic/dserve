@@ -50,7 +50,7 @@
 		"serve:forever": "node build/daemon.js",
 		"build-ts": "tsc",
 		"watch-ts": "tsc -w",
-		"reformat-files": "./node_modules/.bin/prettier --write --require-pragma \"src/**/*.{ts,tsx,scss}\""
+		"reformat-files": "./node_modules/.bin/prettier --write \"src/**/*.{ts,tsx,scss}\""
 	},
 	"repository": {
 		"type": "git",
