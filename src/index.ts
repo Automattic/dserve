@@ -3,6 +3,8 @@ import * as express from "express";
 import * as fs from "fs-extra";
 import * as striptags from "striptags";
 import * as useragent from "useragent";
+import { execSync } from 'child_process';
+import * as path from "path";
 
 // internal
 import {
@@ -92,7 +94,15 @@ logRejections();
 
 // get application log for debugging
 calypsoServer.get("/log", (req: express.Request, res: express.Response) => {
-  const appLog = fs.readFileSync("./logs/log.txt", "utf-8"); // todo change back from l
+  //const appLog = fs.readFileSync("./logs/log.txt", "utf-8"); // todo change back from l
+  const truncatedLog = execSync( 'tail -n 2000 ./logs/log.txt' );
+  let appLog;
+  if ( Buffer.isBuffer( truncatedLog ) ) {
+    appLog = truncatedLog.toString( 'utf-8' );
+  } else {
+    appLog = truncatedLog;
+  }
+
 
   isBrowser(req)
     ? res.send(renderLog({ log: appLog, startedServerAt }))
