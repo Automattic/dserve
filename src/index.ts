@@ -3,6 +3,7 @@ import * as express from "express";
 import * as fs from "fs-extra";
 import * as striptags from "striptags";
 import * as useragent from "useragent";
+import { exec } from "child_process";
 
 // internal
 import {
@@ -92,11 +93,20 @@ logRejections();
 
 // get application log for debugging
 calypsoServer.get("/log", (req: express.Request, res: express.Response) => {
-  const appLog = fs.readFileSync("./logs/log.txt", "utf-8"); // todo change back from l
-
-  isBrowser(req)
-    ? res.send(renderLog({ log: appLog, startedServerAt }))
-    : res.send(appLog);
+  //const appLog = fs.readFileSync("./logs/log.txt", "utf-8"); // todo change back from l
+  exec(
+    "tail -n 2000 ./logs/log.txt",
+    { maxBuffer: 5000 * 1024 },
+    (err, stdout) => {
+      if (err) {
+        res.send("error reading log file. " + err);
+        return;
+      }
+      isBrowser(req)
+        ? res.send(renderLog({ log: stdout, startedServerAt }))
+        : res.send(stdout);
+    }
+  );
 });
 
 calypsoServer.get(
@@ -165,7 +175,7 @@ calypsoServer.get("*", async (req: any, res: any) => {
     await deleteImage(commitHash);
     await cleanupBuildDir(commitHash);
     const response = `hard reset hash: ${commitHash} and loading it now...`;
-    res.set('Refresh', `5;url=${req.path}`);
+    res.set("Refresh", `5;url=${req.path}`);
     res.send(striptags(response));
     return;
   }
@@ -243,9 +253,9 @@ if (process.env.NODE_ENV !== "test") {
     const run = async () => {
       try {
         await f();
-      } catch( e ) {
-		  l.error( e );
-	  } finally {
+      } catch (e) {
+        l.error(e);
+      } finally {
         setTimeout(run, delay);
       }
     };
