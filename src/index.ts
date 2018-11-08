@@ -100,7 +100,7 @@ calypsoServer.get("/log", (req: express.Request, res: express.Response) => {
       return;
     }
     isBrowser(req)
-    ? res.send(renderLog({ log: stdout, startedServerAt }))
+      ? res.send(renderLog({ log: stdout, startedServerAt }))
     : res.send(stdout);
   } );
 });
