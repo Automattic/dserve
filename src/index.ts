@@ -101,7 +101,7 @@ calypsoServer.get("/log", (req: express.Request, res: express.Response) => {
     }
     isBrowser(req)
       ? res.send(renderLog({ log: stdout, startedServerAt }))
-    : res.send(stdout);
+      : res.send(stdout);
   } );
 });
 
