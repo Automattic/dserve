@@ -95,7 +95,7 @@ logRejections();
 calypsoServer.get("/log", (req: express.Request, res: express.Response) => {
   //const appLog = fs.readFileSync("./logs/log.txt", "utf-8"); // todo change back from l
   exec(
-    "tail -n 2000 ./logs/log.txt",
+    "tail -n 500 ./logs/log.txt",
     { maxBuffer: 5000 * 1024 },
     (err, stdout) => {
       if (err) {
