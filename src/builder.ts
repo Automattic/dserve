@@ -51,6 +51,7 @@ export function getBuildDir(hash: CommitHash) {
 export async function cleanupBuildDir(hash: CommitHash) {
 	const buildDir = getBuildDir(hash);
 	l.log(`removing directory: ${buildDir}`);
+	pendingHashes.delete(hash);
 	return fs.remove(buildDir);
 }
 

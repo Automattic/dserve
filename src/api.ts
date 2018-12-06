@@ -88,9 +88,15 @@ export async function deleteImage(hash: CommitHash) {
 		await docker.getContainer(runningContainer.Id).stop();
 	}
 
-	const img = docker.getImage(getImageName(hash));
+	let img;
+	try {
+		img = docker.getImage(getImageName(hash));
 	if (!img) {
 		l.log({ commitHash: hash }, 'did not have an image locally with name' + getImageName(hash));
+		return;
+	}
+	} catch ( err  ) {
+		l.log({ commitHash: hash, err }, 'error trying to find image locally with name' + getImageName(hash));
 		return;
 	}
 
