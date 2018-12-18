@@ -13,6 +13,7 @@ import {
 	getImageName,
 	docker,
 	BranchName,
+	refreshLocalImages,
 } from './api';
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
@@ -130,16 +131,16 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 		return;
 	}
 
-	function onFinished(err: Error) {
-		pendingHashes.delete(commitHash);
-
+	async function onFinished(err: Error) {
 		if (!err) {
+			await refreshLocalImages();
 			l.log({ commitHash, buildImageTime: Date.now() - imageStart, repoDir, imageName }, `Successfully built image. Now cleaning up build directory`);
-			// cleanupBuildDir(commitHash);
+			cleanupBuildDir(commitHash);
 		} else {
 			buildLogger.error({ err }, 'Encountered error when building image');
 			l.error({ err, commitHash }, `Failed to build image for. Leaving build files in place`);
 		}
+		pendingHashes.delete(commitHash);
 		closeLogger(buildLogger as any);
 	}
 
