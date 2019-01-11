@@ -120,7 +120,7 @@ export async function buildImageForHash(commitHash: CommitHash): Promise<void> {
 			nocache: false,
 			buildargs: {
 				commit_sha: commitHash,
-				workers: SINGLE_BUILD_CONCURRENCY,
+				workers: String( SINGLE_BUILD_CONCURRENCY ),
 			},
 		});
 	} catch (err) {
