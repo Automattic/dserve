@@ -16,13 +16,22 @@ const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 function assembleSubdomainUrlForHash(req: any, commitHash: CommitHash) {
   const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? "https" : "http";
 
+  const query =
+    Object.keys( req.query )
+    .reduce(
+      ( q, key ) => key === 'branch' ? q : q.concat( `${ encodeURIComponent( key ) }=${ encodeURIComponent( q[ key as keyof {} ] ) }` ),
+      []
+    )
+    .join( '&' );
+
   return (
     protocol +
     "://hash-" +
     commitHash +
     "." +
     stripCommitHashSubdomainFromHost(req.headers.host) +
-    req.path
+    req.path +
+    query ? `?${ query }` : ''
   );
 }
 
