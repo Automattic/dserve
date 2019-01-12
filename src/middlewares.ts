@@ -18,7 +18,10 @@ function assembleSubdomainUrlForHash(req: any, commitHash: CommitHash) {
 
   const query =
     Object.keys( req.query )
-    .reduce( ( q, key ) => key === 'branch' ? q : q.concat( `${ encodeURIComponent( key ) }=${ encodeURIComponent( q[ key as keyof {} ] ) }` ), [] )
+    .reduce(
+      ( q, key ) => key === 'branch' ? q : q.concat( `${ encodeURIComponent( key ) }=${ encodeURIComponent( q[ key as keyof {} ] ) }` ),
+      []
+    )
     .join( '&' );
 
   return (
