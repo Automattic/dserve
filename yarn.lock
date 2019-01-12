@@ -3557,6 +3557,10 @@ preserve@^0.2.0:
   resolved "https://registry.yarnpkg.com/preserve/-/preserve-0.2.0.tgz#815ed1f6ebc65926f865b310c0713bcb3315ce4b"
   integrity sha1-gV7R9uvGWSb4ZbMQwHE7yzMVzks=
 
+"prettier@https://github.com/Automattic/wp-prettier/releases/download/wp-1.15.3/wp-prettier-1.15.3.tgz":
+  version "1.15.3"
+  resolved "https://github.com/Automattic/wp-prettier/releases/download/wp-1.15.3/wp-prettier-1.15.3.tgz#84b09aafa08fb0a051142e61ebab7300f5438f02"
+
 pretty-format@^23.6.0:
   version "23.6.0"
   resolved "https://registry.yarnpkg.com/pretty-format/-/pretty-format-23.6.0.tgz#5eaac8eeb6b33b987b7fe6097ea6a8a146ab5760"

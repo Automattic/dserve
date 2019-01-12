@@ -3,6 +3,9 @@
 	"version": "0.1.0",
 	"description": "",
 	"main": "src/index.js",
+	"devDependencies": {
+		"prettier": "https://github.com/Automattic/wp-prettier/releases/download/wp-1.15.3/wp-prettier-1.15.3.tgz"
+	},
 	"dependencies": {
 		"@types/bunyan": "^1.8.4",
 		"@types/dockerode": "^2.5.5",
@@ -48,7 +51,8 @@
 		"serve": "node build/index.js",
 		"serve:forever": "node build/daemon.js",
 		"build-ts": "tsc",
-		"watch-ts": "tsc -w"
+		"watch-ts": "tsc -w",
+		"reformat-files": "./node_modules/.bin/prettier --ignore-path .eslintignore --write \"**/*.{ts,tsx,json}\""
 	},
 	"repository": {
 		"type": "git",
