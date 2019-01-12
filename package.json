@@ -52,7 +52,7 @@
 		"serve:forever": "node build/daemon.js",
 		"build-ts": "tsc",
 		"watch-ts": "tsc -w",
-		"reformat-files": "./node_modules/.bin/prettier --ignore-path .eslintignore --write \"**/*.{ts,tsx,json}\""
+		"reformat-files": "./node_modules/.bin/prettier --write \"**/*.{ts,tsx,json}\""
 	},
 	"repository": {
 		"type": "git",
