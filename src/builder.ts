@@ -1,9 +1,9 @@
+import * as fs from 'fs-extra';
 import * as git from 'nodegit';
 import * as os from 'os';
-import * as fs from 'fs-extra';
 import * as path from 'path';
+import * as tar from 'tar-fs';
 import { Readable } from 'stream';
-const tar: any = require( 'tar-fs' ); // todo: write a type definition for tar-fs
 
 import {
 	CommitHash,
