@@ -30,6 +30,9 @@ jobs:
           paths:
             - node_modules
 
+      # Ensure TypeScript builds
+      - run: yarn run build-ts
+
       # run tests!
       - run: yarn test
 
