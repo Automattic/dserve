@@ -15,17 +15,20 @@ jobs:
 
       # Download and cache dependencies
       - restore_cache:
-          keys:
-          - v1-dependencies-{{ checksum "package.json" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
+          key: v2-dependencies-{{ checksum "yarn.lock" }}
 
-      - run: yarn install
+      - run:
+          command: |
+            name: Install node dependencies
+            command: |
+              if [ ! -d node_modules ]; then
+                yarn
+              fi
 
       - save_cache:
+          key: v2-dependencies-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
-          key: v1-dependencies-{{ checksum "package.json" }}
 
       # run tests!
       - run: yarn test
