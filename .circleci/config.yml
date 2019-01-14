@@ -18,12 +18,11 @@ jobs:
           key: v2-dependencies-{{ checksum "yarn.lock" }}
 
       - run:
+          name: Install node dependencies
           command: |
-            name: Install node dependencies
-            command: |
-              if [ ! -d node_modules ]; then
-                yarn
-              fi
+            if [ ! -d node_modules ]; then
+              yarn
+            fi
 
       - save_cache:
           key: v2-dependencies-{{ checksum "yarn.lock" }}
