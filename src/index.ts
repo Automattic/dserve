@@ -73,7 +73,7 @@ const logRejections = () => {
   Array.from(promiseRejections.entries())
     .filter(
       ([, [ts, , status]]) =>
-        "unreported" === status && ts.getTime() - now.getTime() > ONE_MINUTE
+        "unreported" === status && now.getTime() - ts.getTime() > ONE_MINUTE
     )
     .forEach(([promise, [ts, reason]]) => {
       l.log(
