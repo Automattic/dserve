@@ -18,6 +18,7 @@ import { l, getLoggerForBuild, closeLogger } from './logger';
 import { getBuildDir } from './builder';
 import { setInterval } from 'timers';
 import { stat } from 'fs';
+import { exec } from 'child_process';
 
 type APIState = {
 	accesses: Map<CommitHash, number>;
@@ -272,6 +273,17 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 		} ) );
 
 		repo.free();
+		// gc the repo
+		l.log( {}, 'git gc start' );
+		try {
+			await promisify( exec )( 'git gc', {
+				cwd: calypsoDir
+			});
+			l.log( {}, 'git gc complete' );
+		} catch ( err ) {
+			l.error( { err }, 'git gc failed' );
+		}
+
 		return branchToCommitHashMap;
 	} catch (err) {
 		l.error({ err, repository: config.repo.project }, 'Error creating branchName --> commitSha map');
