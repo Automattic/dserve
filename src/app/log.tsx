@@ -18,6 +18,7 @@ const interestingDetails = new Set([
     'code',
     'signal',
     'data',
+    'reason',
 ]);
 
 const LogDetails = ( { data  } : any ) => {

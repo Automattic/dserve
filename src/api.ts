@@ -274,12 +274,10 @@ async function getRemoteBranches(): Promise<Map<string, string>> {
 
 		repo.free();
 		// gc the repo
-		l.log( {}, 'git gc start' );
 		try {
 			await promisify( exec )( 'git gc', {
 				cwd: calypsoDir
 			});
-			l.log( {}, 'git gc complete' );
 		} catch ( err ) {
 			l.error( { err }, 'git gc failed' );
 		}
