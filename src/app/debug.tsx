@@ -10,7 +10,6 @@ import { humanSize, humanTime, percent, round } from './util';
 
 import { state as apiState, getCommitAccessTime, extractCommitFromImage } from '../api';
 import { buildQueue } from '../builder';
-import { l } from '../logger';
 
 const Docker = new Dockerode();
 
