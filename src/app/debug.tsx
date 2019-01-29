@@ -10,8 +10,16 @@ import { humanSize, humanTime, percent, round } from './util';
 
 import { state as apiState, getCommitAccessTime, extractCommitFromImage } from '../api';
 import { buildQueue } from '../builder';
+import { l } from '../logger';
 
 const Docker = new Dockerode();
+
+async function maxTime( p: Promise<any>, timeoutMs: number ) {
+    const timeout = new Promise( (resolve, reject ) => {
+        setTimeout( () => reject( 'timeout' ), timeoutMs );
+    } );
+    return Promise.race( [ p, timeout ] );
+}
 
 const Debug = (c: RenderContext) => {
     const memUsage = process.memoryUsage();
@@ -228,12 +236,23 @@ type RenderContext = {
 }
 
 export default async function renderDebug({ startedServerAt }: { startedServerAt: Date }) {
+    let containers, images;
+    try {
+        containers = await maxTime( Docker.listContainers( { all: true } ), 5000 );
+    } catch ( err ) {
+        containers = [];
+    }
+    try {
+        images = await maxTime( Docker.listImages(), 5000 );
+    } catch ( err ) {
+        images = [];
+    }
     return ReactDOMServer.renderToStaticMarkup((
         <Debug
             startedServerAt={startedServerAt}
             docker={{
-                containers: await Docker.listContainers({ all: true }),
-                images: await Docker.listImages(),
+                containers,
+                images,
             }}
         />
     ));
