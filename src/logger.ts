@@ -6,7 +6,7 @@ import { CommitHash, getImageName } from './api';
 import { getLogPath } from './builder';
 import { config } from './config';
 
-const dserveLogger = bunyan.createLogger({
+const dserveLogger = bunyan.createLogger( {
 	name: 'dserve',
 	streams: [
 		{
@@ -22,14 +22,14 @@ const dserveLogger = bunyan.createLogger({
 	],
 	serializers: bunyan.stdSerializers, // allows one to use err, req, and res as special keys
 	src: true,
-});
+} );
 
 /* super convenient name */
 export const l = {
 	// @ts-ignore need to find proper type to express passing variable args
-	log: (...args: any[]) => dserveLogger.info(...args),
+	log: ( ...args: any[] ) => dserveLogger.info( ...args ),
 	// @ts-ignore need to find proper type to express passing variable args
-	error: (...args: any[]) => dserveLogger.error(...args)
+	error: ( ...args: any[] ) => dserveLogger.error( ...args ),
 };
 
 /**
@@ -38,9 +38,9 @@ export const l = {
  *
  * @param commitHash - hash to make logger for
  */
-export function getLoggerForBuild(commitHash: CommitHash) {
-	const path = getLogPath(commitHash);
-	const logger = dserveLogger.child({
+export function getLoggerForBuild( commitHash: CommitHash ) {
+	const path = getLogPath( commitHash );
+	const logger = dserveLogger.child( {
 		streams: [
 			{
 				type: 'file',
@@ -52,22 +52,22 @@ export function getLoggerForBuild(commitHash: CommitHash) {
 			},
 		],
 		commitHash,
-		imageName: getImageName(commitHash),
-	});
+		imageName: getImageName( commitHash ),
+	} );
 
 	// we want it to be a child so that
 	// it inherits al the same properties as the parent
 	// except we don't want any of the parents streams
 	// so this line removes them all
 	// @ts-ignore this needs to be fixed with proper typing
-	((logger as any) as Logger).streams = _.filter((logger as any).streams, { path });
+	( ( logger as any ) as Logger ).streams = _.filter( ( logger as any ).streams, { path } );
 
 	return logger;
 }
 
-type Logger = { streams: Array<{ stream: Writable; type: string }> };
-export function closeLogger(logger: Logger) {
-	logger.streams.forEach(stream => {
+type Logger = { streams: Array< { stream: Writable; type: string } > };
+export function closeLogger( logger: Logger ) {
+	logger.streams.forEach( stream => {
 		stream.stream.end();
-	});
+	} );
 }

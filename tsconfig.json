@@ -9,5 +9,5 @@
 		"jsx": "react",
 		"lib": [ "es7", "dom" ]
 	},
-	"include": ["src/*"]
+	"include": [ "src/*" ]
 }
