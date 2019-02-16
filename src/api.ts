@@ -21,12 +21,12 @@ import { stat } from 'fs';
 import { exec } from 'child_process';
 
 type APIState = {
-	accesses: Map<CommitHash, number>;
-	branchHashes: Map<CommitHash, BranchName>;
-	containers: Map<string, Docker.ContainerInfo>;
-	localImages: Map<string, Docker.ImageInfo>;
-	remoteBranches: Map<BranchName, CommitHash>;
-	startingContainers: Map<CommitHash, Promise<ContainerInfo>>;
+	accesses: Map< CommitHash, number >;
+	branchHashes: Map< CommitHash, BranchName >;
+	containers: Map< string, Docker.ContainerInfo >;
+	localImages: Map< string, Docker.ImageInfo >;
+	remoteBranches: Map< BranchName, CommitHash >;
+	startingContainers: Map< CommitHash, Promise< ContainerInfo > >;
 };
 
 export const state: APIState = {
@@ -53,8 +53,9 @@ export const FIVE_MINUTES = 5 * ONE_MINUTE;
 export const TEN_MINUTES = 10 * ONE_MINUTE;
 export const CONTAINER_EXPIRY_TIME = 20 * ONE_MINUTE;
 
-export const getImageName = (hash: CommitHash) => `${config.build.tagPrefix}:${hash}`;
-export const extractCommitFromImage = (imageName: string): CommitHash => imageName.split(':')[1];
+export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
+export const extractCommitFromImage = ( imageName: string ): CommitHash =>
+	imageName.split( ':' )[ 1 ];
 
 /**
  * Polls the local Docker daemon to
@@ -62,12 +63,14 @@ export const extractCommitFromImage = (imageName: string): CommitHash => imageNa
  */
 export async function refreshLocalImages() {
 	const images = await docker.listImages();
-	const isTag = (tag: string) => tag.startsWith( config.build.tagPrefix );
-	const hasTag = (image: Docker.ImageInfo) => image.RepoTags && image.RepoTags.some( isTag );
+	const isTag = ( tag: string ) => tag.startsWith( config.build.tagPrefix );
+	const hasTag = ( image: Docker.ImageInfo ) => image.RepoTags && image.RepoTags.some( isTag );
 
-	state.localImages = new Map( images.filter( hasTag ).map(
-		image => [ image.RepoTags.find( isTag ), image ] as [ string, Docker.ImageInfo ]
-	) );
+	state.localImages = new Map(
+		images
+			.filter( hasTag )
+			.map( image => [ image.RepoTags.find( isTag ), image ] as [string, Docker.ImageInfo] )
+	);
 }
 
 /**
@@ -77,69 +80,81 @@ export function getLocalImages() {
 	return state.localImages;
 }
 
-export async function hasHashLocally(hash: CommitHash): Promise<boolean> {
+export async function hasHashLocally( hash: CommitHash ): Promise< boolean > {
 	return state.localImages.has( getImageName( hash ) );
 }
 
-export async function deleteImage(hash: CommitHash) {
-	l.log({ commitHash: hash }, 'attempting to remove image for hash');
+export async function deleteImage( hash: CommitHash ) {
+	l.log( { commitHash: hash }, 'attempting to remove image for hash' );
 
-	const runningContainer = state.containers.get( getImageName(hash) );
-	if (runningContainer) {
-		await docker.getContainer(runningContainer.Id).stop();
+	const runningContainer = state.containers.get( getImageName( hash ) );
+	if ( runningContainer ) {
+		await docker.getContainer( runningContainer.Id ).stop();
 	}
 
 	let img;
 	try {
-		img = docker.getImage(getImageName(hash));
-	if (!img) {
-		l.log({ commitHash: hash }, 'did not have an image locally with name' + getImageName(hash));
-		return;
-	}
-	} catch ( err  ) {
-		l.log({ commitHash: hash, err }, 'error trying to find image locally with name' + getImageName(hash));
+		img = docker.getImage( getImageName( hash ) );
+		if ( ! img ) {
+			l.log(
+				{ commitHash: hash },
+				'did not have an image locally with name' + getImageName( hash )
+			);
+			return;
+		}
+	} catch ( err ) {
+		l.log(
+			{ commitHash: hash, err },
+			'error trying to find image locally with name' + getImageName( hash )
+		);
 		return;
 	}
 
 	try {
-		await img.remove({ force: true });
-		l.log({ commitHash: hash }, 'succesfully removed image');
-	} catch (err) {
-		l.error({ err, commitHash: hash }, 'failed to remove image');
+		await img.remove( { force: true } );
+		l.log( { commitHash: hash }, 'succesfully removed image' );
+	} catch ( err ) {
+		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
-export async function startContainer(commitHash: CommitHash) {
-	l.log({ commitHash }, `Request to start a container for ${commitHash}`);
-	const image = getImageName(commitHash);
+export async function startContainer( commitHash: CommitHash ) {
+	l.log( { commitHash }, `Request to start a container for ${ commitHash }` );
+	const image = getImageName( commitHash );
 
 	// do we have an existing container?
 	const existingContainer = getRunningContainerForHash( commitHash );
 	if ( existingContainer ) {
-		l.log( { commitHash, containerId: existingContainer.Id }, `Found a running container for ${commitHash}`);
+		l.log(
+			{ commitHash, containerId: existingContainer.Id },
+			`Found a running container for ${ commitHash }`
+		);
 		return Promise.resolve( existingContainer );
 	}
 
 	// are we starting one already?
-	if( state.startingContainers.has( commitHash ) ) {
-		l.log( { commitHash }, `Already starting a container for ${commitHash}`)
+	if ( state.startingContainers.has( commitHash ) ) {
+		l.log( { commitHash }, `Already starting a container for ${ commitHash }` );
 		return state.startingContainers.get( commitHash );
 	}
 
-	async function start( image: string, commitHash: CommitHash ): Promise<ContainerInfo> {
+	async function start( image: string, commitHash: CommitHash ): Promise< ContainerInfo > {
 		// ok, try to start one
 		let freePort: number;
 		try {
 			freePort = await portfinder.getPortPromise();
-		} catch( err ) {
-			l.error( { err, image, commitHash }, `Error while attempting to find a free port for ${image}`);
+		} catch ( err ) {
+			l.error(
+				{ err, image, commitHash },
+				`Error while attempting to find a free port for ${ image }`
+			);
 			throw err;
 		}
 
-		const exposedPort = `${config.build.exposedPort}/tcp`;
+		const exposedPort = `${ config.build.exposedPort }/tcp`;
 		const dockerPromise = new Promise( ( resolve, reject ) => {
 			let runError: any;
 
-			l.log( { image, commitHash }, `Starting a container for ${commitHash}` );
+			l.log( { image, commitHash }, `Starting a container for ${ commitHash }` );
 
 			docker.run(
 				image,
@@ -147,8 +162,8 @@ export async function startContainer(commitHash: CommitHash) {
 				process.stdout,
 				{
 					...config.build.containerCreateOptions,
-					ExposedPorts: { [exposedPort]: {} },
-					PortBindings: { [exposedPort]: [{ HostPort: freePort.toString() }] },
+					ExposedPorts: { [ exposedPort ]: {} },
+					PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
 					Tty: false,
 				},
 				err => {
@@ -165,18 +180,24 @@ export async function startContainer(commitHash: CommitHash) {
 					resolve( { freePort } );
 				}
 			}, 5000 );
-		} )
+		} );
 		return dockerPromise.then(
 			( { success, freePort } ) => {
-				l.log({ image, freePort, commitHash }, `Successfully started container for ${image} on ${freePort}`);
+				l.log(
+					{ image, freePort, commitHash },
+					`Successfully started container for ${ image } on ${ freePort }`
+				);
 				return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
 			},
 			( { error, freePort } ) => {
-				l.error({ image, freePort, error, commitHash }, `Failed starting container for ${image} on ${freePort}`);
+				l.error(
+					{ image, freePort, error, commitHash },
+					`Failed starting container for ${ image } on ${ freePort }`
+				);
 				throw error;
 			}
 		);
-	};
+	}
 
 	const startPromise = start( image, commitHash );
 
@@ -190,27 +211,29 @@ export async function startContainer(commitHash: CommitHash) {
 			state.startingContainers.delete( commitHash );
 			throw err;
 		}
-	)
+	);
 	return startPromise;
 }
 
 export async function refreshRunningContainers() {
 	const containers = await docker.listContainers();
-	state.containers = new Map( containers.map(
-		container => [ container.Id, container ] as [ string, ContainerInfo ]
-	) );
+	state.containers = new Map(
+		containers.map( container => [ container.Id, container ] as [string, ContainerInfo] )
+	);
 }
 
-export function getRunningContainerForHash( hash: CommitHash ) : ContainerInfo | null {
-	const image = getImageName(hash);
-	return Array.from(state.containers.values()).find( ci => ci.Image === image && ci.State === 'running' );
+export function getRunningContainerForHash( hash: CommitHash ): ContainerInfo | null {
+	const image = getImageName( hash );
+	return Array.from( state.containers.values() ).find(
+		ci => ci.Image === image && ci.State === 'running'
+	);
 }
 
-export function isContainerRunning(hash: CommitHash): boolean {
-	return !!getRunningContainerForHash( hash );
+export function isContainerRunning( hash: CommitHash ): boolean {
+	return !! getRunningContainerForHash( hash );
 }
 
-export function getPortForContainer(hash: CommitHash): number|boolean {
+export function getPortForContainer( hash: CommitHash ): number | boolean {
 	const container = getRunningContainerForHash( hash );
 
 	if ( ! container ) {
@@ -219,93 +242,99 @@ export function getPortForContainer(hash: CommitHash): number|boolean {
 
 	const ports = container.Ports;
 
-	return ports.length > 0
-		? ports[0].PublicPort
-		: false;
+	return ports.length > 0 ? ports[ 0 ].PublicPort : false;
 }
 
-async function getRemoteBranches(): Promise<Map<string, string>> {
-	const repoDir = path.join(__dirname, '../repos');
-	const calypsoDir = path.join(repoDir, 'wp-calypso');
+async function getRemoteBranches(): Promise< Map< string, string > > {
+	const repoDir = path.join( __dirname, '../repos' );
+	const calypsoDir = path.join( repoDir, 'wp-calypso' );
 	let repo: git.Repository;
 
 	const start = Date.now();
 
 	try {
-		if (!await fs.pathExists(repoDir)) {
-			await fs.mkdir(repoDir);
+		if ( ! ( await fs.pathExists( repoDir ) ) ) {
+			await fs.mkdir( repoDir );
 		}
-		if (!await fs.pathExists(calypsoDir)) {
-			repo = await git.Clone.clone(`https://github.com/${config.repo.project}`, calypsoDir);
+		if ( ! ( await fs.pathExists( calypsoDir ) ) ) {
+			repo = await git.Clone.clone( `https://github.com/${ config.repo.project }`, calypsoDir );
 		} else {
-			repo = await git.Repository.open(calypsoDir);
+			repo = await git.Repository.open( calypsoDir );
 		}
 
 		// this code here is all for retrieving origin
 		// and then pruning out old branches
-		const origin: git.Remote = await repo.getRemote('origin');
-		await origin.connect(git.Enums.DIRECTION.FETCH, {});
-		await origin.download(null);
-		const pruneError = origin.prune(new git.RemoteCallbacks());
-		if (pruneError) {
-			throw new Error(`invoking remote prune returned error code: ${pruneError}`);
+		const origin: git.Remote = await repo.getRemote( 'origin' );
+		await origin.connect(
+			git.Enums.DIRECTION.FETCH,
+			{}
+		);
+		await origin.download( null );
+		const pruneError = origin.prune( new git.RemoteCallbacks() );
+		if ( pruneError ) {
+			throw new Error( `invoking remote prune returned error code: ${ pruneError }` );
 		}
 		//
 		await repo.fetchAll();
-	} catch (err) {
-		l.error({ err }, 'Could not fetch repo to update branches list');
+	} catch ( err ) {
+		l.error( { err }, 'Could not fetch repo to update branches list' );
 	}
 
-	if (!repo) {
-		l.error('Something went very wrong while trying to refresh branches');
+	if ( ! repo ) {
+		l.error( 'Something went very wrong while trying to refresh branches' );
 	}
 
 	try {
-		const branchesReferences = (await repo.getReferences(git.Reference.TYPE.OID)).filter(
-			(x: git.Reference) => x.isBranch
+		const branchesReferences = ( await repo.getReferences( git.Reference.TYPE.OID ) ).filter(
+			( x: git.Reference ) => x.isBranch
 		);
 
-		const branchToCommitHashMap: Map<string, string> = new Map( branchesReferences.map(reference => {
-			const name = reference.shorthand().replace('origin/', '');
-			const commitHash = reference.target().tostrS();
+		const branchToCommitHashMap: Map< string, string > = new Map(
+			branchesReferences.map( reference => {
+				const name = reference.shorthand().replace( 'origin/', '' );
+				const commitHash = reference.target().tostrS();
 
-			return [ name, commitHash ] as [ string, CommitHash ];
-		} ) );
+				return [ name, commitHash ] as [string, CommitHash];
+			} )
+		);
 
 		repo.free();
 		// gc the repo
 		try {
 			await promisify( exec )( 'git gc', {
-				cwd: calypsoDir
-			});
+				cwd: calypsoDir,
+			} );
 		} catch ( err ) {
 			l.error( { err }, 'git gc failed' );
 		}
 
 		return branchToCommitHashMap;
-	} catch (err) {
-		l.error({ err, repository: config.repo.project }, 'Error creating branchName --> commitSha map');
+	} catch ( err ) {
+		l.error(
+			{ err, repository: config.repo.project },
+			'Error creating branchName --> commitSha map'
+		);
 		return;
 	}
 }
 
-let refreshingPromise: Promise<any> = null;
+let refreshingPromise: Promise< any > = null;
 export async function refreshRemoteBranches() {
-	if (refreshingPromise) {
+	if ( refreshingPromise ) {
 		return refreshingPromise;
 	}
 
-	refreshingPromise = (async () => {
+	refreshingPromise = ( async () => {
 		const branches = await getRemoteBranches();
 
-		if (branches) {
+		if ( branches ) {
 			state.branchHashes = new Map(
-				Array.from(branches).map(([a, b]) => [b, a] as [CommitHash, BranchName])
+				Array.from( branches ).map( ( [ a, b ] ) => [ b, a ] as [CommitHash, BranchName] )
 			);
 
 			state.remoteBranches = branches;
 		}
-	})();
+	} )();
 
 	function letItGo() {
 		refreshingPromise = null;
@@ -340,12 +369,15 @@ export function getCommitAccessTime( hash: CommitHash ): number | undefined {
  * Get all currently running containers that were created by dserve and have expired.
  * Expired means have not been accessed in EXPIRED_DURATION
  */
-export function getExpiredContainers(containers: Array<ContainerInfo>, getAccessTime: Function) {
-	return containers.filter((container: ContainerInfo) => {
+export function getExpiredContainers(
+	containers: Array< ContainerInfo >,
+	getAccessTime: Function
+) {
+	return containers.filter( ( container: ContainerInfo ) => {
 		const imageName: string = container.Image;
 
 		// exclude container if it wasnt created by this app
-		if (!imageName.startsWith(config.build.tagPrefix)) {
+		if ( ! imageName.startsWith( config.build.tagPrefix ) ) {
 			return false;
 		}
 
@@ -359,58 +391,61 @@ export function getExpiredContainers(containers: Array<ContainerInfo>, getAccess
 			return true;
 		}
 
-		const createdAgo = Date.now() - ( container.Created * 1000 );
-		const lastAccessed = getAccessTime(extractCommitFromImage(imageName));
+		const createdAgo = Date.now() - container.Created * 1000;
+		const lastAccessed = getAccessTime( extractCommitFromImage( imageName ) );
 
-		return createdAgo > CONTAINER_EXPIRY_TIME &&
-			( _.isUndefined(lastAccessed) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME );
+		return (
+			createdAgo > CONTAINER_EXPIRY_TIME &&
+			( _.isUndefined( lastAccessed ) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME )
+		);
 	} );
 }
 
 // stop any container that hasn't been accessed within ten minutes
 export async function cleanupExpiredContainers() {
-	const containers = Array.from(await docker.listContainers({ all: true }));
-	const expiredContainers = getExpiredContainers(containers, getCommitAccessTime);
-	for( let container of expiredContainers ) {
+	const containers = Array.from( await docker.listContainers( { all: true } ) );
+	const expiredContainers = getExpiredContainers( containers, getCommitAccessTime );
+	for ( let container of expiredContainers ) {
 		const imageName: string = container.Image;
 
-		l.log({
-			imageName,
-			containerId: container.Id
-		}, 'Cleaning up stale container');
+		l.log(
+			{
+				imageName,
+				containerId: container.Id,
+			},
+			'Cleaning up stale container'
+		);
 
-		if (container.State === 'running') {
+		if ( container.State === 'running' ) {
 			try {
-				await docker.getContainer(container.Id).stop();
-				l.log({ containerId: container.Id, imageName }, `Successfully stopped container`);
-			} catch (err) {
-				l.error({ err, imageName, containerId: container.Id }, 'Failed to stop container');
+				await docker.getContainer( container.Id ).stop();
+				l.log( { containerId: container.Id, imageName }, `Successfully stopped container` );
+			} catch ( err ) {
+				l.error( { err, imageName, containerId: container.Id }, 'Failed to stop container' );
 			}
 		}
 		try {
-			await docker.getContainer(container.Id).remove();
-			l.log({ containerId: container.Id, imageName }, `Successfully removed container`);
-		} catch (err) {
-			l.error({ err, imageName, containerId: container.Id }, 'Failed to remove container');
+			await docker.getContainer( container.Id ).remove();
+			l.log( { containerId: container.Id, imageName }, `Successfully removed container` );
+		} catch ( err ) {
+			l.error( { err, imageName, containerId: container.Id }, 'Failed to remove container' );
 		}
 	}
 }
 
-const proxy = httpProxy.createProxyServer({}); // See (†)
-export async function proxyRequestToHash(req: any, res: any) {
+const proxy = httpProxy.createProxyServer( {} ); // See (†)
+export async function proxyRequestToHash( req: any, res: any ) {
 	const commitHash = req.session.commitHash;
-	let port = await getPortForContainer(commitHash);
+	let port = await getPortForContainer( commitHash );
 
-	if (!port) {
-		l.log({ port, commitHash }, `Could not find port for commitHash`);
-		res.send('Error setting up port!');
+	if ( ! port ) {
+		l.log( { port, commitHash }, `Could not find port for commitHash` );
+		res.send( 'Error setting up port!' );
 		res.end();
 		return;
 	}
 
-	proxy.web(req, res, { target: `http://localhost:${port}` }, err => {
-		l.log({ err, req, res }, 'unexpected error occured while proxying');
-	});
+	proxy.web( req, res, { target: `http://localhost:${ port }` }, err => {
+		l.log( { err, req, res }, 'unexpected error occured while proxying' );
+	} );
 }
-
-
