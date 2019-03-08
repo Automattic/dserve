@@ -1,4 +1,9 @@
-jest.mock( 'bunyan' );
+jest.mock( 'bunyan', () => ( {
+	createLogger: jest.fn( () => ( {
+		info: () => {},
+		error: () => {},
+	} ) ),
+} ) );
 
 describe( 'logger', () => {
 	let logger: any;

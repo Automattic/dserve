@@ -131,7 +131,7 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
 
-calypsoServer.get( '/status', async ( req: any, res: any ) => {
+calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;
 	let status;
 	if ( isContainerRunning( commitHash ) ) {
@@ -147,7 +147,7 @@ calypsoServer.get( '/status', async ( req: any, res: any ) => {
 	res.end();
 } );
 
-calypsoServer.get( '*', async ( req: any, res: any ) => {
+calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;
 	const hasLocally = await hasHashLocally( commitHash );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
@@ -194,12 +194,14 @@ calypsoServer.get( '*', async ( req: any, res: any ) => {
 } );
 
 // log errors
-calypsoServer.use( ( err: any, req: express.Request, res: any, next: any ) => {
-	if ( err ) {
-		l.error( err, `Error serving request for ${ req.originalUrl }` );
+calypsoServer.use(
+	( err: any, req: express.Request, res: express.Response, next: express.NextFunction ) => {
+		if ( err ) {
+			l.error( err, `Error serving request for ${ req.originalUrl }` );
+		}
+		next( err );
 	}
-	next( err );
-} );
+);
 
 const server = calypsoServer.listen( 3000, () =>
 	l.log(

@@ -26,10 +26,8 @@ const dserveLogger = bunyan.createLogger( {
 
 /* super convenient name */
 export const l = {
-	// @ts-ignore need to find proper type to express passing variable args
-	log: ( ...args: any[] ) => dserveLogger.info( ...args ),
-	// @ts-ignore need to find proper type to express passing variable args
-	error: ( ...args: any[] ) => dserveLogger.error( ...args ),
+	log: dserveLogger.info.bind( dserveLogger ),
+	error: dserveLogger.error.bind( dserveLogger ),
 };
 
 /**
