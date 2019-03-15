@@ -31,7 +31,7 @@ const Debug = ( c: RenderContext ) => {
 	>;
 	const apiContainers = Array.from( apiState.containers.entries() );
 
-	const shortHash = ( hash: string, length = 30 ) => (
+	const shortHash = ( hash: string = '', length = 30 ) => (
 		<span title={ hash }>{ hash.slice( 0, length ) }…</span>
 	);
 
@@ -216,7 +216,7 @@ const Debug = ( c: RenderContext ) => {
 						) : (
 							images.map( ( [ key, info ] ) => (
 								<li key={ info.Id }>
-									RepoTags: <strong>{ shortHash( info.RepoTags.join( ', ' ), 38 ) }</strong>
+									RepoTags: <strong>{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }</strong>
 									<br />
 									Id: { shortHash( info.Id ) }
 									<br />
@@ -264,7 +264,7 @@ const Debug = ( c: RenderContext ) => {
 								.sort( ( a, b ) => b.Created - a.Created )
 								.map( info => (
 									<li key={ info.Id }>
-										RepoTags: <strong>{ shortHash( info.RepoTags.join( ', ' ), 38 ) }</strong>
+										RepoTags: <strong>{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }</strong>
 										<br />
 										Id: { shortHash( info.Id ) }
 										<br />
