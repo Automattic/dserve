@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { start } from 'repl';
 import { humanTime } from './util';
+import { pendingHashes, buildQueue } from '../builder';
 
 class Reloader extends React.Component< { milliseconds: number } > {
 	render() {
@@ -87,7 +88,7 @@ export const Shell = ( { refreshInterval, startedServerAt, showReset = false, ch
 		</head>
 		<body>
 			<div className="dserve-message">
-				DServe Calypso -{' '}
+				DServe Calypso - Started { ' ' }
 				{
 					<time
 						dateTime={ startedServerAt.toISOString() }
@@ -99,6 +100,8 @@ export const Shell = ( { refreshInterval, startedServerAt, showReset = false, ch
 						{ humanTime( startedServerAt / 1000 ) }
 					</time>
 				}
+				<span className="build-count">, { pendingHashes.size ? pendingHashes.size + ' Building' : 'Idle' }</span>
+				<span className="build-count">, { buildQueue.length ? buildQueue.length + ' Queued' : 'Empty Queue' }</span>
 				<div className="dserve-toolbar">
 					{ showReset && <a href="/?reset=true">Reset Branch</a> }
 					<a href="/log">Logs</a>

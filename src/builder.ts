@@ -29,7 +29,7 @@ export const SINGLE_BUILD_CONCURRENCY = Math.max(
 );
 
 export const buildQueue: Array< CommitHash > = [];
-const pendingHashes: Set< CommitHash > = new Set();
+export const pendingHashes: Set< CommitHash > = new Set();
 
 export const getLogPath = ( hash: CommitHash ) =>
 	path.join( getBuildDir( hash ), config.build.logFilename );
