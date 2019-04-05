@@ -4,44 +4,8 @@ import * as ReactDOMServer from 'react-dom/server';
 import { Shell } from './app-shell';
 import { errorClass, humanTime } from './util';
 import { ONE_MINUTE } from '../api';
+import LogDetails from './log-details';
 
-const interestingDetails = new Set( [
-	'commitHash',
-	'freePort',
-	'error',
-	'err',
-	'imageName',
-	'containerId',
-	'cloneTime',
-	'checkoutTime',
-	'success',
-	'code',
-	'signal',
-	'data',
-	'reason',
-] );
-
-const LogDetails = ( { data }: any ) => {
-	const details = new Map();
-	for ( let detail of interestingDetails ) {
-		if ( data[ detail ] ) {
-			details.set( detail, data[ detail ] );
-		}
-	}
-	if ( details.size === 0 ) {
-		return null;
-	}
-	return (
-		<div className="details">
-			{ Array.from( details.entries() ).map( ( [ key, value ] ) => (
-				<pre key={ key }>
-					{ key }:{' '}
-					{ typeof value === 'object' ? JSON.stringify( value, null, 2 ) : value.toString() }
-				</pre>
-			) ) }
-		</div>
-	);
-};
 
 const Log = ( { log, startedServerAt }: RenderContext ) => (
 	<Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
