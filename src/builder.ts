@@ -182,7 +182,6 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 // Background tasks
 
 const loop = ( f: Function, delay: number ) => {
-	console.log( 'setting up a loop with %o and %d', f, delay );
 	const run = () => {
 		f();
 		//console.log( 'running loop with %o and %d', f, delay );
@@ -193,7 +192,6 @@ const loop = ( f: Function, delay: number ) => {
 };
 
 function warnOnQueueBuildup() {
-	console.log( 'hi' );
 	if ( buildQueue.length > MAX_CONCURRENT_BUILDS ) {
 		l.log(
 			{ buildQueue },
