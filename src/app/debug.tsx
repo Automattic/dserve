@@ -139,7 +139,7 @@ const Debug = ( c: RenderContext ) => {
 					{ pendingHashes.size ? (
 						<ul>
 							{ Array.from( pendingHashes ).map( hash => (
-								<li>{ hash }</li>
+								<li key={ hash }>{ hash }</li>
 							) ) }
 						</ul>
 					) : (
@@ -151,7 +151,7 @@ const Debug = ( c: RenderContext ) => {
 					{ buildQueue.length ? (
 						<ul>
 							{ buildQueue.map( hash => (
-								<li>{ hash }</li>
+								<li key={ hash }>{ hash }</li>
 							) ) }
 						</ul>
 					) : (
