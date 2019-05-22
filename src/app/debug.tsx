@@ -9,7 +9,7 @@ import { promiseRejections } from '../index';
 import { humanSize, humanTime, percent, round } from './util';
 
 import { state as apiState, getCommitAccessTime, extractCommitFromImage } from '../api';
-import { buildQueue } from '../builder';
+import { buildQueue, pendingHashes } from '../builder';
 
 const Docker = new Dockerode();
 
@@ -135,16 +135,28 @@ const Debug = ( c: RenderContext ) => {
 				</figure>
 
 				<figure className="queue">
-					<p>Build Queue</p>
-					{ buildQueue.length ? (
+					<p>Building</p>
+					{ pendingHashes.size ? (
 						<ul>
-							{ buildQueue.map( hash => (
-								<li>{ hash }</li>
+							{ Array.from( pendingHashes ).map( hash => (
+								<li key={ hash }>{ hash }</li>
 							) ) }
 						</ul>
 					) : (
 						<p>
-							<em>Nothing is waiting in the queue</em>
+							<em>Nothing building</em>
+						</p>
+					) }
+					<p>Queue</p>
+					{ buildQueue.length ? (
+						<ul>
+							{ buildQueue.map( hash => (
+								<li key={ hash }>{ hash }</li>
+							) ) }
+						</ul>
+					) : (
+						<p>
+							<em>Nothing queued</em>
 						</p>
 					) }
 					<figcaption>Builder</figcaption>
@@ -216,7 +228,10 @@ const Debug = ( c: RenderContext ) => {
 						) : (
 							images.map( ( [ key, info ] ) => (
 								<li key={ info.Id }>
-									RepoTags: <strong>{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }</strong>
+									RepoTags:{' '}
+									<strong>
+										{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }
+									</strong>
 									<br />
 									Id: { shortHash( info.Id ) }
 									<br />
@@ -264,7 +279,10 @@ const Debug = ( c: RenderContext ) => {
 								.sort( ( a, b ) => b.Created - a.Created )
 								.map( info => (
 									<li key={ info.Id }>
-										RepoTags: <strong>{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }</strong>
+										RepoTags:{' '}
+										<strong>
+											{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }
+										</strong>
 										<br />
 										Id: { shortHash( info.Id ) }
 										<br />
