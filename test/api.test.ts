@@ -2,9 +2,10 @@ import {
 	getCommitAccessTime,
 	touchCommit,
 	getExpiredContainers,
-	CONTAINER_EXPIRY_TIME,
 	getImageName,
 } from '../src/api';
+
+import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 
 describe( 'api', () => {
 	describe( 'getExpiredContainers', () => {

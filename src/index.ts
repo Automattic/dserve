@@ -7,8 +7,6 @@ import { exec } from 'child_process';
 
 // internal
 import {
-	ONE_MINUTE,
-	ONE_SECOND,
 	getCommitHashForBranch,
 	getKnownBranches,
 	hasHashLocally,
@@ -22,6 +20,9 @@ import {
 	getLocalImages,
 	getBranchHashes,
 } from './api';
+
+import { 	ONE_MINUTE,
+	ONE_SECOND, } from './constants';
 
 import {
 	isBuildInProgress,

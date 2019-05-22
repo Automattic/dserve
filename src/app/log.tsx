@@ -3,7 +3,7 @@ import * as ReactDOMServer from 'react-dom/server';
 
 import { Shell } from './app-shell';
 import { errorClass, humanTime } from './util';
-import { ONE_MINUTE } from '../api';
+import { ONE_MINUTE } from '../constants';
 import LogDetails from './log-details';
 
 

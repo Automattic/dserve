@@ -20,6 +20,8 @@ import { setInterval } from 'timers';
 import { stat } from 'fs';
 import { exec } from 'child_process';
 
+import { CONTAINER_EXPIRY_TIME } from './constants';
+
 type APIState = {
 	accesses: Map< CommitHash, number >;
 	branchHashes: Map< CommitHash, BranchName >;
@@ -47,11 +49,6 @@ export type BranchName = string;
 export type PortNumber = number;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 
-export const ONE_SECOND = 1000;
-export const ONE_MINUTE = 60 * ONE_SECOND;
-export const FIVE_MINUTES = 5 * ONE_MINUTE;
-export const TEN_MINUTES = 10 * ONE_MINUTE;
-export const CONTAINER_EXPIRY_TIME = 20 * ONE_MINUTE;
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
 export const extractCommitFromImage = ( imageName: string ): CommitHash =>

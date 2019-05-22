@@ -5,7 +5,8 @@ import { config } from '../config';
 
 import { Shell } from './app-shell';
 import { humanSize, humanTime } from './util';
-import { ONE_MINUTE, ONE_SECOND, BranchName, CommitHash } from '../api';
+import { BranchName, CommitHash } from '../api';
+import { ONE_MINUTE, ONE_SECOND } from '../constants';
 
 const LocalImages = ( {
 	branchHashes,
