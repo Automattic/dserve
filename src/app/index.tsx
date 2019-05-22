@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
-import { ONE_SECOND } from '../api';
+import { ONE_SECOND } from '../constants';
 
 import { Shell } from './app-shell';
 import stripAnsi = require('strip-ansi');

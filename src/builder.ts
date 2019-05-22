@@ -7,9 +7,6 @@ import { Readable } from 'stream';
 
 import {
 	CommitHash,
-	ONE_SECOND,
-	ONE_MINUTE,
-	FIVE_MINUTES,
 	getImageName,
 	docker,
 	BranchName,
@@ -17,6 +14,9 @@ import {
 } from './api';
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
+import { 	ONE_SECOND,
+	ONE_MINUTE,
+	FIVE_MINUTES } from './constants';
 
 // hidden method in nodegit that turns on thread safety
 // see https://github.com/nodegit/nodegit/pull/836
@@ -182,12 +182,18 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 // Background tasks
 
 const loop = ( f: Function, delay: number ) => {
-	const run = () => ( f(), setTimeout( run, delay ) );
+	console.log( 'setting up a loop with %o and %d', f, delay );
+	const run = () => {
+		f();
+		//console.log( 'running loop with %o and %d', f, delay );
+		setTimeout( run, delay ); 
+	};
 
 	run();
 };
 
 function warnOnQueueBuildup() {
+	console.log( 'hi' );
 	if ( buildQueue.length > MAX_CONCURRENT_BUILDS ) {
 		l.log(
 			{ buildQueue },

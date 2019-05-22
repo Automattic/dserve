@@ -8,9 +8,7 @@ import {
 	refreshRemoteBranches,
 	CommitHash,
 	touchCommit,
-	ONE_MINUTE,
 } from './api';
-import { RSA_NO_PADDING } from 'constants';
 
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 

@@ -3,7 +3,7 @@ import * as ReactDOMServer from 'react-dom/server';
 import * as Dockerode from 'dockerode';
 import * as os from 'os';
 
-import { ONE_MINUTE } from '../api';
+import { ONE_MINUTE } from '../constants';
 import { Shell } from './app-shell';
 import { promiseRejections } from '../index';
 import { humanSize, humanTime, percent, round } from './util';
