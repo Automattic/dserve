@@ -165,8 +165,8 @@ const Debug = ( c: RenderContext ) => {
 				<figure className="promises">
 					{ promiseRejections.size ? (
 						<ul>
-							{ Array.from( promiseRejections.values() ).map( ( [ ts, reason ] ) => (
-								<li>
+							{ Array.from( promiseRejections.values() ).map( ( [ ts, reason ], i ) => (
+								<li key={ i }>
 									<time
 										dateTime={ ts.toISOString() }
 										title={ ts.toLocaleTimeString( undefined, {
@@ -176,6 +176,7 @@ const Debug = ( c: RenderContext ) => {
 									>
 										{ humanTime( ts.getTime() / 1000 ) }
 									</time>
+									{' '}
 									{ reason }
 								</li>
 							) ) }
