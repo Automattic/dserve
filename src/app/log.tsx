@@ -50,27 +50,14 @@ const Log = ( { log, startedServerAt }: RenderContext ) => (
 		/>
 		<ol className="dserve-log-lines">
 			{ log
-				.split( '\n' )
-				.filter( l => l.length > 0 )
 				.reverse()
-				.map( ( line, i ) => {
-					let data;
-					try {
-						data = JSON.parse( line );
-					} catch ( e ) {
-						return (
-							<li className="dserve-log-line" key={ `${ i }-${ line }` }>
-								Unparseable log item - »<pre>{ line }</pre>«
-							</li>
-						);
-					}
-
+				.map( ( data, i ) => {
 					const at = Date.parse( data.time );
 
 					return (
 						<li
 							className={ `dserve-log-line ${ errorClass( data.level ) }` }
-							key={ `${ i }-${ line }` }
+							key={ `${ i }` }
 						>
 							<time
 								dateTime={ new Date( at ).toISOString() }
@@ -90,7 +77,7 @@ const Log = ( { log, startedServerAt }: RenderContext ) => (
 	</Shell>
 );
 
-type RenderContext = { log: string; startedServerAt: Date };
+type RenderContext = { log: any[]; startedServerAt: Date };
 export default function renderLog( renderContext: RenderContext ) {
 	return ReactDOMServer.renderToStaticMarkup( <Log { ...renderContext } /> );
 }
