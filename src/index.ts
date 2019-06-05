@@ -42,7 +42,7 @@ import renderApp from './app/index';
 import renderLocalImages from './app/local-images';
 import renderLog from './app/log';
 import renderDebug from './app/debug';
-import { l } from './logger';
+import { l, ringbuffer } from './logger';
 import { Writable } from 'stream';
 
 import {
@@ -90,15 +90,9 @@ logRejections();
 // get application log for debugging
 calypsoServer.get( '/log', ( req: express.Request, res: express.Response ) => {
 	//const appLog = fs.readFileSync("./logs/log.txt", "utf-8"); // todo change back from l
-	exec( 'tail -n 500 ./logs/log.txt', { maxBuffer: 5000 * 1024 }, ( err, stdout ) => {
-		if ( err ) {
-			res.send( 'error reading log file. ' + err );
-			return;
-		}
 		isBrowser( req )
-			? res.send( renderLog( { log: stdout, startedServerAt } ) )
-			: res.send( stdout );
-	} );
+			? res.send( renderLog( { log: ringbuffer.records, startedServerAt } ) )
+			: res.send( ringbuffer.records );
 } );
 
 calypsoServer.get( '/localimages', ( req: express.Request, res: express.Response ) => {
