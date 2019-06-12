@@ -3,7 +3,9 @@ jest.mock( 'bunyan', () => ( {
 		info: () => {},
 		error: () => {},
 	} ) ),
+	RingBuffer: jest.fn()
 } ) );
+
 
 describe( 'logger', () => {
 	let logger: any;
@@ -39,7 +41,7 @@ describe( 'logger', () => {
 		} );
 
 		test( 'l should call the underlying loggers info and error functions', () => {
-			jest.setMock( 'bunyan', { createLogger } );
+			jest.setMock( 'bunyan', { createLogger, RingBuffer: jest.fn() } );
 			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
 
 			l.log( 'testLog' );
