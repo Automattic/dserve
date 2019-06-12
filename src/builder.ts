@@ -63,10 +63,6 @@ export async function cleanupBuildDir( hash: CommitHash ) {
 
 export function addToBuildQueue( commitHash: CommitHash ) {
 	if ( buildQueue.includes( commitHash ) || pendingHashes.has( commitHash ) ) {
-		l.log(
-			{ buildQueueSize: buildQueue.length, commitHash },
-			'Skipping the build queue since it is already in it'
-		);
 		return;
 	}
 	l.log(
