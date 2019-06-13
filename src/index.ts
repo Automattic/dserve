@@ -42,6 +42,7 @@ import renderLocalImages from './app/local-images';
 import renderLog from './app/log';
 import renderDebug from './app/debug';
 import { l, ringbuffer } from './logger';
+import { increment } from './stats';
 import { Writable } from 'stream';
 
 import {
@@ -52,6 +53,7 @@ import {
 } from './api';
 
 const startedServerAt = new Date();
+increment( 'server_start' );
 
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
@@ -60,7 +62,10 @@ const calypsoServer = express();
 calypsoServer.use( session );
 
 // global node process junk - catched unhandled errors
-process.on( 'uncaughtException', error => l.log( { error }, 'Crashing on uncaught error' ) );
+process.on( 'uncaughtException', error => {
+	l.log( { error }, 'Crashing on uncaught error' );
+	increment( 'uncaught_error' );
+} );
 
 export const promiseRejections: Map<
 	Promise< any >,
@@ -80,9 +85,10 @@ const logRejections = () => {
 
 	setTimeout( logRejections, ONE_MINUTE );
 };
-process.on( 'unhandledRejection', ( reason, promise ) =>
-	promiseRejections.set( promise, [ new Date(), reason, 'unreported' ] )
-);
+process.on( 'unhandledRejection', ( reason, promise ) => {
+	promiseRejections.set( promise, [ new Date(), reason, 'unreported' ] );
+	increment( 'unhandled_promise_rejection' );
+} );
 process.on( 'rejectionHandled', promise => promiseRejections.delete( promise ) );
 logRejections();
 
@@ -150,6 +156,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 
 	if ( shouldReset ) {
 		l.log( { commitHash }, `Hard reset for ${ commitHash }` );
+		increment( 'hash_reset' );
 		await deleteImage( commitHash );
 		await cleanupBuildDir( commitHash );
 		const response = `hard reset hash: ${ commitHash } and loading it now...`;
