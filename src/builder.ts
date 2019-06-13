@@ -111,14 +111,18 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		buildLogger.info( 'Cloning git repo' );
 		const repo = await git.Clone.clone( `https://github.com/${ config.repo.project }`, repoDir );
 		buildLogger.info( 'Finished cloning repo' );
-		l.log( { commitHash, cloneTime: Date.now() - cloneStart }, 'Finished cloning repo' );
+		const cloneTime = Date.now() - cloneStart;
+		timing( 'git.build.clone', cloneTime );
+		l.log( { commitHash, cloneTime }, 'Finished cloning repo' );
 
 		const checkoutStart = Date.now();
 		const commit = await repo.getCommit( commitHash );
 		const branch = await repo.createBranch( 'dserve', commit, true );
 		await repo.checkoutBranch( branch );
 		repo.free();
-		l.log( { commitHash, checkoutTime: Date.now() - checkoutStart }, 'Checked out branch' );
+		const checkoutTime = Date.now() - checkoutStart;
+		timing( 'git.build.checkout', checkoutTime );
+		l.log( { commitHash, checkoutTime }, 'Checked out branch' );
 		buildLogger.info( 'Checked out the correct branch' );
 
 		buildLogger.info( 'Placing all the contents into a tarball stream for docker\n' );
