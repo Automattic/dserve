@@ -1,19 +1,20 @@
 import * as React from 'react'; 
 
 const interestingDetails = new Set( [
-	'commitHash',
-	'freePort',
-	'error',
-	'err',
-	'imageName',
-	'containerId',
-	'cloneTime',
+	'buildImageTime',
 	'checkoutTime',
-	'success',
+	'cloneTime',
 	'code',
-	'signal',
+	'commitHash',
+	'containerId',
 	'data',
+	'err',
+	'error',
+	'freePort',
+	'imageName',
 	'reason',
+	'signal',
+	'success',
 ] );
 
 const LogDetails = ( { data, details }: any,  ) => {
