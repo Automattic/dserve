@@ -145,6 +145,8 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 
 	if ( ! buildStream ) {
 		l.error( { buildStream }, "Failed to build image but didn't throw an error" );
+		pendingHashes.delete( commitHash );
+		closeLogger( buildLogger as any );
 		return;
 	}
 
