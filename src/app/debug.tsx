@@ -175,7 +175,7 @@ const Debug = ( c: RenderContext ) => {
 									>
 										{ humanTime( ts.getTime() / 1000 ) }
 									</time>{' '}
-									{ reason }
+									{ reason.toString() }
 								</li>
 							) ) }
 						</ul>
