@@ -374,9 +374,9 @@ export function getExpiredContainers(
 		const imageName: string = container.Image;
 
 		// exclude container if it wasnt created by this app
-		if ( ! imageName.startsWith( config.build.tagPrefix ) ) {
-			return false;
-		}
+		// if ( ! imageName.startsWith( config.build.tagPrefix ) ) {
+		// 	return false;
+		// }
 
 		if ( container.State === 'dead' ) {
 			// ignore dead containers
@@ -428,6 +428,7 @@ export async function cleanupExpiredContainers() {
 			l.error( { err, imageName, containerId: container.Id }, 'Failed to remove container' );
 		}
 	}
+	refreshRunningContainers();
 }
 
 const proxy = httpProxy.createProxyServer( {} ); // See (†)
