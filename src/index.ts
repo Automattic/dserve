@@ -149,6 +149,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 	const shouldReset = req.query.reset;
 
 	if ( shouldReset ) {
+		l.log( { commitHash }, `Hard reset for ${ commitHash }` );
 		await deleteImage( commitHash );
 		await cleanupBuildDir( commitHash );
 		const response = `hard reset hash: ${ commitHash } and loading it now...`;
