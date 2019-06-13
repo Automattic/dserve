@@ -114,11 +114,17 @@ calypsoServer.get( '/localimages', ( req: express.Request, res: express.Response
 } );
 
 calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response ) => {
-	res.send(
-		await renderDebug( {
-			startedServerAt,
-		} )
-	);
+	try {
+		res.send(
+			await renderDebug( {
+				startedServerAt,
+			} )
+		);
+	} catch ( err ) {
+		l.error( { err }, 'Error rendering debug' );
+		res.send( 'error rendering debug' );
+		res.end();
+	}
 } );
 
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
