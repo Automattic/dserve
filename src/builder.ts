@@ -126,6 +126,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		buildStream = await docker.buildImage( tarStream, {
 			t: imageName,
 			nocache: false,
+			forcerm: true,
 			buildargs: {
 				commit_sha: commitHash,
 				workers: String( SINGLE_BUILD_CONCURRENCY ),
