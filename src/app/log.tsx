@@ -6,7 +6,6 @@ import { errorClass, humanTime } from './util';
 import { ONE_MINUTE } from '../constants';
 import LogDetails from './log-details';
 
-
 const Log = ( { log, startedServerAt }: RenderContext ) => (
 	<Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
 		<style
@@ -50,15 +49,11 @@ const Log = ( { log, startedServerAt }: RenderContext ) => (
 		/>
 		<ol className="dserve-log-lines">
 			{ log
-				.reverse()
 				.map( ( data, i ) => {
 					const at = Date.parse( data.time );
 
 					return (
-						<li
-							className={ `dserve-log-line ${ errorClass( data.level ) }` }
-							key={ `${ i }` }
-						>
+						<li className={ `dserve-log-line ${ errorClass( data.level ) }` } key={ `${ i }` }>
 							<time
 								dateTime={ new Date( at ).toISOString() }
 								title={ new Date( at ).toLocaleTimeString( undefined, {
@@ -72,7 +67,8 @@ const Log = ( { log, startedServerAt }: RenderContext ) => (
 							<LogDetails data={ data } />
 						</li>
 					);
-				} ) }
+				} )
+				.reverse() }
 		</ol>
 	</Shell>
 );
