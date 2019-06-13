@@ -428,6 +428,7 @@ export async function cleanupExpiredContainers() {
 			l.error( { err, imageName, containerId: container.Id }, 'Failed to remove container' );
 		}
 	}
+	refreshRunningContainers();
 }
 
 const proxy = httpProxy.createProxyServer( {} ); // See (†)
