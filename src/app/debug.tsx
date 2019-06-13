@@ -88,7 +88,7 @@ const Debug = ( c: RenderContext ) => {
                         right: 2px;
                     }
 
-                    .dserve-debug-cards strong {
+                    .dserve-debug-cards a[href] {
                         color: #00d8ff;
                     }
 
@@ -107,8 +107,7 @@ const Debug = ( c: RenderContext ) => {
 
                     .dserve-container-list li.running strong:before {
                         content: '✅ ';
-                    }
-                    `,
+                    }`,
 				} }
 			/>
 			<div className="dserve-debug-cards">
@@ -139,7 +138,7 @@ const Debug = ( c: RenderContext ) => {
 					{ pendingHashes.size ? (
 						<ul>
 							{ Array.from( pendingHashes ).map( hash => (
-								<li key={ hash }>{ hash }</li>
+								<li key={ hash }><a href={ `/?hash=${ hash }`}>{ hash }</a></li>
 							) ) }
 						</ul>
 					) : (
@@ -151,7 +150,7 @@ const Debug = ( c: RenderContext ) => {
 					{ buildQueue.length ? (
 						<ul>
 							{ buildQueue.map( hash => (
-								<li key={ hash }>{ hash }</li>
+								<li key={ hash }><a href={ `/?hash=${ hash }`}>{ hash }</a></li>
 							) ) }
 						</ul>
 					) : (
@@ -175,8 +174,7 @@ const Debug = ( c: RenderContext ) => {
 										} ) }
 									>
 										{ humanTime( ts.getTime() / 1000 ) }
-									</time>
-									{' '}
+									</time>{' '}
 									{ reason }
 								</li>
 							) ) }
@@ -200,6 +198,11 @@ const Debug = ( c: RenderContext ) => {
 							apiContainers.map( ( [ key, info ] ) => (
 								<li key={ info.Id } className={ info.State }>
 									<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
+									<br />
+									Commit:{' '}
+									<a href={ `/?hash=${ extractCommitFromImage( info.Image ) }` }>
+										{ extractCommitFromImage( info.Image ) }
+									</a>
 									<br />
 									Image ID: { shortHash( info.ImageID ) }
 									<br />
@@ -229,9 +232,15 @@ const Debug = ( c: RenderContext ) => {
 						) : (
 							images.map( ( [ key, info ] ) => (
 								<li key={ info.Id }>
-									RepoTags:{' '}
+									Commit:{' '}
 									<strong>
-										{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }
+										{ info.RepoTags ? (
+											<a href={ `/?hash=${ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }` }>
+												{ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }{' '}
+											</a>
+										) : (
+											'None'
+										) }
 									</strong>
 									<br />
 									Id: { shortHash( info.Id ) }
