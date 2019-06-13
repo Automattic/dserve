@@ -378,8 +378,8 @@ export function getExpiredContainers(
 		// 	return false;
 		// }
 
-		if ( container.State === 'dead' ) {
-			// ignore dead containers
+		if ( container.State === 'dead' || container.State === 'created' ) {
+			// ignore dead and just created containers
 			return false;
 		}
 
