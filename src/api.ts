@@ -51,8 +51,13 @@ export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
-export const extractCommitFromImage = ( imageName: string ): CommitHash =>
-	imageName.split( ':' )[ 1 ];
+export const extractCommitFromImage = ( imageName: string ): CommitHash => {
+	const [ prefix, sha ] = imageName.split(':');
+	if ( prefix !== config.build.tagPrefix ) {
+		return null;
+	}
+	return sha;
+}
 
 /**
  * Polls the local Docker daemon to
@@ -359,6 +364,7 @@ export function touchCommit( hash: CommitHash ) {
 }
 
 export function getCommitAccessTime( hash: CommitHash ): number | undefined {
+	if ( ! hash ) { return undefined; }
 	return state.accesses.get( hash );
 }
 

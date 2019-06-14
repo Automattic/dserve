@@ -138,7 +138,9 @@ const Debug = ( c: RenderContext ) => {
 					{ pendingHashes.size ? (
 						<ul>
 							{ Array.from( pendingHashes ).map( hash => (
-								<li key={ hash }><a href={ `/?hash=${ hash }`}>{ hash }</a></li>
+								<li key={ hash }>
+									<a href={ `/?hash=${ hash }` }>{ hash }</a>
+								</li>
 							) ) }
 						</ul>
 					) : (
@@ -150,7 +152,9 @@ const Debug = ( c: RenderContext ) => {
 					{ buildQueue.length ? (
 						<ul>
 							{ buildQueue.map( hash => (
-								<li key={ hash }><a href={ `/?hash=${ hash }`}>{ hash }</a></li>
+								<li key={ hash }>
+									<a href={ `/?hash=${ hash }` }>{ hash }</a>
+								</li>
 							) ) }
 						</ul>
 					) : (
@@ -195,27 +199,25 @@ const Debug = ( c: RenderContext ) => {
 								<em>No running containers</em>
 							</li>
 						) : (
-							apiContainers.map( ( [ key, info ] ) => (
-								<li key={ info.Id } className={ info.State }>
-									<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
-									<br />
-									Commit:{' '}
-									<a href={ `/?hash=${ extractCommitFromImage( info.Image ) }` }>
-										{ extractCommitFromImage( info.Image ) }
-									</a>
-									<br />
-									Image ID: { shortHash( info.ImageID ) }
-									<br />
-									Status: { info.Status }
-									<br />
-									Last Access:{' '}
-									{ getCommitAccessTime( extractCommitFromImage( info.Image ) )
-										? humanTime(
-												getCommitAccessTime( extractCommitFromImage( info.Image ) ) / 1000
-										  )
-										: 'never' }
-								</li>
-							) )
+							apiContainers.map( ( [ key, info ] ) => {
+								const commit = extractCommitFromImage( info.Image );
+								return (
+									<li key={ info.Id } className={ info.State }>
+										<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
+										<br />
+										Commit: { commit ? <a href={ `/?hash=${ commit }` }>{ commit }</a> : 'none' }
+										<br />
+										Image ID: { shortHash( info.ImageID ) }
+										<br />
+										Status: { info.Status }
+										<br />
+										Last Access:{' '}
+										{ getCommitAccessTime( commit )
+											? humanTime( getCommitAccessTime( commit ) / 1000 )
+											: 'never' }
+									</li>
+								);
+							} )
 						) }
 					</ul>
 
