@@ -1,23 +1,16 @@
 import * as httpProxy from 'http-proxy';
 import * as Docker from 'dockerode';
-import fetch from 'node-fetch';
 import * as _ from 'lodash';
 import * as portfinder from 'portfinder';
 import * as git from 'nodegit';
-import * as os from 'os';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { promisify } from 'util';
-import { WriteStream } from 'fs-extra';
-import { Packbuilder } from 'nodegit/pack-builder';
-import { Readable } from 'stream';
-import { Container, ContainerInfo } from 'dockerode';
+import { ContainerInfo } from 'dockerode';
 
 import { config } from './config';
-import { l, getLoggerForBuild, closeLogger } from './logger';
-import { getBuildDir } from './builder';
-import { setInterval } from 'timers';
-import { stat } from 'fs';
+import { l } from './logger';
+import { pendingHashes } from './builder';
 import { exec } from 'child_process';
 
 import { CONTAINER_EXPIRY_TIME } from './constants';
@@ -49,15 +42,14 @@ export type BranchName = string;
 export type PortNumber = number;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 
-
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
 export const extractCommitFromImage = ( imageName: string ): CommitHash => {
-	const [ prefix, sha ] = imageName.split(':');
+	const [ prefix, sha ] = imageName.split( ':' );
 	if ( prefix !== config.build.tagPrefix ) {
 		return null;
 	}
 	return sha;
-}
+};
 
 /**
  * Polls the local Docker daemon to
@@ -301,13 +293,15 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 		);
 
 		repo.free();
-		// gc the repo
-		try {
-			await promisify( exec )( 'git gc', {
-				cwd: calypsoDir,
-			} );
-		} catch ( err ) {
-			l.error( { err }, 'git gc failed' );
+		// gc the repo if no builds are running
+		if ( pendingHashes.size === 0 ) {
+			try {
+				await promisify( exec )( 'git gc', {
+					cwd: calypsoDir,
+				} );
+			} catch ( err ) {
+				l.error( { err }, 'git gc failed' );
+			}
 		}
 
 		return branchToCommitHashMap;
@@ -364,7 +358,9 @@ export function touchCommit( hash: CommitHash ) {
 }
 
 export function getCommitAccessTime( hash: CommitHash ): number | undefined {
-	if ( ! hash ) { return undefined; }
+	if ( ! hash ) {
+		return undefined;
+	}
 	return state.accesses.get( hash );
 }
 
