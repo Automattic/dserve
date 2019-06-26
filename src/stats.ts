@@ -2,7 +2,7 @@ import { StatsD } from 'hot-shots';
 
 const statsd = new StatsD( {
 	host: process.env.STATSD_HOST || 'localhost',
-	port: +process.env.STATSD_POST || 8125,
+	port: +process.env.STATSD_PORT || 8125,
 } );
 
 export function increment( stat: string ) {
