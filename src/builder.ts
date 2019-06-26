@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as tar from 'tar-fs';
 import { Readable } from 'stream';
 
+
 import {
 	CommitHash,
 	getImageName,
@@ -17,6 +18,7 @@ import { closeLogger, l, getLoggerForBuild } from './logger';
 import { 	ONE_SECOND,
 	ONE_MINUTE,
 	FIVE_MINUTES } from './constants';
+import { increment, timing, gauge } from './stats';
 
 // hidden method in nodegit that turns on thread safety
 // see https://github.com/nodegit/nodegit/pull/836
@@ -69,7 +71,9 @@ export function addToBuildQueue( commitHash: CommitHash ) {
 		{ buildQueueSize: buildQueue.length, commitHash },
 		'Adding a commitHash to the buildQueue'
 	);
-	return buildQueue.push( commitHash );
+	increment( 'build.queued' );
+	buildQueue.push( commitHash );
+	gauge( 'build_queue', buildQueue.length );
 }
 
 export async function buildImageForHash( commitHash: CommitHash ): Promise< void > {
@@ -88,10 +92,13 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 
 	pendingHashes.add( commitHash );
 
+	increment( 'build.start' );
+
 	try {
 		await fs.mkdir( buildDir );
 	} catch ( err ) {
 		l.error( { err, buildDir, commitHash }, 'Could not create directory for the build' );
+		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
 		return;
 	}
@@ -104,14 +111,18 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		buildLogger.info( 'Cloning git repo' );
 		const repo = await git.Clone.clone( `https://github.com/${ config.repo.project }`, repoDir );
 		buildLogger.info( 'Finished cloning repo' );
-		l.log( { commitHash, cloneTime: Date.now() - cloneStart }, 'Finished cloning repo' );
+		const cloneTime = Date.now() - cloneStart;
+		timing( 'git.build.clone', cloneTime );
+		l.log( { commitHash, cloneTime }, 'Finished cloning repo' );
 
 		const checkoutStart = Date.now();
 		const commit = await repo.getCommit( commitHash );
 		const branch = await repo.createBranch( 'dserve', commit, true );
 		await repo.checkoutBranch( branch );
 		repo.free();
-		l.log( { commitHash, checkoutTime: Date.now() - checkoutStart }, 'Checked out branch' );
+		const checkoutTime = Date.now() - checkoutStart;
+		timing( 'git.build.checkout', checkoutTime );
+		l.log( { commitHash, checkoutTime }, 'Checked out branch' );
 		buildLogger.info( 'Checked out the correct branch' );
 
 		buildLogger.info( 'Placing all the contents into a tarball stream for docker\n' );
@@ -141,11 +152,13 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			{ err },
 			`Encountered error while git checking out, tarballing, or handing to docker`
 		);
+		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
 	}
 
 	if ( ! buildStream ) {
 		l.error( { buildStream }, "Failed to build image but didn't throw an error" );
+		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
 		closeLogger( buildLogger as any );
 		return;
@@ -153,9 +166,15 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 
 	async function onFinished( err: Error ) {
 		if ( ! err ) {
-			await refreshLocalImages();
+			const buildImageTime = Date.now() - imageStart;
+			timing( 'build_image', buildImageTime );
+			try { 
+				await refreshLocalImages();
+			} catch( err ) {
+				l.log( { err }, 'Error refreshing local images' );
+			}
 			l.log(
-				{ commitHash, buildImageTime: Date.now() - imageStart, repoDir, imageName },
+				{ commitHash, buildImageTime, repoDir, imageName },
 				`Successfully built image. Now cleaning up build directory`
 			);
 			cleanupBuildDir( commitHash );
@@ -199,12 +218,16 @@ function warnOnQueueBuildup() {
 	}
 }
 export function buildFromQueue() {
+	const currentLength = buildQueue.length;
 	buildQueue
 		.splice( 0, MAX_CONCURRENT_BUILDS - pendingHashes.size ) // grab the next batch of builds
 		.forEach( commitHash => {
 			l.log( { commitHash }, 'Popping a commitHash off of the buildQueue' );
 			buildImageForHash( commitHash );
 		} );
+	if ( buildQueue.length !== currentLength ) {
+		gauge( 'build_queue', buildQueue.length );
+	}
 }
 
 loop( warnOnQueueBuildup, ONE_MINUTE );
