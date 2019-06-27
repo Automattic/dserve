@@ -29,6 +29,7 @@ import {
 	readBuildLog,
 	addToBuildQueue,
 	cleanupBuildDir,
+	buildQueue,
 } from './builder';
 
 import {
@@ -97,6 +98,12 @@ calypsoServer.get( '/log', ( req: express.Request, res: express.Response ) => {
 	isBrowser( req )
 		? res.send( renderLog( { log: ringbuffer.records, startedServerAt } ) )
 		: res.send( ringbuffer.records );
+} );
+
+calypsoServer.get( '/api/queue-size', ( req: express.Request, res: express.Response ) => {
+	res.contentType( 'text/plain' );
+	res.send( '' + buildQueue.length );
+	res.end();
 } );
 
 calypsoServer.get( '/localimages', ( req: express.Request, res: express.Response ) => {
