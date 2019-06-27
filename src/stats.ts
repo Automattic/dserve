@@ -6,17 +6,17 @@ const statsd = new StatsD( {
 } );
 
 export function increment( stat: string ) {
-	statsd.increment( `stats.counts.dserve.${ stat }` );
+	statsd.increment( `dserve.${ stat }` );
 }
 
 export function decrement( stat: string ) {
-	statsd.decrement( `stats.counts.dserve.${ stat }` );
+	statsd.decrement( `dserve.${ stat }` );
 }
 
 export function gauge( stat: string, value: number ) {
-	statsd.gauge( `stats.gauges.dserve.${ stat }`, value );
+	statsd.gauge( `dserve.${ stat }`, value );
 }
 
 export function timing( stat: string, value: number ) {
-	statsd.timing( `stats.timers.dserve.${ stat }`, value );
+	statsd.timing( `dserve.${ stat }`, value );
 }
