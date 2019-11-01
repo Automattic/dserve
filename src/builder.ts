@@ -231,5 +231,12 @@ export function buildFromQueue() {
 	}
 }
 
+function reportQueueDepth() {
+	gauge( 'build_queue', buildQueue.length );
+}
+
 loop( warnOnQueueBuildup, ONE_MINUTE );
 loop( buildFromQueue, ONE_SECOND );
+
+// report the queue depth every five seconds to keep statsd aggregations happy
+loop( reportQueueDepth, ONE_SECOND * 5 );
