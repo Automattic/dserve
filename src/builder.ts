@@ -109,7 +109,8 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 
 		const cloneStart = Date.now();
 		buildLogger.info( 'Cloning git repo' );
-		const repo = await git.Clone.clone( `https://github.com/${ config.repo.project }`, repoDir );
+		const calypsoDir = path.join( __dirname, '../repos', 'wp-calypso' );
+		const repo = await git.Clone.clone( calypsoDir, repoDir );
 		buildLogger.info( 'Finished cloning repo' );
 		const cloneTime = Date.now() - cloneStart;
 		timing( 'git.build.clone', cloneTime );
