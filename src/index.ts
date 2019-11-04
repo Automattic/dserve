@@ -30,6 +30,7 @@ import {
 	addToBuildQueue,
 	cleanupBuildDir,
 	buildQueue,
+	didBuildFail,
 } from './builder';
 
 import {
@@ -148,6 +149,8 @@ calypsoServer.get( '/status', async ( req: express.Request, res: express.Respons
 	let status;
 	if ( isContainerRunning( commitHash ) ) {
 		status = 'Ready';
+	} else if ( didBuildFail( commitHash ) ) {
+		status = 'FAIL';
 	} else if ( await hasHashLocally( commitHash ) ) {
 		status = 'NeedsPriming';
 	} else if ( await isBuildInProgress( commitHash ) ) {
