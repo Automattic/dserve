@@ -32,6 +32,7 @@ export const SINGLE_BUILD_CONCURRENCY = Math.max(
 
 export const buildQueue: Array< CommitHash > = [];
 export const pendingHashes: Set< CommitHash > = new Set();
+const failedHashes: Set< CommitHash > = new Set();
 
 export const getLogPath = ( hash: CommitHash ) =>
 	path.join( getBuildDir( hash ), config.build.logFilename );
@@ -43,6 +44,10 @@ export async function isBuildInProgress( hash: CommitHash ): Promise< boolean > 
 	const pathExists = await fs.pathExists( getBuildDir( hash ) );
 
 	return pendingHashes.has( hash ) || pathExists;
+}
+
+export function didBuildFail( hash: CommitHash ) : boolean {
+	return failedHashes.has( hash );
 }
 
 export async function readBuildLog( hash: CommitHash ): Promise< string | null > {
@@ -72,6 +77,7 @@ export function addToBuildQueue( commitHash: CommitHash ) {
 		'Adding a commitHash to the buildQueue'
 	);
 	increment( 'build.queued' );
+	failedHashes.delete( commitHash );
 	buildQueue.push( commitHash );
 	gauge( 'build_queue', buildQueue.length );
 }
@@ -91,6 +97,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	}
 
 	pendingHashes.add( commitHash );
+	failedHashes.delete( commitHash );
 
 	increment( 'build.start' );
 
@@ -100,6 +107,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		l.error( { err, buildDir, commitHash }, 'Could not create directory for the build' );
 		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
+		failedHashes.add( commitHash );
 		return;
 	}
 	const buildLogger = getLoggerForBuild( commitHash );
@@ -155,12 +163,14 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		);
 		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
+		failedHashes.add( commitHash );
 	}
 
 	if ( ! buildStream ) {
 		l.error( { buildStream }, "Failed to build image but didn't throw an error" );
 		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
+		failedHashes.add( commitHash );
 		closeLogger( buildLogger as any );
 		return;
 	}
@@ -182,6 +192,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		} else {
 			buildLogger.error( { err }, 'Encountered error when building image' );
 			l.error( { err, commitHash }, `Failed to build image for. Leaving build files in place` );
+			failedHashes.add( commitHash );
 		}
 		pendingHashes.delete( commitHash );
 		closeLogger( buildLogger as any );
