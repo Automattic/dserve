@@ -14,7 +14,6 @@ import { pendingHashes } from './builder';
 import { exec } from 'child_process';
 
 import { CONTAINER_EXPIRY_TIME, START_TIME, TEN_MINUTES } from './constants';
-import Dockerode = require('dockerode');
 import { timing } from './stats';
 
 type APIState = {
