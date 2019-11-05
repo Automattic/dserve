@@ -14,6 +14,7 @@ import { pendingHashes } from './builder';
 import { exec } from 'child_process';
 
 import { CONTAINER_EXPIRY_TIME } from './constants';
+import { timing } from './stats';
 
 type APIState = {
 	accesses: Map< CommitHash, number >;
@@ -277,6 +278,8 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 	if ( ! repo ) {
 		l.error( 'Something went very wrong while trying to refresh branches' );
 	}
+
+	timing( 'git.refresh', Date.now() - start );
 
 	try {
 		const branchesReferences = ( await repo.getReferences( git.Reference.TYPE.OID ) ).filter(
