@@ -5,19 +5,18 @@ import * as path from 'path';
 import * as tar from 'tar-fs';
 import { Readable } from 'stream';
 
-
 import {
 	CommitHash,
 	getImageName,
 	docker,
 	BranchName,
 	refreshLocalImages,
+	refreshRemoteBranches,
+	getCommitHashForBranch,
 } from './api';
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
-import { 	ONE_SECOND,
-	ONE_MINUTE,
-	FIVE_MINUTES } from './constants';
+import { ONE_SECOND, ONE_MINUTE, FIVE_MINUTES } from './constants';
 import { increment, timing, gauge } from './stats';
 
 // hidden method in nodegit that turns on thread safety
@@ -46,7 +45,7 @@ export async function isBuildInProgress( hash: CommitHash ): Promise< boolean > 
 	return pendingHashes.has( hash ) || pathExists;
 }
 
-export function didBuildFail( hash: CommitHash ) : boolean {
+export function didBuildFail( hash: CommitHash ): boolean {
 	return failedHashes.has( hash );
 }
 
@@ -68,7 +67,41 @@ export async function cleanupBuildDir( hash: CommitHash ) {
 	return fs.remove( buildDir );
 }
 
-export function addToBuildQueue( commitHash: CommitHash ) {
+const waitingOnCommits: Set< CommitHash > = new Set();
+async function waitForCommit( commitHash: CommitHash ): Promise< boolean > {
+	let repo = await git.Repository.open( path.join( __dirname, '..', 'repos', 'wp-calypso' ) );
+	try {
+		await repo.getCommit( commitHash );
+		return true;
+	} catch {
+		// commit not found, refresh
+		await refreshRemoteBranches();
+		try {
+			await repo.getCommit( commitHash );
+			return true;
+		} catch {
+			return false;
+		}
+	} finally {
+		repo.free();
+	}
+}
+
+export async function addToBuildQueue( commitHash: CommitHash ) {
+	if ( waitingOnCommits.has( commitHash ) ) {
+		return;
+	}
+	waitingOnCommits.add( commitHash );
+	try {
+		const foundCommit = await waitForCommit( commitHash );
+		if ( ! foundCommit ) {
+			l.error( { commitHash }, 'Cannot find commit' );
+			return;
+		}
+	} finally {
+		waitingOnCommits.delete( commitHash );
+	}
+
 	if ( buildQueue.includes( commitHash ) || pendingHashes.has( commitHash ) ) {
 		return;
 	}
@@ -180,9 +213,9 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			const buildImageTime = Date.now() - imageStart;
 			timing( 'build_image', buildImageTime );
 			increment( 'build.success' );
-			try { 
+			try {
 				await refreshLocalImages();
-			} catch( err ) {
+			} catch ( err ) {
 				l.log( { err }, 'Error refreshing local images' );
 			}
 			l.log(
@@ -217,7 +250,7 @@ const loop = ( f: Function, delay: number ) => {
 	const run = () => {
 		f();
 		//console.log( 'running loop with %o and %d', f, delay );
-		setTimeout( run, delay ); 
+		setTimeout( run, delay );
 	};
 
 	run();
