@@ -10,7 +10,8 @@ import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 describe( 'api', () => {
 	describe( 'getExpiredContainers', () => {
 		const RealNow = Date.now;
-		Date.now = () => 10000000;
+		const fakeNow = RealNow() + 24 * 60 * 1000;
+		Date.now = () => fakeNow;
 		afterAll( () => {
 			Date.now = RealNow;
 		} );

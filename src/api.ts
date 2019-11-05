@@ -13,7 +13,7 @@ import { l } from './logger';
 import { pendingHashes } from './builder';
 import { exec } from 'child_process';
 
-import { CONTAINER_EXPIRY_TIME } from './constants';
+import { CONTAINER_EXPIRY_TIME, START_TIME, TEN_MINUTES } from './constants';
 import { timing } from './stats';
 
 type APIState = {
@@ -375,6 +375,12 @@ export function getExpiredContainers(
 	containers: Array< ContainerInfo >,
 	getAccessTime: Function
 ) {
+	// if the server is newly spun up, wait a bit before killing off running containers
+	if ( Date.now() - START_TIME < TEN_MINUTES ) {
+		return [];
+	}
+
+	// otherwise, filter off containers that are still valid
 	return containers.filter( ( container: ContainerInfo ) => {
 		const imageName: string = container.Image;
 
