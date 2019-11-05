@@ -179,6 +179,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		if ( ! err ) {
 			const buildImageTime = Date.now() - imageStart;
 			timing( 'build_image', buildImageTime );
+			increment( 'build.success' );
 			try { 
 				await refreshLocalImages();
 			} catch( err ) {
@@ -190,6 +191,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			);
 			cleanupBuildDir( commitHash );
 		} else {
+			increment( 'build.error' );
 			buildLogger.error( { err }, 'Encountered error when building image' );
 			l.error( { err, commitHash }, `Failed to build image for. Leaving build files in place` );
 			failedHashes.add( commitHash );
