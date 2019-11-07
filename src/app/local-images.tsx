@@ -4,7 +4,7 @@ import * as Docker from 'dockerode';
 import { config } from '../config';
 
 import { Shell } from './app-shell';
-import { humanSize, humanTime } from './util';
+import { humanSize, humanRelativeTime } from './util';
 import { BranchName, CommitHash } from '../api';
 import { ONE_MINUTE, ONE_SECOND } from '../constants';
 
@@ -139,7 +139,7 @@ const LocalImages = ( {
 											hour12: true,
 										} ) }
 									>
-										{ humanTime( info.Created ) }
+										{ humanRelativeTime( info.Created ) }
 									</time>
 								}
 							</p>

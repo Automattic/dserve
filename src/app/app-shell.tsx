@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { start } from 'repl';
-import { humanTime } from './util';
+import { humanRelativeTime } from './util';
 import { pendingHashes, buildQueue } from '../builder';
 
 class Reloader extends React.Component< { milliseconds: number } > {
@@ -97,7 +97,7 @@ export const Shell = ( { refreshInterval, startedServerAt, showReset = false, ch
 							hour12: true,
 						} ) }
 					>
-						{ humanTime( startedServerAt / 1000 ) }
+						{ humanRelativeTime( startedServerAt / 1000 ) }
 					</time>
 				}
 				<span className="build-count">, { pendingHashes.size ? pendingHashes.size + ' Building' : 'Idle' }</span>
