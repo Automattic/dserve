@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as ReactDOMServer from 'react-dom/server';
 
 import { Shell } from './app-shell';
-import { errorClass, humanTime } from './util';
+import { errorClass, humanRelativeTime } from './util';
 import { ONE_MINUTE } from '../constants';
 import LogDetails from './log-details';
 
@@ -44,11 +44,11 @@ const Log = ( { log, startedServerAt }: RenderContext ) => {
 
                 .dserve-log-line .details pre {
                     margin: 0;
-								}
-								
-								.dserve-log-line a[href] {
-									color: lightblue;
-								}
+                }
+
+                .dserve-log-line a[href] {
+                  color: lightblue;
+                }
         `,
 				} }
 			/>
@@ -66,7 +66,7 @@ const Log = ( { log, startedServerAt }: RenderContext ) => {
 										hour12: true,
 									} ) }
 								>
-									{ humanTime( at / 1000 ) }
+									{ humanRelativeTime( at / 1000 ) }
 								</time>{' '}
 								<span className="info">{ data.msg }</span>
 								<LogDetails data={ data } />

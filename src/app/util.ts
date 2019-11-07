@@ -31,7 +31,55 @@ export function humanSize( size: number ): string {
 	return `${ size } B`;
 }
 
-export function humanTime( tic: number ): string {
+const formatMs = (tic:number ) => tic + 'ms';
+
+const formatSec = ( tic:number) => {
+	const secs = ( tic / 1000 ).toFixed( 2 );
+	return `${secs}s`;
+}
+
+const formatMin = ( tic: number  ) => {
+	const mins = Math.floor( tic / ( 1000 * 60 ) );
+	const secs = tic - mins * 60 * 1000;
+	let str = mins + 'm';
+	if ( secs > 0 ) {
+		str += ' ' + formatSec( secs );
+	}
+	return str;
+}
+
+const formatHours = ( tic: number ) => {
+	const hours = Math.floor( tic / ( 1000 * 60 * 24 ) );
+	const mins = tic - hours * 1000 * 60 * 24;
+	let str = hours + 'h';
+	if ( mins > 0 ) {
+		str += ' ' + formatMin( mins );
+	}
+	return str;
+}
+
+
+export function humanTimeSpan( tic: number ) : string {
+	let negate = false;
+	if ( tic < 0 ) {
+		tic = -1 * tic;
+		negate = true;
+	}
+	let span;
+	if ( tic < 1000 ) {
+		span = formatMs( tic );
+	} else if ( tic < 1000 * 60 ) {
+		span = formatSec( tic );
+	} else if ( tic < 1000 * 60 * 24 ) {
+		span = formatMin( tic );
+	} else {
+		span = formatHours( tic );
+	}
+
+	return ( negate ? '-' : '' ) + span;
+}
+
+export function humanRelativeTime( tic: number ): string {
 	const toc = Date.now() / 1000;
 	const span = toc - tic;
 

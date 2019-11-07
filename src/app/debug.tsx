@@ -6,7 +6,7 @@ import * as os from 'os';
 import { ONE_MINUTE } from '../constants';
 import { Shell } from './app-shell';
 import { promiseRejections } from '../index';
-import { humanSize, humanTime, percent, round } from './util';
+import { humanSize, humanRelativeTime, percent, round } from './util';
 
 import { state as apiState, getCommitAccessTime, extractCommitFromImage } from '../api';
 import { buildQueue, pendingHashes } from '../builder';
@@ -177,7 +177,7 @@ const Debug = ( c: RenderContext ) => {
 											hour12: true,
 										} ) }
 									>
-										{ humanTime( ts.getTime() / 1000 ) }
+										{ humanRelativeTime( ts.getTime() / 1000 ) }
 									</time>{' '}
 									{ reason.toString() }
 								</li>
@@ -213,7 +213,7 @@ const Debug = ( c: RenderContext ) => {
 										<br />
 										Last Access:{' '}
 										{ getCommitAccessTime( commit )
-											? humanTime( getCommitAccessTime( commit ) / 1000 )
+											? humanRelativeTime( getCommitAccessTime( commit ) / 1000 )
 											: 'never' }
 									</li>
 								);
@@ -249,7 +249,7 @@ const Debug = ( c: RenderContext ) => {
 									<br />
 									Size: { humanSize( info.Size ) }
 									<br />
-									Created: { humanTime( info.Created ) }
+									Created: { humanRelativeTime( info.Created ) }
 								</li>
 							) )
 						) }
@@ -300,7 +300,7 @@ const Debug = ( c: RenderContext ) => {
 										<br />
 										Size: { humanSize( info.Size ) }
 										<br />
-										Created: { humanTime( info.Created ) }
+										Created: { humanRelativeTime( info.Created ) }
 									</li>
 								) )
 						) }
