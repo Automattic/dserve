@@ -139,7 +139,8 @@ const Debug = ( c: RenderContext ) => {
 						<ul>
 							{ Array.from( pendingHashes ).map( hash => (
 								<li key={ hash }>
-									<a href={ `/?hash=${ hash }` }>{ hash }</a>
+									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{ ' ' }
+									<a href={ `https://github.com/Automattic/wp-calypso/commit/${ hash }` }>github</a>
 								</li>
 							) ) }
 						</ul>
@@ -153,7 +154,8 @@ const Debug = ( c: RenderContext ) => {
 						<ul>
 							{ buildQueue.map( hash => (
 								<li key={ hash }>
-									<a href={ `/?hash=${ hash }` }>{ hash }</a>
+									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{ ' ' }
+									<a href={ `https://github.com/Automattic/wp-calypso/commit/${ hash }` }>github</a>
 								</li>
 							) ) }
 						</ul>
