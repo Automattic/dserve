@@ -23,7 +23,7 @@ import { increment, timing, gauge } from './stats';
 // see https://github.com/nodegit/nodegit/pull/836
 ( git as any ).enableThreadSafety();
 
-export const MAX_CONCURRENT_BUILDS = 3;
+export const MAX_CONCURRENT_BUILDS = 2;
 export const SINGLE_BUILD_CONCURRENCY = Math.max(
 	1,
 	Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS )
