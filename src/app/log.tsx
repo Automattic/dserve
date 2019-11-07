@@ -6,11 +6,12 @@ import { errorClass, humanTime } from './util';
 import { ONE_MINUTE } from '../constants';
 import LogDetails from './log-details';
 
-const Log = ( { log, startedServerAt }: RenderContext ) => (
-	<Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
-		<style
-			dangerouslySetInnerHTML={ {
-				__html: `
+const Log = ( { log, startedServerAt }: RenderContext ) => {
+	return (
+		<Shell refreshInterval={ ONE_MINUTE } startedServerAt={ startedServerAt }>
+			<style
+				dangerouslySetInnerHTML={ {
+					__html: `
                 .dserve-log-lines {
                     list-style: none;
                 }
@@ -43,35 +44,40 @@ const Log = ( { log, startedServerAt }: RenderContext ) => (
 
                 .dserve-log-line .details pre {
                     margin: 0;
-                }
+								}
+								
+								.dserve-log-line a[href] {
+									color: lightblue;
+								}
         `,
-			} }
-		/>
-		<ol className="dserve-log-lines">
-			{ log
-				.map( ( data, i ) => {
-					const at = Date.parse( data.time );
+				} }
+			/>
+			<ol className="dserve-log-lines">
+				{ log
+					.map( ( data, i ) => {
+						const at = Date.parse( data.time );
 
-					return (
-						<li className={ `dserve-log-line ${ errorClass( data.level ) }` } key={ `${ i }` }>
-							<time
-								dateTime={ new Date( at ).toISOString() }
-								title={ new Date( at ).toLocaleTimeString( undefined, {
-									timeZoneName: 'long',
-									hour12: true,
-								} ) }
-							>
-								{ humanTime( at / 1000 ) }
-							</time>{' '}
-							<span className="info">{ data.msg }</span>
-							<LogDetails data={ data } />
-						</li>
-					);
-				} )
-				.reverse() }
-		</ol>
-	</Shell>
-);
+						return (
+							<li className={ `dserve-log-line ${ errorClass( data.level ) }` } key={ `${ i }` }>
+								<time
+									dateTime={ new Date( at ).toISOString() }
+									title={ new Date( at ).toLocaleTimeString( undefined, {
+										timeZoneName: 'long',
+										hour12: true,
+									} ) }
+								>
+									{ humanTime( at / 1000 ) }
+								</time>{' '}
+								<span className="info">{ data.msg }</span>
+								<LogDetails data={ data } />
+							</li>
+						);
+					} )
+					.reverse() }
+			</ol>
+		</Shell>
+	);
+};
 
 type RenderContext = { log: any[]; startedServerAt: Date };
 export default function renderLog( renderContext: RenderContext ) {

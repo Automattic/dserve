@@ -169,7 +169,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 
 		buildLogger.info( 'Placing all the contents into a tarball stream for docker\n' );
 		l.log(
-			{ repoDir, imageName },
+			{ commitHash, repoDir, imageName },
 			'Placing contents of repoDir into a tarball and sending to docker for a build'
 		);
 		const tarStream = tar.pack( repoDir );
@@ -216,7 +216,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			try {
 				await refreshLocalImages();
 			} catch ( err ) {
-				l.log( { err }, 'Error refreshing local images' );
+				l.log( { commitHash, err }, 'Error refreshing local images' );
 			}
 			l.log(
 				{ commitHash, buildImageTime, repoDir, imageName },

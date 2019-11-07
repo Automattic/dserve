@@ -17,6 +17,19 @@ const interestingDetails = new Set( [
 	'success',
 ] );
 
+const serialize = ( value: any, key: string ) => {
+	switch( key ) {
+		case "commitHash":
+			return ( 
+				<React.Fragment>
+					<a href={ `/?hash=${value}` } title={ value }>{ value.substr(0,8) }</a>{ ' ' }
+					<a href={ `https://github.com/Automattic/wp-calypso/commit/${value}`}>(github)</a>
+				</React.Fragment>);
+		default: 
+			return typeof value === 'object' ? JSON.stringify( value, null, 2 ) : value.toString();
+	}
+}
+
 const LogDetails = ( { data, details }: any,  ) => {
   details = details || interestingDetails;
 	const detailsToShow = new Map();
@@ -33,7 +46,7 @@ const LogDetails = ( { data, details }: any,  ) => {
 			{ Array.from( detailsToShow.entries() ).map( ( [ key, value ] ) => (
 				<pre key={ key }>
 					{ key }:{' '}
-					{ typeof value === 'object' ? JSON.stringify( value, null, 2 ) : value.toString() }
+					{ serialize( value, key ) }
 				</pre>
 			) ) }
 		</div>

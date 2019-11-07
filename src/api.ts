@@ -455,6 +455,6 @@ export async function proxyRequestToHash( req: any, res: any ) {
 	}
 
 	proxy.web( req, res, { target: `http://localhost:${ port }` }, err => {
-		l.log( { err, req, res }, 'unexpected error occured while proxying' );
+		l.log( { err, req, res, commitHash }, 'unexpected error occured while proxying' );
 	} );
 }
