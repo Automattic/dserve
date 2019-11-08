@@ -3,12 +3,7 @@ import * as express from 'express';
 import * as expressSession from 'express-session';
 
 // internal
-import {
-	getCommitHashForBranch,
-	refreshRemoteBranches,
-	CommitHash,
-	touchCommit,
-} from './api';
+import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, touchCommit } from './api';
 
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 

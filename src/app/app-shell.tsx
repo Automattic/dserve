@@ -88,7 +88,7 @@ export const Shell = ( { refreshInterval, startedServerAt, showReset = false, ch
 		</head>
 		<body>
 			<div className="dserve-message">
-				DServe Calypso - Started { ' ' }
+				DServe Calypso - Started{' '}
 				{
 					<time
 						dateTime={ startedServerAt.toISOString() }
@@ -100,8 +100,12 @@ export const Shell = ( { refreshInterval, startedServerAt, showReset = false, ch
 						{ humanRelativeTime( startedServerAt / 1000 ) }
 					</time>
 				}
-				<span className="build-count">, { pendingHashes.size ? pendingHashes.size + ' Building' : 'Idle' }</span>
-				<span className="build-count">, { buildQueue.length ? buildQueue.length + ' Queued' : 'Empty Queue' }</span>
+				<span className="build-count">
+					, { pendingHashes.size ? pendingHashes.size + ' Building' : 'Idle' }
+				</span>
+				<span className="build-count">
+					, { buildQueue.length ? buildQueue.length + ' Queued' : 'Empty Queue' }
+				</span>
 				<div className="dserve-toolbar">
 					{ showReset && <a href="/?reset=true">Reset Branch</a> }
 					<a href="/log">Logs</a>

@@ -8,7 +8,7 @@ export function percent( numerator: number, denominator: number ): number {
 	return round( ( numerator / ( Number.EPSILON + denominator ) ) * 100, 2 );
 }
 
-export function splitTime( t: number, u: number, n: number ): [number, number] {
+export function splitTime( t: number, u: number, n: number ): [ number, number ] {
 	const whole = Math.floor( t / ( u * n ) );
 	const part = Math.round( ( t - whole * u * n ) / u );
 
@@ -31,14 +31,14 @@ export function humanSize( size: number ): string {
 	return `${ size } B`;
 }
 
-const formatMs = (tic:number ) => tic + 'ms';
+const formatMs = ( tic: number ) => tic + 'ms';
 
-const formatSec = ( tic:number) => {
+const formatSec = ( tic: number ) => {
 	const secs = ( tic / 1000 ).toFixed( 2 );
-	return `${secs}s`;
-}
+	return `${ secs }s`;
+};
 
-const formatMin = ( tic: number  ) => {
+const formatMin = ( tic: number ) => {
 	const mins = Math.floor( tic / ( 1000 * 60 ) );
 	const secs = tic - mins * 60 * 1000;
 	let str = mins + 'm';
@@ -46,7 +46,7 @@ const formatMin = ( tic: number  ) => {
 		str += ' ' + formatSec( secs );
 	}
 	return str;
-}
+};
 
 const formatHours = ( tic: number ) => {
 	const hours = Math.floor( tic / ( 1000 * 60 * 24 ) );
@@ -56,10 +56,9 @@ const formatHours = ( tic: number ) => {
 		str += ' ' + formatMin( mins );
 	}
 	return str;
-}
+};
 
-
-export function humanTimeSpan( tic: number ) : string {
+export function humanTimeSpan( tic: number ): string {
 	let negate = false;
 	if ( tic < 0 ) {
 		tic = -1 * tic;

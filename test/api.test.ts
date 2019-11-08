@@ -1,9 +1,4 @@
-import {
-	getCommitAccessTime,
-	touchCommit,
-	getExpiredContainers,
-	getImageName,
-} from '../src/api';
+import { getCommitAccessTime, touchCommit, getExpiredContainers, getImageName } from '../src/api';
 
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 

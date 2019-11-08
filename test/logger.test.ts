@@ -3,9 +3,8 @@ jest.mock( 'bunyan', () => ( {
 		info: () => {},
 		error: () => {},
 	} ) ),
-	RingBuffer: jest.fn()
+	RingBuffer: jest.fn(),
 } ) );
-
 
 describe( 'logger', () => {
 	let logger: any;

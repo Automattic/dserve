@@ -71,7 +71,7 @@ process.on( 'uncaughtException', error => {
 
 export const promiseRejections: Map<
 	Promise< any >,
-	[Date, any, 'reported' | 'unreported']
+	[ Date, any, 'reported' | 'unreported' ]
 > = new Map();
 const logRejections = () => {
 	const now = new Date();

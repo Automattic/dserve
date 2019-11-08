@@ -64,7 +64,7 @@ export async function refreshLocalImages() {
 	state.localImages = new Map(
 		images
 			.filter( hasTag )
-			.map( image => [ image.RepoTags.find( isTag ), image ] as [string, Docker.ImageInfo] )
+			.map( image => [ image.RepoTags.find( isTag ), image ] as [ string, Docker.ImageInfo ] )
 	);
 }
 
@@ -213,7 +213,7 @@ export async function startContainer( commitHash: CommitHash ) {
 export async function refreshRunningContainers() {
 	const containers = await docker.listContainers();
 	state.containers = new Map(
-		containers.map( container => [ container.Id, container ] as [string, ContainerInfo] )
+		containers.map( container => [ container.Id, container ] as [ string, ContainerInfo ] )
 	);
 }
 
@@ -260,10 +260,7 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 		// this code here is all for retrieving origin
 		// and then pruning out old branches
 		const origin: git.Remote = await repo.getRemote( 'origin' );
-		await origin.connect(
-			git.Enums.DIRECTION.FETCH,
-			{}
-		);
+		await origin.connect( git.Enums.DIRECTION.FETCH, {} );
 		await origin.download( null );
 		const pruneError = origin.prune( new git.RemoteCallbacks() );
 		if ( pruneError ) {
@@ -291,7 +288,7 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 				const name = reference.shorthand().replace( 'origin/', '' );
 				const commitHash = reference.target().tostrS();
 
-				return [ name, commitHash ] as [string, CommitHash];
+				return [ name, commitHash ] as [ string, CommitHash ];
 			} )
 		);
 
@@ -328,7 +325,7 @@ export async function refreshRemoteBranches() {
 
 		if ( branches ) {
 			state.branchHashes = new Map(
-				Array.from( branches ).map( ( [ a, b ] ) => [ b, a ] as [CommitHash, BranchName] )
+				Array.from( branches ).map( ( [ a, b ] ) => [ b, a ] as [ CommitHash, BranchName ] )
 			);
 
 			state.remoteBranches = branches;
