@@ -156,7 +156,7 @@ const LocalImages = ( {
 type RenderContext = {
 	branchHashes: Map< CommitHash, BranchName >;
 	knownBranches: Map< BranchName, CommitHash >;
-	localImages: { [s: string]: Docker.ImageInfo };
+	localImages: { [ s: string ]: Docker.ImageInfo };
 	startedServerAt: Date;
 };
 export default function renderLocalImages( renderContext: RenderContext ) {

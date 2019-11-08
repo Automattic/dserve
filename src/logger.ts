@@ -6,7 +6,7 @@ import { CommitHash, getImageName } from './api';
 import { getLogPath } from './builder';
 import { config } from './config';
 
-export const ringbuffer = new bunyan.RingBuffer({ limit: 1000 });
+export const ringbuffer = new bunyan.RingBuffer( { limit: 1000 } );
 
 const dserveLogger = bunyan.createLogger( {
 	name: 'dserve',
@@ -20,7 +20,7 @@ const dserveLogger = bunyan.createLogger( {
 		{
 			level: bunyan.DEBUG,
 			type: 'raw',
-			stream: ringbuffer
+			stream: ringbuffer,
 		},
 		{
 			stream: process.stdout,

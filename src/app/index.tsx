@@ -6,10 +6,7 @@ import { Shell } from './app-shell';
 import stripAnsi from 'strip-ansi';
 import LogDetails from './log-details';
 
-const BUILD_LOG_DETAILS = new Set( [
-	'error',
-	'err'
-] );
+const BUILD_LOG_DETAILS = new Set( [ 'error', 'err' ] );
 
 class BuildLog extends React.Component< { log: string } > {
 	render() {
@@ -21,12 +18,17 @@ class BuildLog extends React.Component< { log: string } > {
 				try {
 					const line = JSON.parse( str );
 					return [ line, `Time=${ line.time } | ${ line.msg }` ];
-				} catch ( err ) { return [ {}, '' ] }
+				} catch ( err ) {
+					return [ {}, '' ];
+				}
 			} )
-			.map( ( [ data, str ], i ) => <li key={ i }>{ stripAnsi( str ) }<LogDetails data={ data } details={ BUILD_LOG_DETAILS } /></li> );
-		return <ol>
-			{ formattedLog }
-		</ol>;
+			.map( ( [ data, str ], i ) => (
+				<li key={ i }>
+					{ stripAnsi( str ) }
+					<LogDetails data={ data } details={ BUILD_LOG_DETAILS } />
+				</li>
+			) );
+		return <ol>{ formattedLog }</ol>;
 	}
 }
 

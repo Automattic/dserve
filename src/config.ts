@@ -1,6 +1,6 @@
 import * as Dockerode from 'dockerode';
 
-type Readonly< T > = { readonly [P in keyof T]: T[P] };
+type Readonly< T > = { readonly [ P in keyof T ]: T[ P ] };
 type AppConfig = Readonly< {
 	build: BuildConfig;
 	repo: RepoConfig;

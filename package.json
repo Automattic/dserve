@@ -4,7 +4,7 @@
 	"description": "",
 	"main": "src/index.js",
 	"devDependencies": {
-		"prettier": "https://github.com/Automattic/wp-prettier/releases/download/wp-1.15.3/wp-prettier-1.15.3.tgz"
+		"prettier": "npm:wp-prettier@1.18.2"
 	},
 	"dependencies": {
 		"@types/bunyan": "^1.8.4",
