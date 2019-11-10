@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as tar from 'tar-fs';
 import { Readable } from 'stream';
+import { sample } from 'lodash';
 
 import {
 	CommitHash,
@@ -24,9 +25,11 @@ import { increment, timing, gauge } from './stats';
 ( git as any ).enableThreadSafety();
 
 export const MAX_CONCURRENT_BUILDS = 3;
-export const SINGLE_BUILD_CONCURRENCY = Math.max(
+
+const CORE_LIMITS = [ 4, 8, 12, 16, 24 ];
+export const getBuildConcurrency = () => Math.max(
 	1,
-	Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS )
+	Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( CORE_LIMITS ) )
 );
 
 export const buildQueue: Array< CommitHash > = [];
@@ -144,6 +147,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		return;
 	}
 	const buildLogger = getLoggerForBuild( commitHash );
+	const buildConcurrency = getBuildConcurrency();
 
 	try {
 		l.log( { commitHash, buildDir, repoDir, imageName }, 'Attempting to build image.' );
@@ -182,7 +186,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			forcerm: true,
 			buildargs: {
 				commit_sha: commitHash,
-				workers: String( SINGLE_BUILD_CONCURRENCY ),
+				workers: String( buildConcurrency ),
 			},
 		} );
 	} catch ( err ) {
@@ -212,6 +216,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		if ( ! err ) {
 			const buildImageTime = Date.now() - imageStart;
 			timing( 'build_image', buildImageTime );
+			timing( `build_image_by_core.${buildConcurrency}_cores`, buildImageTime );
 			increment( 'build.success' );
 			try {
 				await refreshLocalImages();
