@@ -113,7 +113,7 @@ export async function deleteImage( hash: CommitHash ) {
 	}
 }
 export async function startContainer( commitHash: CommitHash ) {
-	l.log( { commitHash }, `Request to start a container for ${ commitHash }` );
+	//l.log( { commitHash }, `Request to start a container for ${ commitHash }` );
 	const image = getImageName( commitHash );
 
 	// do we have an existing container?
@@ -128,7 +128,7 @@ export async function startContainer( commitHash: CommitHash ) {
 
 	// are we starting one already?
 	if ( state.startingContainers.has( commitHash ) ) {
-		l.log( { commitHash }, `Already starting a container for ${ commitHash }` );
+		//l.log( { commitHash }, `Already starting a container for ${ commitHash }` );
 		return state.startingContainers.get( commitHash );
 	}
 
@@ -452,6 +452,9 @@ export async function proxyRequestToHash( req: any, res: any ) {
 	}
 
 	proxy.web( req, res, { target: `http://localhost:${ port }` }, err => {
+		if ( err && (err as any).code === "ECONNRESET") {
+			return;
+		}
 		l.log( { err, req, res, commitHash }, 'unexpected error occured while proxying' );
 	} );
 }
