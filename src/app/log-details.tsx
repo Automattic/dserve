@@ -2,6 +2,7 @@ import * as React from 'react';
 import { humanTimeSpan } from './util';
 
 const interestingDetails = new Set( [
+	'buildConcurrency',
 	'buildImageTime',
 	'checkoutTime',
 	'cloneTime',
