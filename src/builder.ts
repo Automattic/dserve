@@ -26,7 +26,7 @@ import { increment, timing, gauge } from './stats';
 export const MAX_CONCURRENT_BUILDS = 3;
 export const SINGLE_BUILD_CONCURRENCY = Math.max(
 	1,
-	Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS )
+	Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), 8 )
 );
 
 export const buildQueue: Array< CommitHash > = [];
