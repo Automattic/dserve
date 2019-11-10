@@ -150,7 +150,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	const buildConcurrency = getBuildConcurrency();
 
 	try {
-		l.log( { commitHash, buildDir, repoDir, imageName }, 'Attempting to build image.' );
+		l.log( { commitHash, buildDir, repoDir, imageName, buildConcurrency }, 'Attempting to build image.' );
 
 		const cloneStart = Date.now();
 		buildLogger.info( 'Cloning git repo' );
@@ -173,7 +173,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 
 		buildLogger.info( 'Placing all the contents into a tarball stream for docker\n' );
 		l.log(
-			{ commitHash, repoDir, imageName },
+			{ commitHash, repoDir, imageName, buildConcurrency },
 			'Placing contents of repoDir into a tarball and sending to docker for a build'
 		);
 		const tarStream = tar.pack( repoDir );
@@ -204,7 +204,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	}
 
 	if ( ! buildStream ) {
-		l.error( { buildStream }, "Failed to build image but didn't throw an error" );
+		l.error( { buildStream, commitHash }, "Failed to build image but didn't throw an error" );
 		increment( 'build.error' );
 		pendingHashes.delete( commitHash );
 		failedHashes.add( commitHash );
@@ -224,7 +224,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 				l.log( { commitHash, err }, 'Error refreshing local images' );
 			}
 			l.log(
-				{ commitHash, buildImageTime, repoDir, imageName },
+				{ commitHash, buildImageTime, repoDir, imageName, buildConcurrency },
 				`Successfully built image. Now cleaning up build directory`
 			);
 			cleanupBuildDir( commitHash );
