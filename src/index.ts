@@ -199,7 +199,8 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		// within the same subsecond time period.
 		try {
 			await startContainer( commitHash );
-			proxy( req, res );
+			res.set( 'Refresh', `1;url=${ req.path }` );
+			res.send( striptags( 'build complete, loading now...' ) );
 			return;
 		} catch ( err ) {
 			message = 'Error starting that commit...';
