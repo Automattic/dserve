@@ -24,9 +24,9 @@ import { increment, timing, gauge } from './stats';
 // see https://github.com/nodegit/nodegit/pull/836
 ( git as any ).enableThreadSafety();
 
-export const MAX_CONCURRENT_BUILDS = 3;
+export const MAX_CONCURRENT_BUILDS = 4;
 
-const CORE_LIMITS = [ 4, 8, 12, 16, 24 ];
+const CORE_LIMITS = [ 8, 12, 16, 24, 32 ];
 export const getBuildConcurrency = () => Math.max(
 	1,
 	Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( CORE_LIMITS ) )
