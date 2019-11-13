@@ -26,10 +26,10 @@ import { increment, timing, gauge } from './stats';
 
 export const MAX_CONCURRENT_BUILDS = 4;
 
-const CORE_LIMITS = [ 8, 12, 16, 24, 32 ];
+const MAX_CORES = [ 12 ];
 export const getBuildConcurrency = () => Math.max(
 	1,
-	Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( CORE_LIMITS ) )
+	Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( MAX_CORES ) )
 );
 
 export const buildQueue: Array< CommitHash > = [];
