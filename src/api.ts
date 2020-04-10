@@ -8,7 +8,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { ContainerInfo } from 'dockerode';
 
-import { config } from './config';
+import { config, envContainerConfig } from './config';
 import { l } from './logger';
 import { pendingHashes } from './builder';
 import { exec } from 'child_process';
@@ -41,12 +41,14 @@ export type NotFound = Error;
 export type CommitHash = string;
 export type BranchName = string;
 export type PortNumber = number;
+
+export type EnvName = string;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 
-export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
+export const getImageName = ( hash: CommitHash, env: EnvName ) => `${ config.build.tagPrefix }${ env }:${ hash }`;
 export const extractCommitFromImage = ( imageName: string ): CommitHash => {
 	const [ prefix, sha ] = imageName.split( ':' );
-	if ( prefix !== config.build.tagPrefix ) {
+	if ( ! prefix.startsWith( config.build.tagPrefix ) ) {
 		return null;
 	}
 	return sha;
@@ -75,32 +77,32 @@ export function getLocalImages() {
 	return state.localImages;
 }
 
-export async function hasHashLocally( hash: CommitHash ): Promise< boolean > {
-	return state.localImages.has( getImageName( hash ) );
+export async function hasHashLocally( hash: CommitHash, env: EnvName ): Promise< boolean > {
+	return state.localImages.has( getImageName( hash, env ) );
 }
 
-export async function deleteImage( hash: CommitHash ) {
+export async function deleteImage( hash: CommitHash, env: EnvName ) {
 	l.log( { commitHash: hash }, 'attempting to remove image for hash' );
 
-	const runningContainer = state.containers.get( getImageName( hash ) );
+	const runningContainer = state.containers.get( getImageName( hash, env ) );
 	if ( runningContainer ) {
 		await docker.getContainer( runningContainer.Id ).stop();
 	}
 
 	let img;
 	try {
-		img = docker.getImage( getImageName( hash ) );
+		img = docker.getImage( getImageName( hash, env ) );
 		if ( ! img ) {
 			l.log(
 				{ commitHash: hash },
-				'did not have an image locally with name' + getImageName( hash )
+				'did not have an image locally with name' + getImageName( hash, env )
 			);
 			return;
 		}
 	} catch ( err ) {
 		l.log(
 			{ commitHash: hash, err },
-			'error trying to find image locally with name' + getImageName( hash )
+			'error trying to find image locally with name' + getImageName( hash, env )
 		);
 		return;
 	}
@@ -112,12 +114,12 @@ export async function deleteImage( hash: CommitHash ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
-export async function startContainer( commitHash: CommitHash ) {
+export async function startContainer( commitHash: CommitHash, env: EnvName ) {
 	//l.log( { commitHash }, `Request to start a container for ${ commitHash }` );
-	const image = getImageName( commitHash );
+	const image = getImageName( commitHash, env );
 
 	// do we have an existing container?
-	const existingContainer = getRunningContainerForHash( commitHash );
+	const existingContainer = getRunningContainerForHash( commitHash, env );
 	if ( existingContainer ) {
 		l.log(
 			{ commitHash, containerId: existingContainer.Id },
@@ -157,6 +159,7 @@ export async function startContainer( commitHash: CommitHash ) {
 				process.stdout,
 				{
 					...config.build.containerCreateOptions,
+					...envContainerConfig( env ),
 					ExposedPorts: { [ exposedPort ]: {} },
 					PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
 					Tty: false,
@@ -182,7 +185,7 @@ export async function startContainer( commitHash: CommitHash ) {
 					{ image, freePort, commitHash },
 					`Successfully started container for ${ image } on ${ freePort }`
 				);
-				return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
+				return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash, env ) );
 			},
 			( { error, freePort } ) => {
 				l.error(
@@ -217,19 +220,19 @@ export async function refreshRunningContainers() {
 	);
 }
 
-export function getRunningContainerForHash( hash: CommitHash ): ContainerInfo | null {
-	const image = getImageName( hash );
+export function getRunningContainerForHash( hash: CommitHash, env: EnvName ): ContainerInfo | null {
+	const image = getImageName( hash, env );
 	return Array.from( state.containers.values() ).find(
 		ci => ci.Image === image && ci.State === 'running'
 	);
 }
 
-export function isContainerRunning( hash: CommitHash ): boolean {
-	return !! getRunningContainerForHash( hash );
+export function isContainerRunning( hash: CommitHash, env: EnvName ): boolean {
+	return !! getRunningContainerForHash( hash, env );
 }
 
-export function getPortForContainer( hash: CommitHash ): number | boolean {
-	const container = getRunningContainerForHash( hash );
+export function getPortForContainer( hash: CommitHash, env: EnvName ): number | boolean {
+	const container = getRunningContainerForHash( hash, env );
 
 	if ( ! container ) {
 		return false;
@@ -441,8 +444,8 @@ export async function cleanupExpiredContainers() {
 
 const proxy = httpProxy.createProxyServer( {} ); // See (†)
 export async function proxyRequestToHash( req: any, res: any ) {
-	const commitHash = req.session.commitHash;
-	let port = await getPortForContainer( commitHash );
+	const { commitHash, buildEnv } = req.session;
+	let port = await getPortForContainer( commitHash, buildEnv );
 
 	if ( ! port ) {
 		l.log( { port, commitHash }, `Could not find port for commitHash` );

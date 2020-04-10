@@ -147,13 +147,13 @@ calypsoServer.use( determineCommitHash );
 calypsoServer.use( mapHostToInstanceEnv );
 
 calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
-	const commitHash = req.session.commitHash;
+	const { commitHash, buildEnv } = req.session;
 	let status;
-	if ( isContainerRunning( commitHash ) ) {
+	if ( isContainerRunning( commitHash, buildEnv ) ) {
 		status = 'Ready';
 	} else if ( didBuildFail( commitHash ) ) {
 		status = 'FAIL';
-	} else if ( await hasHashLocally( commitHash ) ) {
+	} else if ( await hasHashLocally( commitHash, buildEnv ) ) {
 		status = 'NeedsPriming';
 	} else if ( await isBuildInProgress( commitHash ) ) {
 		status = 'Building';
@@ -167,16 +167,16 @@ calypsoServer.get( '/status', async ( req: express.Request, res: express.Respons
 calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) => {
 	const { commitHash, buildEnv } = req.session;
 	l.log( `Building in environment ${ buildEnv }` );
-	const hasLocally = await hasHashLocally( commitHash );
+	const hasLocally = await hasHashLocally( commitHash, buildEnv );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
 	const needsToBuild = ! isCurrentlyBuilding && ! hasLocally;
-	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash );
+	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash, buildEnv );
 	const shouldReset = req.query.reset;
 
 	if ( shouldReset ) {
 		l.log( { commitHash }, `Hard reset for ${ commitHash }` );
 		increment( 'hash_reset' );
-		await deleteImage( commitHash );
+		await deleteImage( commitHash, buildEnv );
 		await cleanupBuildDir( commitHash );
 		const response = `hard reset hash: ${ commitHash } and loading it now...`;
 		res.set( 'Refresh', `5;url=${ req.path }` );
@@ -184,7 +184,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		return;
 	}
 
-	if ( isContainerRunning( commitHash ) ) {
+	if ( isContainerRunning( commitHash, buildEnv ) ) {
 		proxy( req, res );
 		return;
 	}
@@ -201,7 +201,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		// TODO: fix race condition where multiple containers may be spun up
 		// within the same subsecond time period.
 		try {
-			await startContainer( commitHash );
+			await startContainer( commitHash, buildEnv );
 			res.set( 'Refresh', `1;url=${ req.path }` );
 			res.send( striptags( 'build complete, loading now...' ) );
 			return;
