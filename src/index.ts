@@ -166,7 +166,6 @@ calypsoServer.get( '/status', async ( req: express.Request, res: express.Respons
 
 calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) => {
 	const { commitHash, buildEnv } = req.session;
-	l.log( `Building in environment ${ buildEnv }` );
 	const hasLocally = await hasHashLocally( commitHash, buildEnv );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
 	const needsToBuild = ! isCurrentlyBuilding && ! hasLocally;
