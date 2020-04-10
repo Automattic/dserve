@@ -4,6 +4,7 @@ import * as expressSession from 'express-session';
 
 // internal
 import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, touchCommit } from './api';
+import { config } from './config';
 
 const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 
@@ -99,6 +100,15 @@ export function determineCommitHash(
 	next();
 }
 
+export function mapHostToInstanceEnv(
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
+) {
+	const env = config.envs.reduce( ( prev, current ) => req.hostname.includes( current ) ? current : prev, '' );
+	req.session.buildEnv = env;
+	next();
+}
 export const session = expressSession( {
 	secret: 'keyboard cat',
 	cookie: {},

@@ -37,6 +37,7 @@ import {
 	redirectHashFromQueryStringToSubdomain,
 	determineCommitHash,
 	session,
+	mapHostToInstanceEnv,
 } from './middlewares';
 
 import renderApp from './app/index';
@@ -143,6 +144,7 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
+calypsoServer.use( mapHostToInstanceEnv );
 
 calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;
@@ -163,7 +165,8 @@ calypsoServer.get( '/status', async ( req: express.Request, res: express.Respons
 } );
 
 calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) => {
-	const commitHash = req.session.commitHash;
+	const { commitHash, buildEnv } = req.session;
+	l.log( `Building in environment ${ buildEnv }` );
 	const hasLocally = await hasHashLocally( commitHash );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
 	const needsToBuild = ! isCurrentlyBuilding && ! hasLocally;
