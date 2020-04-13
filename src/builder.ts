@@ -124,7 +124,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	const buildDir = getBuildDir( commitHash );
 	const repoDir = path.join( buildDir, 'repo' );
 	const logEnv = config.envs[0];
-	const imageName = getImageName( commitHash, logEnv );
+	const imageName = getImageName( commitHash );
 	let imageStart: number;
 
 	if ( await isBuildInProgress( commitHash ) ) {

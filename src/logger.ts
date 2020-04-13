@@ -57,7 +57,7 @@ export function getLoggerForBuild( commitHash: CommitHash ) {
 			},
 		],
 		commitHash,
-		imageName: getImageName( commitHash, config.envs[0] ),
+		imageName: getImageName( commitHash ),
 	} );
 
 	// we want it to be a child so that
