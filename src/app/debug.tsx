@@ -211,6 +211,8 @@ const Debug = ( c: RenderContext ) => {
 										<br />
 										Image ID: { shortHash( info.ImageID ) }
 										<br />
+										Environment: { info.Labels.calypsoEnvironment || 'unknown' }
+										<br />
 										Status: { info.Status }
 										<br />
 										Last Access:{' '}
