@@ -1,4 +1,5 @@
 import * as Dockerode from 'dockerode';
+import { RunEnv } from './api';
 
 type Readonly< T > = { readonly [ P in keyof T ]: T[ P ] };
 type AppConfig = Readonly< {
@@ -35,7 +36,7 @@ export const config: AppConfig = {
 	envs: [ 'calypso', 'jetpack' ],
 };
 
-export function envContainerConfig( environment: String = 'calypso' ): Dockerode.ContainerCreateOptions {
+export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCreateOptions {
 	switch ( environment ) {
 		case 'calypso':
 		default:
