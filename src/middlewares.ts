@@ -105,7 +105,7 @@ export function mapHostToInstanceEnv(
 	res: express.Response,
 	next: express.NextFunction,
 ) {
-	const env = config.envs.reduce( ( prev, current ) => req.hostname.includes( current ) ? current : prev, '' );
+	const env = config.envs.reduce( ( prev, current ) => req.hostname.includes( current ) ? current : prev, config.envs[0] );
 	req.session.buildEnv = env;
 	next();
 }
