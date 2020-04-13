@@ -53,6 +53,10 @@ export const extractCommitFromImage = ( imageName: string ): CommitHash => {
 	return sha;
 };
 
+export const extractEnvironmentFromImage = ( image: ContainerInfo ): RunEnv => {
+	return image.Labels.calypsoEnvironment || undefined;
+}
+
 /**
  * Polls the local Docker daemon to
  * fetch an updated list of images
@@ -226,7 +230,7 @@ export async function refreshRunningContainers() {
 export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
 	const image = getImageName( hash );
 	return Array.from( state.containers.values() ).find(
-		ci => ci.Image === image && ci.State === 'running' && ( ! env || ci.Labels.calypsoEnvironment === env )
+		ci => ci.Image === image && ci.State === 'running' && ( ! env || env === extractEnvironmentFromImage( ci ) )
 	);
 }
 
