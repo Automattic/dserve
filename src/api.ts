@@ -8,7 +8,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { ContainerInfo } from 'dockerode';
 
-import { config } from './config';
+import { config, envContainerConfig } from './config';
 import { l } from './logger';
 import { pendingHashes } from './builder';
 import { exec } from 'child_process';
@@ -42,7 +42,6 @@ export type CommitHash = string;
 export type BranchName = string;
 export type PortNumber = number;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
-
 export type RunEnv = string;
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
@@ -160,6 +159,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 				process.stdout,
 				{
 					...config.build.containerCreateOptions,
+					...envContainerConfig( env ),
 					ExposedPorts: { [ exposedPort ]: {} },
 					PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
 					Tty: false,
