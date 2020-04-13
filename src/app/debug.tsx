@@ -8,7 +8,7 @@ import { Shell } from './app-shell';
 import { promiseRejections } from '../index';
 import { humanSize, humanRelativeTime, percent, round } from './util';
 
-import { state as apiState, getCommitAccessTime, extractCommitFromImage } from '../api';
+import { state as apiState, getCommitAccessTime, extractCommitFromImage, extractEnvironmentFromImage } from '../api';
 import { buildQueue, pendingHashes } from '../builder';
 
 const Docker = new Dockerode();
@@ -211,7 +211,7 @@ const Debug = ( c: RenderContext ) => {
 										<br />
 										Image ID: { shortHash( info.ImageID ) }
 										<br />
-										Environment: { info.Labels.calypsoEnvironment || 'unknown' }
+										Environment: { extractEnvironmentFromImage( info ) || 'unknown' }
 										<br />
 										Status: { info.Status }
 										<br />
@@ -279,6 +279,8 @@ const Debug = ( c: RenderContext ) => {
 										Image ID: { shortHash( info.ImageID ) }
 										<br />
 										Status: { info.State } - { info.Status }
+										<br />
+										Environment: { extractEnvironmentFromImage( info ) || 'unknown' }
 									</li>
 								) )
 						) }
