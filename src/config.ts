@@ -25,7 +25,7 @@ export const config: AppConfig = {
 		containerCreateOptions: {},
 		exposedPort: 3000,
 		logFilename: 'dserve-build-log.txt',
-		tagPrefix: 'dserve-',
+		tagPrefix: 'dserve-wpcalypso',
 	},
 
 	repo: {
