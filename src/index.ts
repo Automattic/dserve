@@ -166,11 +166,10 @@ calypsoServer.get( '/status', async ( req: express.Request, res: express.Respons
 
 calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) => {
 	const { commitHash, buildEnv } = req.session;
-	l.log( `Building in environment ${ buildEnv }` );
 	const hasLocally = await hasHashLocally( commitHash );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
 	const needsToBuild = ! isCurrentlyBuilding && ! hasLocally;
-	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash );
+	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash, buildEnv );
 	const shouldReset = req.query.reset;
 
 	if ( shouldReset ) {
@@ -184,7 +183,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		return;
 	}
 
-	if ( isContainerRunning( commitHash ) ) {
+	if ( isContainerRunning( commitHash, buildEnv ) ) {
 		proxy( req, res );
 		return;
 	}
@@ -201,7 +200,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		// TODO: fix race condition where multiple containers may be spun up
 		// within the same subsecond time period.
 		try {
-			await startContainer( commitHash );
+			await startContainer( commitHash, buildEnv );
 			res.set( 'Refresh', `1;url=${ req.path }` );
 			res.send( striptags( 'build complete, loading now...' ) );
 			return;
