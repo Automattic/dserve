@@ -37,7 +37,7 @@ import {
 	redirectHashFromQueryStringToSubdomain,
 	determineCommitHash,
 	session,
-	mapHostToInstanceEnv,
+	mapQueryEnvToInstanceEnv,
 } from './middlewares';
 
 import renderApp from './app/index';
@@ -144,7 +144,7 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
-calypsoServer.use( mapHostToInstanceEnv );
+calypsoServer.use( mapQueryEnvToInstanceEnv );
 
 calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;

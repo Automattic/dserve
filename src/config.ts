@@ -19,7 +19,7 @@ type RepoConfig = Readonly< {
 	project: string;
 } >;
 
-type EnvsConfig = Readonly<string[]>;
+type EnvsConfig = Readonly<RunEnv[]>;
 
 export const config: AppConfig = {
 	build: {

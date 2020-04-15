@@ -100,12 +100,12 @@ export function determineCommitHash(
 	next();
 }
 
-export function mapHostToInstanceEnv(
+export function mapQueryEnvToInstanceEnv(
 	req: express.Request,
 	res: express.Response,
 	next: express.NextFunction,
 ) {
-	const env = config.envs.reduce( ( prev, current ) => req.hostname.includes( current ) ? current : prev, config.envs[0] );
+	const env = config.envs.find( env => req.query.env === env ) || config.envs[0];
 	req.session.buildEnv = env;
 	next();
 }
