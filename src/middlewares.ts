@@ -11,14 +11,16 @@ const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
 function assembleSubdomainUrlForHash( req: express.Request, commitHash: CommitHash ) {
 	const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? 'https' : 'http';
 
-	return (
-		protocol +
-		'://hash-' +
-		commitHash +
-		'.' +
-		stripCommitHashSubdomainFromHost( req.headers.host ) +
-		req.path
-	);
+	const newUrl = new URL( `${protocol}://hash-${commitHash}.${stripCommitHashSubdomainFromHost( req.headers.host )}` );
+	newUrl.pathname = req.path;
+	for ( let [ key, value ] of Object.entries( req.query ) ) {
+		if ( key === 'hash' || key === 'branch' ) {
+			continue;
+		}
+		newUrl.searchParams.set( key, String( value ) );
+	}
+
+	return newUrl.toString();
 }
 
 function stripCommitHashSubdomainFromHost( host: string ) {
