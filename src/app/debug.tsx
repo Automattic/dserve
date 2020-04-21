@@ -203,15 +203,16 @@ const Debug = ( c: RenderContext ) => {
 						) : (
 							apiContainers.map( ( [ key, info ] ) => {
 								const commit = extractCommitFromImage( info.Image );
+								const env = extractEnvironmentFromImage( info );
 								return (
 									<li key={ info.Id } className={ info.State }>
 										<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
 										<br />
-										Commit: { commit ? <a href={ `/?hash=${ commit }` }>{ commit }</a> : 'none' }
+										Commit: { commit ? <a href={ `/?hash=${ commit }&env=${ env || '' }` }>{ commit }</a> : 'none' }
 										<br />
 										Image ID: { shortHash( info.ImageID ) }
 										<br />
-										Environment: { extractEnvironmentFromImage( info ) || 'unknown' }
+										Environment: { env || 'unknown' }
 										<br />
 										Status: { info.Status }
 										<br />
