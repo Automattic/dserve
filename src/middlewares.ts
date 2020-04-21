@@ -3,15 +3,17 @@ import * as express from 'express';
 import * as expressSession from 'express-session';
 
 // internal
-import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, touchCommit } from './api';
+import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, touchCommit, RunEnv } from './api';
 import { config } from './config';
 
-const hashPattern = /(?:^|.*?\.)hash-([a-f0-9]+)\./;
+const hashPattern = /(?:^|.*?\.)(\w*)-?hash-([a-f0-9]+)\./;
 
-function assembleSubdomainUrlForHash( req: express.Request, commitHash: CommitHash ) {
+function assembleSubdomainUrlForHash( req: express.Request, commitHash: CommitHash, environment: RunEnv ) {
 	const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? 'https' : 'http';
 
-	const newUrl = new URL( `${protocol}://hash-${commitHash}.${stripCommitHashSubdomainFromHost( req.headers.host )}` );
+	const subdomainEnv = environment && environment !== config.envs[0] ? environment + '-' : '';
+
+	const newUrl = new URL( `${protocol}://${subdomainEnv}hash-${commitHash}.${stripCommitHashSubdomainFromHost( req.headers.host )}` );
 	newUrl.pathname = req.path;
 	for ( let [ key, value ] of Object.entries( req.query ) ) {
 		if ( key === 'hash' || key === 'branch' ) {
@@ -34,8 +36,19 @@ function getCommitHashFromSubdomain( host: string ) {
 		return null;
 	}
 
-	const [ , /* full match */ hash ] = match;
+	const [ /* full match */, /* environment */, hash ] = match;
 	return hash;
+}
+
+function getEnvironmentFromSubdomain( host: string ) {
+	const match = host.match( hashPattern );
+
+	if ( ! match ) {
+		return null;
+	}
+
+	const [ /* full match */, environment ] = match;
+	return environment;
 }
 
 export function redirectHashFromQueryStringToSubdomain(
@@ -52,6 +65,7 @@ export function redirectHashFromQueryStringToSubdomain(
 	}
 
 	const commitHash = req.query.hash || getCommitHashForBranch( req.query.branch );
+	const environment = req.query.env;
 
 	const sendError = () => {
 		res.send( 'could not find a hash for that branch' );
@@ -71,7 +85,7 @@ export function redirectHashFromQueryStringToSubdomain(
 		sendError();
 	}
 
-	res.redirect( assembleSubdomainUrlForHash( req, commitHash ) );
+	res.redirect( assembleSubdomainUrlForHash( req, commitHash, environment ) );
 
 	res.end();
 }
@@ -102,13 +116,17 @@ export function determineCommitHash(
 	next();
 }
 
-export function mapQueryEnvToInstanceEnv(
+export function determineEnvironment(
 	req: express.Request,
 	res: express.Response,
 	next: express.NextFunction,
 ) {
-	const env = config.envs.find( env => req.query.env === env ) || config.envs[0];
-	req.session.buildEnv = env;
+	const subdomainEnvironment = getEnvironmentFromSubdomain( req.headers.host );
+	if ( config.envs.includes( subdomainEnvironment ) ) {
+		req.session.runEnv = subdomainEnvironment;
+	} else {
+		req.session.runEnv = config.envs[0];
+	}
 	next();
 }
 export const session = expressSession( {

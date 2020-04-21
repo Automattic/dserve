@@ -37,7 +37,7 @@ import {
 	redirectHashFromQueryStringToSubdomain,
 	determineCommitHash,
 	session,
-	mapQueryEnvToInstanceEnv,
+	determineEnvironment,
 } from './middlewares';
 
 import renderApp from './app/index';
@@ -144,7 +144,7 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
-calypsoServer.use( mapQueryEnvToInstanceEnv );
+calypsoServer.use( determineEnvironment );
 
 calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;
@@ -165,11 +165,11 @@ calypsoServer.get( '/status', async ( req: express.Request, res: express.Respons
 } );
 
 calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) => {
-	const { commitHash, buildEnv } = req.session;
+	const { commitHash, runEnv } = req.session;
 	const hasLocally = await hasHashLocally( commitHash );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
 	const needsToBuild = ! isCurrentlyBuilding && ! hasLocally;
-	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash, buildEnv );
+	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash, runEnv );
 	const shouldReset = req.query.reset;
 
 	if ( shouldReset ) {
@@ -183,7 +183,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		return;
 	}
 
-	if ( isContainerRunning( commitHash, buildEnv ) ) {
+	if ( isContainerRunning( commitHash, runEnv ) ) {
 		proxy( req, res );
 		return;
 	}
@@ -200,7 +200,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		// TODO: fix race condition where multiple containers may be spun up
 		// within the same subsecond time period.
 		try {
-			await startContainer( commitHash, buildEnv );
+			await startContainer( commitHash, runEnv );
 			res.set( 'Refresh', `1;url=${ req.path }` );
 			res.send( striptags( 'build complete, loading now...' ) );
 			return;
