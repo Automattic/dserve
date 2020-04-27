@@ -8,7 +8,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { ContainerInfo } from 'dockerode';
 
-import { config } from './config';
+import { config, envContainerConfig } from './config';
 import { l } from './logger';
 import { pendingHashes } from './builder';
 import { exec } from 'child_process';
@@ -42,6 +42,7 @@ export type CommitHash = string;
 export type BranchName = string;
 export type PortNumber = number;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
+export type RunEnv = string;
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
 export const extractCommitFromImage = ( imageName: string ): CommitHash => {
@@ -51,6 +52,10 @@ export const extractCommitFromImage = ( imageName: string ): CommitHash => {
 	}
 	return sha;
 };
+
+export const extractEnvironmentFromImage = ( image: ContainerInfo ): RunEnv => {
+	return image.Labels.calypsoEnvironment || undefined;
+}
 
 /**
  * Polls the local Docker daemon to
@@ -112,12 +117,13 @@ export async function deleteImage( hash: CommitHash ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
-export async function startContainer( commitHash: CommitHash ) {
+export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 	//l.log( { commitHash }, `Request to start a container for ${ commitHash }` );
 	const image = getImageName( commitHash );
+	const containerId = `${ env }:${ image }`;
 
 	// do we have an existing container?
-	const existingContainer = getRunningContainerForHash( commitHash );
+	const existingContainer = getRunningContainerForHash( commitHash, env );
 	if ( existingContainer ) {
 		l.log(
 			{ commitHash, containerId: existingContainer.Id },
@@ -127,12 +133,12 @@ export async function startContainer( commitHash: CommitHash ) {
 	}
 
 	// are we starting one already?
-	if ( state.startingContainers.has( commitHash ) ) {
+	if ( state.startingContainers.has( containerId ) ) {
 		//l.log( { commitHash }, `Already starting a container for ${ commitHash }` );
-		return state.startingContainers.get( commitHash );
+		return state.startingContainers.get( containerId );
 	}
 
-	async function start( image: string, commitHash: CommitHash ): Promise< ContainerInfo > {
+	async function start( image: string, commitHash: CommitHash, env: RunEnv ): Promise< ContainerInfo > {
 		// ok, try to start one
 		let freePort: number;
 		try {
@@ -157,9 +163,13 @@ export async function startContainer( commitHash: CommitHash ) {
 				process.stdout,
 				{
 					...config.build.containerCreateOptions,
+					...envContainerConfig( env ),
 					ExposedPorts: { [ exposedPort ]: {} },
 					PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
 					Tty: false,
+					Labels: {
+						calypsoEnvironment: env,
+					},
 				},
 				err => {
 					runError = err;
@@ -194,16 +204,16 @@ export async function startContainer( commitHash: CommitHash ) {
 		);
 	}
 
-	const startPromise = start( image, commitHash );
+	const startPromise = start( image, commitHash, env );
 
-	state.startingContainers.set( commitHash, startPromise );
+	state.startingContainers.set( containerId, startPromise );
 	startPromise.then(
 		s => {
-			state.startingContainers.delete( commitHash );
+			state.startingContainers.delete( containerId );
 			return s;
 		},
 		err => {
-			state.startingContainers.delete( commitHash );
+			state.startingContainers.delete( containerId );
 			throw err;
 		}
 	);
@@ -217,15 +227,22 @@ export async function refreshRunningContainers() {
 	);
 }
 
-export function getRunningContainerForHash( hash: CommitHash ): ContainerInfo | null {
+export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
 	const image = getImageName( hash );
 	return Array.from( state.containers.values() ).find(
+		ci => ci.Image === image && ci.State === 'running' && ( ! env || env === extractEnvironmentFromImage( ci ) )
+	);
+}
+
+export function getRunningContainersForHash( hash: CommitHash ): ContainerInfo[] {
+	const image = getImageName( hash );
+	return Array.from( state.containers.values() ).filter(
 		ci => ci.Image === image && ci.State === 'running'
 	);
 }
 
-export function isContainerRunning( hash: CommitHash ): boolean {
-	return !! getRunningContainerForHash( hash );
+export function isContainerRunning( hash: CommitHash, env?: RunEnv ): boolean {
+	return !! getRunningContainerForHash( hash, env );
 }
 
 export function getPortForContainer( hash: CommitHash ): number | boolean {
