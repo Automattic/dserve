@@ -16,7 +16,7 @@ function assembleSubdomainUrlForHash( req: express.Request, commitHash: CommitHa
 	const newUrl = new URL( `${protocol}://${subdomainEnv}hash-${commitHash}.${stripCommitHashSubdomainFromHost( req.headers.host )}` );
 	newUrl.pathname = req.path;
 	for ( let [ key, value ] of Object.entries( req.query ) ) {
-		if ( key === 'hash' || key === 'branch' ) {
+		if ( key === 'hash' || key === 'branch' || key === 'env' ) {
 			continue;
 		}
 		newUrl.searchParams.set( key, String( value ) );
