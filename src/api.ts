@@ -245,8 +245,8 @@ export function isContainerRunning( hash: CommitHash, env?: RunEnv ): boolean {
 	return !! getRunningContainerForHash( hash, env );
 }
 
-export function getPortForContainer( hash: CommitHash ): number | boolean {
-	const container = getRunningContainerForHash( hash );
+export function getPortForContainer( hash: CommitHash, env: RunEnv ): number | boolean {
+	const container = getRunningContainerForHash( hash, env );
 
 	if ( ! container ) {
 		return false;
@@ -458,11 +458,11 @@ export async function cleanupExpiredContainers() {
 
 const proxy = httpProxy.createProxyServer( {} ); // See (†)
 export async function proxyRequestToHash( req: any, res: any ) {
-	const commitHash = req.session.commitHash;
-	let port = await getPortForContainer( commitHash );
+	const { commitHash, runEnv } = req.session;
+	let port = await getPortForContainer( commitHash, runEnv );
 
 	if ( ! port ) {
-		l.log( { port, commitHash }, `Could not find port for commitHash` );
+		l.log( { port, commitHash, runEnv }, `Could not find port for commitHash` );
 		res.send( 'Error setting up port!' );
 		res.end();
 		return;
