@@ -85,8 +85,6 @@ async function waitForCommit( commitHash: CommitHash ): Promise< boolean > {
 		} catch {
 			return false;
 		}
-	} finally {
-		repo.free();
 	}
 }
 
@@ -164,7 +162,6 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		const commit = await repo.getCommit( commitHash );
 		const branch = await repo.createBranch( 'dserve', commit, true );
 		await repo.checkoutBranch( branch );
-		repo.free();
 		const checkoutTime = Date.now() - checkoutStart;
 		timing( 'git.build.checkout', checkoutTime );
 		l.log( { commitHash, checkoutTime }, 'Checked out branch' );
