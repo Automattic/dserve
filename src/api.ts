@@ -296,7 +296,7 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 	timing( 'git.refresh', Date.now() - start );
 
 	try {
-		const branchesReferences = ( await repo.getReferences( git.Reference.TYPE.OID ) ).filter(
+		const branchesReferences = (await repo.getReferences( )).filter(
 			( x: git.Reference ) => x.isBranch
 		);
 
@@ -309,7 +309,6 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 			} )
 		);
 
-		repo.free();
 		// gc the repo if no builds are running
 		if ( pendingHashes.size === 0 ) {
 			try {
