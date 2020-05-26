@@ -45,7 +45,7 @@ export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCr
 			};
 		case 'jetpack':
 			return {
-				Env: [ 'NODE_ENV=jetpack-cloud-stage', 'CALYPSO_ENV=jetpack-cloud-stage' ],
+				Env: [ 'NODE_ENV=jetpack-cloud-horizon', 'CALYPSO_ENV=jetpack-cloud-horizon' ],
 			}
 	}
 }
