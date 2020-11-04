@@ -8,7 +8,13 @@ import { Shell } from './app-shell';
 import { promiseRejections } from '../index';
 import { humanSize, humanRelativeTime, percent, round } from './util';
 
-import { state as apiState, getCommitAccessTime, extractCommitFromImage, extractEnvironmentFromImage } from '../api';
+import {
+	state as apiState,
+	getLocalImages,
+	getCommitAccessTime,
+	extractCommitFromImage,
+	extractEnvironmentFromImage,
+} from '../api';
 import { buildQueue, pendingHashes } from '../builder';
 
 const Docker = new Dockerode();
@@ -26,7 +32,7 @@ const Debug = ( c: RenderContext ) => {
 	const heapT = memUsage.heapTotal;
 	const memTotal = os.totalmem();
 	const memUsed = memTotal - os.freemem();
-	const images = Array.from( apiState.localImages.entries() ) as Array<
+	const images = Array.from( getLocalImages().entries() ) as Array<
 		[ string, Dockerode.ImageInfo ]
 	>;
 	const apiContainers = Array.from( apiState.containers.entries() );
@@ -113,11 +119,11 @@ const Debug = ( c: RenderContext ) => {
 			<div className="dserve-debug-cards">
 				<figure className="system">
 					<p>
-						CPU (x{ os.cpus().length }):{' '}
+						CPU (x{ os.cpus().length }):{ ' ' }
 						{ os
 							.loadavg()
 							.map( a => round( a, 2 ) )
-							.join( ', ' ) }{' '}
+							.join( ', ' ) }{ ' ' }
 						(1m, 5m, 15m)
 					</p>
 					<p>Memory</p>
@@ -139,7 +145,7 @@ const Debug = ( c: RenderContext ) => {
 						<ul>
 							{ Array.from( pendingHashes ).map( hash => (
 								<li key={ hash }>
-									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{' '}
+									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{ ' ' }
 									<a href={ `https://github.com/Automattic/wp-calypso/commit/${ hash }` }>github</a>
 								</li>
 							) ) }
@@ -154,7 +160,7 @@ const Debug = ( c: RenderContext ) => {
 						<ul>
 							{ buildQueue.map( hash => (
 								<li key={ hash }>
-									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{' '}
+									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{ ' ' }
 									<a href={ `https://github.com/Automattic/wp-calypso/commit/${ hash }` }>github</a>
 								</li>
 							) ) }
@@ -180,7 +186,7 @@ const Debug = ( c: RenderContext ) => {
 										} ) }
 									>
 										{ humanRelativeTime( ts.getTime() / 1000 ) }
-									</time>{' '}
+									</time>{ ' ' }
 									{ reason.toString() }
 								</li>
 							) ) }
@@ -208,7 +214,12 @@ const Debug = ( c: RenderContext ) => {
 									<li key={ info.Id } className={ info.State }>
 										<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
 										<br />
-										Commit: { commit ? <a href={ `/?hash=${ commit }&env=${ env || '' }` }>{ commit }</a> : 'none' }
+										Commit:{ ' ' }
+										{ commit ? (
+											<a href={ `/?hash=${ commit }&env=${ env || '' }` }>{ commit }</a>
+										) : (
+											'none'
+										) }
 										<br />
 										Image ID: { shortHash( info.ImageID ) }
 										<br />
@@ -216,7 +227,7 @@ const Debug = ( c: RenderContext ) => {
 										<br />
 										Status: { info.Status }
 										<br />
-										Last Access:{' '}
+										Last Access:{ ' ' }
 										{ getCommitAccessTime( commit )
 											? humanRelativeTime( getCommitAccessTime( commit ) / 1000 )
 											: 'never' }
@@ -228,7 +239,7 @@ const Debug = ( c: RenderContext ) => {
 
 					<p>DServe Images</p>
 					<p>
-						Total storage size:{' '}
+						Total storage size:{ ' ' }
 						{ humanSize( images.reduce( ( size, [ , info ] ) => size + info.Size, 0 ) ) }
 					</p>
 					<ul>
@@ -239,11 +250,11 @@ const Debug = ( c: RenderContext ) => {
 						) : (
 							images.map( ( [ key, info ] ) => (
 								<li key={ info.Id }>
-									Commit:{' '}
+									Commit:{ ' ' }
 									<strong>
 										{ info.RepoTags ? (
 											<a href={ `/?hash=${ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }` }>
-												{ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }{' '}
+												{ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }{ ' ' }
 											</a>
 										) : (
 											'None'
@@ -298,7 +309,7 @@ const Debug = ( c: RenderContext ) => {
 								.sort( ( a, b ) => b.Created - a.Created )
 								.map( info => (
 									<li key={ info.Id }>
-										RepoTags:{' '}
+										RepoTags:{ ' ' }
 										<strong>
 											{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }
 										</strong>

@@ -20,7 +20,8 @@ type APIState = {
 	accesses: Map< CommitHash, number >;
 	branchHashes: Map< CommitHash, BranchName >;
 	containers: Map< string, Docker.ContainerInfo >;
-	localImages: Map< string, Docker.ImageInfo >;
+	localImages: Set< Docker.ImageInfo >;
+	pullingImages: Map< ImageName, Promise< DockerodeStream > >;
 	remoteBranches: Map< BranchName, CommitHash >;
 	startingContainers: Map< CommitHash, Promise< ContainerInfo > >;
 };
@@ -29,7 +30,8 @@ export const state: APIState = {
 	accesses: new Map(),
 	branchHashes: new Map(),
 	containers: new Map(),
-	localImages: new Map(),
+	localImages: new Set(),
+	pullingImages: new Map(),
 	remoteBranches: new Map(),
 	startingContainers: new Map(),
 };
@@ -55,7 +57,7 @@ export const extractCommitFromImage = ( imageName: string ): CommitHash => {
 
 export const extractEnvironmentFromImage = ( image: ContainerInfo ): RunEnv => {
 	return image.Labels.calypsoEnvironment || undefined;
-}
+};
 
 /**
  * Polls the local Docker daemon to
@@ -63,25 +65,25 @@ export const extractEnvironmentFromImage = ( image: ContainerInfo ): RunEnv => {
  */
 export async function refreshLocalImages() {
 	const images = await docker.listImages();
-	const isTag = ( tag: string ) => tag.startsWith( config.build.tagPrefix );
-	const hasTag = ( image: Docker.ImageInfo ) => image.RepoTags && image.RepoTags.some( isTag );
-
-	state.localImages = new Map(
-		images
-			.filter( hasTag )
-			.map( image => [ image.RepoTags.find( isTag ), image ] as [ string, Docker.ImageInfo ] )
-	);
+	state.localImages = new Set( images );
 }
 
 /**
  * Returns the list of local images
  */
 export function getLocalImages() {
-	return state.localImages;
+	const isTag = ( tag: string ) => tag.startsWith( config.build.tagPrefix );
+	const hasTag = ( image: Docker.ImageInfo ) => image.RepoTags && image.RepoTags.some( isTag );
+
+	return new Map(
+		Array.from( state.localImages )
+			.filter( hasTag )
+			.map( image => [ image.RepoTags.find( isTag ), image ] as [ string, Docker.ImageInfo ] )
+	);
 }
 
 export async function hasHashLocally( hash: CommitHash ): Promise< boolean > {
-	return state.localImages.has( getImageName( hash ) );
+	return getLocalImages().has( getImageName( hash ) );
 }
 
 export async function deleteImage( hash: CommitHash ) {
@@ -138,7 +140,11 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 		return state.startingContainers.get( containerId );
 	}
 
-	async function start( image: string, commitHash: CommitHash, env: RunEnv ): Promise< ContainerInfo > {
+	async function start(
+		image: string,
+		commitHash: CommitHash,
+		env: RunEnv
+	): Promise< ContainerInfo > {
 		// ok, try to start one
 		let freePort: number;
 		try {
@@ -192,7 +198,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 					{ image, freePort, commitHash },
 					`Successfully started container for ${ image } on ${ freePort }`
 				);
-				return refreshRunningContainers().then( () => getRunningContainerForHash( commitHash ) );
+				return refreshContainers().then( () => getRunningContainerForHash( commitHash ) );
 			},
 			( { error, freePort } ) => {
 				l.error(
@@ -220,8 +226,8 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 	return startPromise;
 }
 
-export async function refreshRunningContainers() {
-	const containers = await docker.listContainers();
+export async function refreshContainers() {
+	const containers = await docker.listContainers( { all: true } );
 	state.containers = new Map(
 		containers.map( container => [ container.Id, container ] as [ string, ContainerInfo ] )
 	);
@@ -230,7 +236,10 @@ export async function refreshRunningContainers() {
 export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
 	const image = getImageName( hash );
 	return Array.from( state.containers.values() ).find(
-		ci => ci.Image === image && ci.State === 'running' && ( ! env || env === extractEnvironmentFromImage( ci ) )
+		ci =>
+			ci.Image === image &&
+			ci.State === 'running' &&
+			( ! env || env === extractEnvironmentFromImage( ci ) )
 	);
 }
 
@@ -296,7 +305,7 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 	timing( 'git.refresh', Date.now() - start );
 
 	try {
-		const branchesReferences = (await repo.getReferences( )).filter(
+		const branchesReferences = ( await repo.getReferences() ).filter(
 			( x: git.Reference ) => x.isBranch
 		);
 
@@ -452,7 +461,7 @@ export async function cleanupExpiredContainers() {
 			l.error( { err, imageName, containerId: container.Id }, 'Failed to remove container' );
 		}
 	}
-	refreshRunningContainers();
+	refreshContainers();
 }
 
 const proxy = httpProxy.createProxyServer( {} ); // See (†)
@@ -468,9 +477,171 @@ export async function proxyRequestToHash( req: any, res: any ) {
 	}
 
 	proxy.web( req, res, { target: `http://localhost:${ port }` }, err => {
-		if ( err && (err as any).code === "ECONNRESET") {
+		if ( err && ( err as any ).code === 'ECONNRESET' ) {
 			return;
 		}
 		l.log( { err, req, res, commitHash }, 'unexpected error occured while proxying' );
 	} );
+}
+
+export type ImageName = string;
+export type ContainerName = string;
+export type DockerodeStream = any;
+export type ContainerSearchOptions = {
+	image?: ImageName;
+	env?: RunEnv;
+	status?: string;
+	id?: string;
+	name?: string;
+};
+
+/**
+ * Returns a map of all images, indexed by tag. If an image has more than one tag, it will appear multiple
+ * times in the list, each with under a different tag.
+ */
+export function getAllImages() {
+	return new Map(
+		Array.from( state.localImages ).reduce(
+			( images, image ) => [
+				...images,
+				...image.RepoTags.map( tag => [ tag, image ] as [ string, Docker.ImageInfo ] ),
+			],
+			[]
+		)
+	) as Map< string, Docker.ImageInfo >;
+}
+
+export function findContainer( { id, image, env, status, name }: ContainerSearchOptions ) {
+	return Array.from( state.containers.values() ).find( container => {
+		if ( image && ( container.Image !== image && container.ImageID !== image ) ) return false;
+		if ( env && container.Labels[ 'calypsoEnvironment' ] !== env ) return false;
+		if ( status && container.Status !== status ) return false;
+		if ( id && container.Id !== id ) return false;
+		// In the Docker internal list, names start with `/`
+		if ( name && ! container.Names.includes( '/' + name ) ) return false;
+		return true;
+	} );
+}
+
+export async function proxyRequestToContainer( req: any, res: any, container: ContainerInfo ) {
+	// In the Docker internal list, names start with `/`
+	const containerName = container.Names[ 0 ].substring( 1 );
+
+	if ( ! container.Ports[ 0 ] ) {
+		l.log( { containerName }, `Could not find port for container` );
+		throw new Error( `Could not find port for container ${ containerName }` );
+	}
+	const port = container.Ports[ 0 ].PublicPort;
+
+	proxy.web( req, res, { target: `http://localhost:${ port }` }, err => {
+		if ( err && ( err as any ).code === 'ECONNRESET' ) {
+			return;
+		}
+		l.log( { err, req, res, containerName }, 'unexpected error occured while proxying' );
+		throw new Error( 'unexpected error occured while proxying' );
+	} );
+}
+
+/**
+ * Pulls an image. Calls onProgress() when there is an update, resolves the returned promise
+ * when the image is pulled (weird API, I know)
+ */
+export async function pullImage( imageName: ImageName, onProgress: ( data: any ) => void ) {
+	// Store the stream in memory, so other requets can "join" and listen for the progress
+	if ( ! state.pullingImages.has( imageName ) ) {
+		const stream = docker.pull( imageName, {} ) as Promise< DockerodeStream >;
+		state.pullingImages.set( imageName, stream );
+	}
+
+	const stream = state.pullingImages.get( imageName );
+	return new Promise( async ( resolve, reject ) => {
+		const resolvedStream = await stream;
+
+		docker.modem.followProgress(
+			resolvedStream,
+			( err: any ) => {
+				state.pullingImages.delete( imageName );
+				if ( err ) reject( err );
+				else resolve();
+			},
+			onProgress
+		);
+	} );
+}
+
+/**
+ * Asks a container nicely to stop, waits for 10 seconds and then obliterates it
+ */
+export async function deleteContainer( containerInfo: ContainerInfo ) {
+	const container = docker.getContainer( containerInfo.Id );
+	await container.stop( { t: 10 } );
+	await container.remove( { force: true, v: true, link: true } );
+	await refreshContainers();
+}
+
+/**
+ * Creates a container
+ *
+ * createContainer is async, but we don't keep a list of container being creates to ensure atomicity for a few reasons:
+ *
+ * - Creating container is quite fast, so the chances of collisions are quite low
+ * - Even if we get two requests with the same image+env at the same time, creating two separate containers for the same
+ *   image is ok. Each one will get a different URL, and if one of them is not used it will get eventually cleaned up.
+ */
+export async function createContainer( imageName: ImageName, env: RunEnv ) {
+	const exposedPort = `${ config.build.exposedPort }/tcp`;
+
+	let freePort: number;
+	try {
+		freePort = await portfinder.getPortPromise();
+	} catch ( err ) {
+		l.error( { err, imageName }, `Error while attempting to find a free port for ${ imageName }` );
+		throw err;
+	}
+
+	try {
+		const container = await docker.createContainer( {
+			...config.build.containerCreateOptions,
+			...envContainerConfig( env ),
+			Image: imageName,
+			ExposedPorts: { [ exposedPort ]: {} },
+			HostConfig: {
+				PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
+			},
+			Labels: {
+				calypsoEnvironment: env,
+			},
+		} );
+		l.log( { imageName }, `Successfully created container for ${ imageName }` );
+		await refreshContainers();
+
+		// Returns a ContainerInfo for the created container, in order to avoid exposing a real Container object.
+		return findContainer( {
+			id: container.id,
+		} );
+	} catch ( error ) {
+		l.error( { imageName, error }, `Failed creating container for ${ imageName }` );
+		throw error;
+	}
+}
+
+/**
+ * Starts a container that was dormant (either never started, or stopped)
+ */
+export async function reviveContainer( containerInfo: ContainerInfo ) {
+	const containerName = containerInfo.Names[ 0 ].substring( 1 );
+	const container = docker.getContainer( containerInfo.Id );
+
+	try {
+		await container.start();
+		await refreshContainers();
+
+		// This returns the same containerInfo object, but updated
+		return findContainer( {
+			id: container.id,
+		} );
+	} catch ( error ) {
+		l.error( { containerName, error }, `Failed starting container ${ containerName }` );
+		throw error;
+	}
 }

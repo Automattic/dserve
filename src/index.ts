@@ -39,7 +39,7 @@ import {
 	session,
 	determineEnvironment,
 } from './middlewares';
-
+import { middleware as imageRunnerMiddleware } from './image-runner';
 import renderApp from './app/index';
 import renderLocalImages from './app/local-images';
 import renderLog from './app/log';
@@ -51,7 +51,7 @@ import { Writable } from 'stream';
 import {
 	refreshLocalImages,
 	refreshRemoteBranches,
-	refreshRunningContainers,
+	refreshContainers,
 	cleanupExpiredContainers,
 } from './api';
 
@@ -142,6 +142,7 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 	}
 } );
 
+calypsoServer.use( imageRunnerMiddleware );
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
 calypsoServer.use( determineEnvironment );
@@ -270,7 +271,7 @@ if ( process.env.NODE_ENV !== 'test' ) {
 	};
 
 	loop( refreshLocalImages, 5 * ONE_SECOND );
-	loop( refreshRunningContainers, 5 * ONE_SECOND );
+	loop( refreshContainers, 5 * ONE_SECOND );
 	loop( refreshRemoteBranches, ONE_MINUTE );
 	// Wait a bit before starting the expired container cleanup.
 	// This gives us some time to accumulate accesses to existing containers across app restarts
