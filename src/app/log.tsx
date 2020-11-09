@@ -1,5 +1,5 @@
-import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
 
 import { Shell } from './app-shell';
 import { errorClass, humanRelativeTime } from './util';

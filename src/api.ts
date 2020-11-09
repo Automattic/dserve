@@ -1,10 +1,10 @@
-import * as httpProxy from 'http-proxy';
-import * as Docker from 'dockerode';
-import * as _ from 'lodash';
-import * as portfinder from 'portfinder';
-import * as git from 'nodegit';
-import * as fs from 'fs-extra';
-import * as path from 'path';
+import httpProxy from 'http-proxy';
+import Docker from 'dockerode';
+import _ from 'lodash';
+import portfinder from 'portfinder';
+import git from 'nodegit';
+import fs from 'fs-extra';
+import path from 'path';
 import { promisify } from 'util';
 import { ContainerInfo } from 'dockerode';
 
@@ -45,6 +45,7 @@ export type BranchName = string;
 export type PortNumber = number;
 export type ImageStatus = 'NoImage' | 'Inactive' | PortNumber;
 export type RunEnv = string;
+export type DockerRepository = string;
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
 export const extractCommitFromImage = ( imageName: string ): CommitHash => {
@@ -504,7 +505,7 @@ export function getAllImages() {
 		Array.from( state.localImages ).reduce(
 			( images, image ) => [
 				...images,
-				...image.RepoTags.map( tag => [ tag, image ] as [ string, Docker.ImageInfo ] ),
+				...( image.RepoTags || [] ).map( tag => [ tag, image ] as [ string, Docker.ImageInfo ] ),
 			],
 			[]
 		)

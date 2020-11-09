@@ -1,6 +1,6 @@
-import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
-import * as Docker from 'dockerode';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
+import Docker from 'dockerode';
 import { config } from '../config';
 
 import { Shell } from './app-shell';

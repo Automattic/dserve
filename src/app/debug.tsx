@@ -1,7 +1,7 @@
-import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
-import * as Dockerode from 'dockerode';
-import * as os from 'os';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
+import Dockerode from 'dockerode';
+import os from 'os';
 
 import { ONE_MINUTE } from '../constants';
 import { Shell } from './app-shell';
@@ -119,11 +119,11 @@ const Debug = ( c: RenderContext ) => {
 			<div className="dserve-debug-cards">
 				<figure className="system">
 					<p>
-						CPU (x{ os.cpus().length }):{ ' ' }
+						CPU (x{ os.cpus().length }):{' '}
 						{ os
 							.loadavg()
 							.map( a => round( a, 2 ) )
-							.join( ', ' ) }{ ' ' }
+							.join( ', ' ) }{' '}
 						(1m, 5m, 15m)
 					</p>
 					<p>Memory</p>
@@ -145,7 +145,7 @@ const Debug = ( c: RenderContext ) => {
 						<ul>
 							{ Array.from( pendingHashes ).map( hash => (
 								<li key={ hash }>
-									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{ ' ' }
+									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{' '}
 									<a href={ `https://github.com/Automattic/wp-calypso/commit/${ hash }` }>github</a>
 								</li>
 							) ) }
@@ -160,7 +160,7 @@ const Debug = ( c: RenderContext ) => {
 						<ul>
 							{ buildQueue.map( hash => (
 								<li key={ hash }>
-									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{ ' ' }
+									<a href={ `/?hash=${ hash }` }>{ hash.substr( 0, 8 ) }</a>{' '}
 									<a href={ `https://github.com/Automattic/wp-calypso/commit/${ hash }` }>github</a>
 								</li>
 							) ) }
@@ -186,7 +186,7 @@ const Debug = ( c: RenderContext ) => {
 										} ) }
 									>
 										{ humanRelativeTime( ts.getTime() / 1000 ) }
-									</time>{ ' ' }
+									</time>{' '}
 									{ reason.toString() }
 								</li>
 							) ) }
@@ -214,7 +214,7 @@ const Debug = ( c: RenderContext ) => {
 									<li key={ info.Id } className={ info.State }>
 										<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
 										<br />
-										Commit:{ ' ' }
+										Commit:{' '}
 										{ commit ? (
 											<a href={ `/?hash=${ commit }&env=${ env || '' }` }>{ commit }</a>
 										) : (
@@ -227,7 +227,7 @@ const Debug = ( c: RenderContext ) => {
 										<br />
 										Status: { info.Status }
 										<br />
-										Last Access:{ ' ' }
+										Last Access:{' '}
 										{ getCommitAccessTime( commit )
 											? humanRelativeTime( getCommitAccessTime( commit ) / 1000 )
 											: 'never' }
@@ -239,7 +239,7 @@ const Debug = ( c: RenderContext ) => {
 
 					<p>DServe Images</p>
 					<p>
-						Total storage size:{ ' ' }
+						Total storage size:{' '}
 						{ humanSize( images.reduce( ( size, [ , info ] ) => size + info.Size, 0 ) ) }
 					</p>
 					<ul>
@@ -250,11 +250,11 @@ const Debug = ( c: RenderContext ) => {
 						) : (
 							images.map( ( [ key, info ] ) => (
 								<li key={ info.Id }>
-									Commit:{ ' ' }
+									Commit:{' '}
 									<strong>
 										{ info.RepoTags ? (
 											<a href={ `/?hash=${ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }` }>
-												{ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }{ ' ' }
+												{ extractCommitFromImage( info.RepoTags.join( ' ' ) ) }{' '}
 											</a>
 										) : (
 											'None'
@@ -309,7 +309,7 @@ const Debug = ( c: RenderContext ) => {
 								.sort( ( a, b ) => b.Created - a.Created )
 								.map( info => (
 									<li key={ info.Id }>
-										RepoTags:{ ' ' }
+										RepoTags:{' '}
 										<strong>
 											{ info.RepoTags ? shortHash( info.RepoTags.join( ', ' ), 38 ) : 'None' }
 										</strong>

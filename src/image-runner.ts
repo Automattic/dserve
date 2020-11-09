@@ -1,5 +1,5 @@
 // external
-import * as express from 'express';
+import express from 'express';
 import { ContainerInfo } from 'dockerode';
 
 // internal
@@ -14,7 +14,8 @@ import {
 	createContainer,
 } from './api';
 import { config } from './config';
-import { l, ringbuffer } from './logger';
+import { l } from './logger';
+import dockerParseImage from 'docker-parse-image';
 
 const imagePattern = /^container-(?<container>\w+)\./;
 
@@ -63,6 +64,12 @@ async function loadImage( req: express.Request, res: express.Response ) {
 	const imageName = req.query.image;
 	const environment = req.query.env || config.envs[ 0 ];
 
+	const { registry } = dockerParseImage( imageName );
+	if ( ! config.allowedDockerRepositories.includes( registry ) ) {
+		res.status( 403 ).send( `The registry ${ registry } is invalid` );
+		return;
+	}
+
 	// There is a container for this image/environment. Redirect to http://container-<name>.calypso.live
 	const existingContainer = findContainer( {
 		image: imageName,
@@ -98,7 +105,7 @@ async function loadImage( req: express.Request, res: express.Response ) {
 /**
  * Gets a container name from the subdmain, starts it if necessary and proxies all requests to it.
  */
-async function redirectToContainer( req: express.Request, res: express.Response ) {
+async function startAndProxyRequestsToContainer( req: express.Request, res: express.Response ) {
 	const containerName: ContainerName = getContainerNameFromSubdomain( req.headers.host );
 	let container: ContainerInfo;
 	const shouldDelete = 'delete' in req.query;
@@ -127,7 +134,7 @@ async function redirectToContainer( req: express.Request, res: express.Response 
 /**
  * Main middleware for the image runner. This single middleware will take care of both cases:
  *
- *  - Image in query string (http://calypso.live?image=registry.a8c.com/calypso/app:build-4)
+ *  - Image in query string (http://calypso.live?<registry>/image=calypso/app:build-4)
  *  - Container name in subdomain (http://container-agitated_hypatia.calypso.live/)
  */
 export function middleware(
@@ -143,7 +150,7 @@ export function middleware(
 
 	const containerName = getContainerNameFromSubdomain( req.headers.host );
 	if ( containerName ) {
-		redirectToContainer( req, res ).catch( next );
+		startAndProxyRequestsToContainer( req, res ).catch( next );
 		return;
 	}
 

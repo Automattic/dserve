@@ -1,5 +1,5 @@
-import * as bunyan from 'bunyan';
-import * as _ from 'lodash';
+import bunyan from 'bunyan';
+import _ from 'lodash';
 import { Writable } from 'stream';
 
 import { CommitHash, getImageName } from './api';

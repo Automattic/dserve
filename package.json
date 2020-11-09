@@ -26,6 +26,7 @@
 		"@types/tar-fs": "^1.16.1",
 		"@types/useragent": "^2.1.1",
 		"bunyan": "^1.8.12",
+		"docker-parse-image": "^3.0.1",
 		"dockerode": "^3.0.0",
 		"express": "^4.16.3",
 		"express-session": "^1.15.6",
