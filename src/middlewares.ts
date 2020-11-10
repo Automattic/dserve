@@ -50,7 +50,9 @@ function getCommitHashFromSubdomain( host: string ) {
 		return null;
 	}
 
-	const [ , , /* full match */ /* environment */ hash ] = match;
+	// https://github.com/prettier/prettier/issues/1013
+	// prettier-ignore
+	const [ /* full match */, /* environment */, hash ] = match;
 	return hash;
 }
 
@@ -61,7 +63,9 @@ function getEnvironmentFromSubdomain( host: string ) {
 		return null;
 	}
 
-	const [ , /* full match */ environment ] = match;
+	// https://github.com/prettier/prettier/issues/1013
+	// prettier-ignore
+	const [ /* full match */, environment ] = match;
 	return environment;
 }
 
