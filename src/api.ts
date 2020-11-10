@@ -567,7 +567,7 @@ export async function proxyRequestToContainer( req: any, res: any, container: Co
 	const errorHandler = ( err: any ) => {
 		if ( err && ( err as any ).code === 'ECONNRESET' ) {
 			retryCounter--;
-			if ( retryCounter > 0 ) proxyToContainer();
+			if ( retryCounter > 0 ) setTimeout( proxyToContainer, 1000 );
 		}
 		l.log( { err, req, res, containerName }, 'unexpected error occured while proxying' );
 		throw new Error( 'unexpected error occured while proxying' );
