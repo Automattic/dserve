@@ -1377,6 +1377,11 @@ docker-modem@^2.0.0:
     split-ca "^1.0.0"
     ssh2 "^0.8.5"
 
+docker-parse-image@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/docker-parse-image/-/docker-parse-image-3.0.1.tgz#33dc69291eac3414f84871f2d59d77b6f6948be4"
+  integrity sha1-M9xpKR6sNBT4SHHy1Z13tvaUi+Q=
+
 dockerode@^3.0.0:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/dockerode/-/dockerode-3.0.2.tgz#6e61de42ecbbae997196874e53150e3d7ae3c964"
