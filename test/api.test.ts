@@ -1,4 +1,10 @@
-import { getCommitAccessTime, touchCommit, getExpiredContainers, getImageName } from '../src/api';
+import {
+	getCommitAccessTime,
+	touchCommit,
+	getExpiredContainers,
+	getImageName,
+	state,
+} from '../src/api';
 
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 
@@ -7,52 +13,53 @@ describe( 'api', () => {
 		const RealNow = Date.now;
 		const fakeNow = RealNow() + 24 * 60 * 1000;
 		Date.now = () => fakeNow;
+
 		afterAll( () => {
 			Date.now = RealNow;
 		} );
 
 		const EXPIRED_TIME = Date.now() - CONTAINER_EXPIRY_TIME - 1;
 		const GOOD_TIME = Date.now() - CONTAINER_EXPIRY_TIME + 1;
-		const images = [ { Image: getImageName( '1' ), Id: 1 }, { Image: getImageName( '2' ), Id: 2 } ];
+		const images = [
+			{ Image: getImageName( '1' ), Id: 1, Created: EXPIRED_TIME / 1000 },
+			{ Image: getImageName( '2' ), Id: 1, Created: EXPIRED_TIME / 1000 },
+		];
+
+		afterEach( () => {
+			state.accesses = new Map();
+			state.containers = new Map();
+		} );
+
+		beforeEach( () => {
+			state.containers = new Map( images.map( image => [ image.Image, { ...image } ] ) as any );
+		} );
 
 		test( 'returns nothing for empty list of containers', () => {
-			expect( getExpiredContainers( [], () => 0 ) ).toEqual( [] );
+			state.containers = new Map();
+			expect( getExpiredContainers() ).toEqual( [] );
 		} );
 
 		test( 'returns the whole list if everything is expired', () => {
-			const expiredImages = images.map( image => {
-				return Object.assign( {}, image, { Created: EXPIRED_TIME / 1000 } );
-			} );
-			expect( getExpiredContainers( expiredImages as any, () => CONTAINER_EXPIRY_TIME ) ).toEqual(
-				expiredImages
-			);
+			expect( getExpiredContainers() ).toEqual( images );
 		} );
 
-		test( 'returns empty list if everything is before expiry', () => {
-			expect( getExpiredContainers( images as any, () => GOOD_TIME ) ).toEqual( [] );
+		test( 'returns empty list if everything was accessed before expiry', () => {
+			state.accesses.set( '1', GOOD_TIME );
+			state.accesses.set( '2', GOOD_TIME );
+
+			expect( getExpiredContainers() ).toEqual( [] );
 		} );
 
 		test( 'returns list of only images that have not expired', () => {
-			const getAccessTime = jest
-				.fn()
-				.mockReturnValueOnce( EXPIRED_TIME )
-				.mockReturnValueOnce( GOOD_TIME );
-			const oldImages = images.map( image => {
-				return Object.assign( {}, image, { Created: EXPIRED_TIME / 1000 } );
-			} );
-			expect( getExpiredContainers( oldImages as any, getAccessTime ) ).toEqual(
-				[].concat( oldImages[ 0 ] )
-			);
+			state.accesses.set( '1', Date.now() );
+
+			expect( getExpiredContainers() ).toEqual( [ state.containers.get( getImageName( '2' ) ) ] );
 		} );
 
 		test( 'young images are not returned, regardless of access time', () => {
-			const expiredImages = images.map( image => {
-				return Object.assign( {}, image, { Created: EXPIRED_TIME / 1000 } );
-			} );
-			expiredImages[ 0 ].Created = Date.now() / 1000;
-			expect( getExpiredContainers( expiredImages as any, () => CONTAINER_EXPIRY_TIME ) ).toEqual(
-				[].concat( expiredImages[ 1 ] )
-			);
+			state.containers.get( getImageName( '1' ) ).Created = Date.now() / 1000;
+
+			expect( getExpiredContainers() ).toEqual( [ state.containers.get( getImageName( '2' ) ) ] );
 		} );
 	} );
 

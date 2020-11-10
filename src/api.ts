@@ -527,6 +527,7 @@ export function getAllImages() {
 }
 
 export function getContainerName( container: ContainerInfo ) {
+	if ( ! container.Names || ! container.Names.length ) return null;
 	// The first character is a `/`, skip it
 	return container.Names[ 0 ].substring( 1 );
 }
