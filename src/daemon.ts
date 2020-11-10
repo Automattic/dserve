@@ -1,4 +1,4 @@
-import * as forever from 'forever-monitor';
+import forever from 'forever-monitor';
 
 import { l } from './logger';
 

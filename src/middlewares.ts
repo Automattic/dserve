@@ -1,6 +1,6 @@
 // external
-import * as express from 'express';
-import * as expressSession from 'express-session';
+import express from 'express';
+import expressSession from 'express-session';
 
 // internal
 import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, touchCommit, RunEnv } from './api';

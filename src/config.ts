@@ -1,4 +1,4 @@
-import * as Dockerode from 'dockerode';
+import Dockerode from 'dockerode';
 import { RunEnv } from './api';
 
 type Readonly< T > = { readonly [ P in keyof T ]: T[ P ] };

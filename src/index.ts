@@ -1,8 +1,8 @@
 // external
-import * as express from 'express';
-import * as fs from 'fs-extra';
-import * as striptags from 'striptags';
-import * as useragent from 'useragent';
+import express from 'express';
+import fs from 'fs-extra';
+import striptags from 'striptags';
+import useragent from 'useragent';
 import { exec } from 'child_process';
 
 // internal

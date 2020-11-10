@@ -1,5 +1,5 @@
-import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { ONE_SECOND } from '../constants';
 
 import { Shell } from './app-shell';

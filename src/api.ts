@@ -1,10 +1,10 @@
-import * as httpProxy from 'http-proxy';
-import * as Docker from 'dockerode';
-import * as _ from 'lodash';
-import * as portfinder from 'portfinder';
-import * as git from 'nodegit';
-import * as fs from 'fs-extra';
-import * as path from 'path';
+import httpProxy from 'http-proxy';
+import Docker from 'dockerode';
+import _ from 'lodash';
+import portfinder from 'portfinder';
+import git from 'nodegit';
+import fs from 'fs-extra';
+import path from 'path';
 import { promisify } from 'util';
 import { ContainerInfo } from 'dockerode';
 
