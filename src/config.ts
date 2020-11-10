@@ -7,6 +7,7 @@ type AppConfig = Readonly< {
 	repo: RepoConfig;
 	envs: EnvsConfig;
 	allowedDockerRepositories: AllowedDockerRepositories;
+	proxyRetry: number;
 } >;
 
 type BuildConfig = Readonly< {
@@ -39,6 +40,10 @@ export const config: AppConfig = {
 	envs: [ 'calypso', 'jetpack' ],
 
 	allowedDockerRepositories: [ 'registry.a8c.com' ],
+
+	// When the proxy to the container fails with a ECONNRESET error, retry this number
+	// of times.
+	proxyRetry: 3,
 };
 
 export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCreateOptions {
