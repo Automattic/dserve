@@ -21,7 +21,7 @@ import {
 	getBranchHashes,
 } from './api';
 
-import { ONE_MINUTE, ONE_SECOND } from './constants';
+import { ONE_MINUTE, ONE_SECOND, TEN_MINUTES } from './constants';
 
 import {
 	isBuildInProgress,
@@ -275,5 +275,5 @@ if ( process.env.NODE_ENV !== 'test' ) {
 	loop( refreshRemoteBranches, ONE_MINUTE );
 	// Wait a bit before starting the expired container cleanup.
 	// This gives us some time to accumulate accesses to existing containers across app restarts
-	setTimeout( () => loop( cleanupExpiredContainers, ONE_MINUTE ), 2 * ONE_MINUTE );
+	setTimeout( () => loop( cleanupExpiredContainers, ONE_MINUTE ), TEN_MINUTES );
 }

@@ -404,20 +404,12 @@ export function getContainerAccessTime( name: ContainerName ): number | undefine
 }
 
 /*
- * Get all currently running containers that were created by dserve and have expired.
+ * Get all currently running containers that have expired.
  * Expired means have not been accessed in EXPIRED_DURATION
  */
-export function getExpiredContainers(
-	containers: Array< ContainerInfo >,
-	getAccessTime: Function
-) {
-	// if the server is newly spun up, wait a bit before killing off running containers
-	if ( Date.now() - START_TIME < TEN_MINUTES ) {
-		return [];
-	}
-
-	// otherwise, filter off containers that are still valid
-	return containers.filter( ( container: ContainerInfo ) => {
+export function getExpiredContainers() {
+	// Filter off containers that are still valid
+	return Array.from( state.containers.values() ).filter( ( container: ContainerInfo ) => {
 		const imageName: string = container.Image;
 
 		if ( container.State === 'dead' || container.State === 'created' ) {
@@ -437,7 +429,7 @@ export function getExpiredContainers(
 		}
 
 		// Tracks when a container was accessed using http://hash-xxx.calypso.live/
-		const lastAccessedByCommit = getAccessTime( extractCommitFromImage( imageName ) );
+		const lastAccessedByCommit = getCommitAccessTime( extractCommitFromImage( imageName ) );
 
 		// Tracks when a container was accessed using http://container-xxx.calypso.live/
 		const lastAccessedByContainerName = getContainerAccessTime( getContainerName( container ) );
@@ -456,8 +448,8 @@ export function getExpiredContainers(
 
 // stop any container that hasn't been accessed within ten minutes
 export async function cleanupExpiredContainers() {
-	const containers = Array.from( await docker.listContainers( { all: true } ) );
-	const expiredContainers = getExpiredContainers( containers, getCommitAccessTime );
+	await refreshContainers();
+	const expiredContainers = getExpiredContainers();
 	for ( let container of expiredContainers ) {
 		const imageName: string = container.Image;
 
