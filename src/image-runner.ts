@@ -12,6 +12,8 @@ import {
 	proxyRequestToContainer,
 	reviveContainer,
 	createContainer,
+	touchContainer,
+	getContainerName,
 } from './api';
 import { config } from './config';
 import { l } from './logger';
@@ -28,8 +30,7 @@ function assembleSubdomainUrlForContainer( req: express.Request, container: Cont
 	const environment = container.Labels[ 'calypsoEnvironment' ];
 
 	const subdomainEnv = environment && environment !== config.envs[ 0 ] ? environment + '-' : '';
-	// The first character is a `/`, skip it
-	const name = container.Names[ 0 ].substring( 1 );
+	const name = getContainerName( container );
 
 	const newUrl = new URL(
 		`${ protocol }://${ subdomainEnv }container-${ name }.${ stripImageHashSubdomainFromHost(
@@ -130,6 +131,7 @@ async function startAndProxyRequestsToContainer( req: express.Request, res: expr
 		container = await reviveContainer( container );
 	}
 
+	touchContainer( containerName );
 	proxyRequestToContainer( req, res, container );
 }
 

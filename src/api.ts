@@ -18,6 +18,7 @@ import { timing } from './stats';
 
 type APIState = {
 	accesses: Map< CommitHash, number >;
+	accessesByContainer: Map< ContainerName, number >;
 	branchHashes: Map< CommitHash, BranchName >;
 	containers: Map< string, Docker.ContainerInfo >;
 	localImages: Set< Docker.ImageInfo >;
@@ -28,6 +29,7 @@ type APIState = {
 
 export const state: APIState = {
 	accesses: new Map(),
+	accessesByContainer: new Map(),
 	branchHashes: new Map(),
 	containers: new Map(),
 	localImages: new Set(),
@@ -383,11 +385,22 @@ export function touchCommit( hash: CommitHash ) {
 	state.accesses.set( hash, Date.now() );
 }
 
+export function touchContainer( name: ContainerName ) {
+	state.accessesByContainer.set( name, Date.now() );
+}
+
 export function getCommitAccessTime( hash: CommitHash ): number | undefined {
 	if ( ! hash ) {
 		return undefined;
 	}
 	return state.accesses.get( hash );
+}
+
+export function getContainerAccessTime( name: ContainerName ): number | undefined {
+	if ( ! name ) {
+		return undefined;
+	}
+	return state.accessesByContainer.get( name );
 }
 
 /*
@@ -407,11 +420,6 @@ export function getExpiredContainers(
 	return containers.filter( ( container: ContainerInfo ) => {
 		const imageName: string = container.Image;
 
-		// exclude container if it wasnt created by this app
-		// if ( ! imageName.startsWith( config.build.tagPrefix ) ) {
-		// 	return false;
-		// }
-
 		if ( container.State === 'dead' || container.State === 'created' ) {
 			// ignore dead and just created containers
 			return false;
@@ -423,12 +431,26 @@ export function getExpiredContainers(
 		}
 
 		const createdAgo = Date.now() - container.Created * 1000;
-		const lastAccessed = getAccessTime( extractCommitFromImage( imageName ) );
+		if ( createdAgo <= CONTAINER_EXPIRY_TIME ) {
+			// keep fresh containers alive for 1h
+			return false;
+		}
 
-		return (
-			createdAgo > CONTAINER_EXPIRY_TIME &&
-			( _.isUndefined( lastAccessed ) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME )
-		);
+		// Tracks when a container was accessed using http://hash-xxx.calypso.live/
+		const lastAccessedByCommit = getAccessTime( extractCommitFromImage( imageName ) );
+
+		// Tracks when a container was accessed using http://container-xxx.calypso.live/
+		const lastAccessedByContainerName = getContainerAccessTime( getContainerName( container ) );
+
+		const accessedAgoByCommit = _.isUndefined( lastAccessedByCommit )
+			? Infinity
+			: Date.now() - lastAccessedByCommit;
+		const accessedAgoByContainerName = _.isUndefined( lastAccessedByContainerName )
+			? Infinity
+			: Date.now() - lastAccessedByContainerName;
+
+		// If the most recent access (either by commit or container) is greater than 1h, the container is expired.
+		return Math.min( accessedAgoByCommit, accessedAgoByContainerName ) > CONTAINER_EXPIRY_TIME;
 	} );
 }
 
@@ -512,6 +534,11 @@ export function getAllImages() {
 	) as Map< string, Docker.ImageInfo >;
 }
 
+export function getContainerName( container: ContainerInfo ) {
+	// The first character is a `/`, skip it
+	return container.Names[ 0 ].substring( 1 );
+}
+
 export function findContainer( { id, image, env, status, name }: ContainerSearchOptions ) {
 	return Array.from( state.containers.values() ).find( container => {
 		if ( image && ( container.Image !== image && container.ImageID !== image ) ) return false;
@@ -526,7 +553,7 @@ export function findContainer( { id, image, env, status, name }: ContainerSearch
 
 export async function proxyRequestToContainer( req: any, res: any, container: ContainerInfo ) {
 	// In the Docker internal list, names start with `/`
-	const containerName = container.Names[ 0 ].substring( 1 );
+	const containerName = getContainerName( container );
 
 	if ( ! container.Ports[ 0 ] ) {
 		l.log( { containerName }, `Could not find port for container` );
@@ -635,7 +662,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
  * Starts a container that was dormant (either never started, or stopped)
  */
 export async function reviveContainer( containerInfo: ContainerInfo ) {
-	const containerName = containerInfo.Names[ 0 ].substring( 1 );
+	const containerName = getContainerName( containerInfo );
 	const container = docker.getContainer( containerInfo.Id );
 
 	try {
