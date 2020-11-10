@@ -61,6 +61,8 @@ function getContainerNameFromSubdomain( host: string ) {
  * and redirects to http://container-<containername>.calypso.live
  */
 async function loadImage( req: express.Request, res: express.Response ) {
+	res.header( 'Cache-control', 'no-cache' );
+
 	const imageName = req.query.image;
 	const environment = req.query.env || config.envs[ 0 ];
 
@@ -89,7 +91,7 @@ async function loadImage( req: express.Request, res: express.Response ) {
 
 	// Neither the container nor the image exits. Pull the image, create the container and redirect. If they image is
 	// already being pulled, this will "attach" to the output of the existing pull.
-	// TODO: This poor-man's log may cause problems if the client doesn't understand JavaScript, it will never redirect.
+	res.status( 202 );
 	res.write( '<!DOCTYPE html><body><pre>' );
 	await pullImage( imageName, data => {
 		res.write( `${ Date.now() } - ${ JSON.stringify( data ) }\n` );
@@ -97,7 +99,7 @@ async function loadImage( req: express.Request, res: express.Response ) {
 	const container = await createContainer( imageName, environment );
 	const url = assembleSubdomainUrlForContainer( req, container );
 	res.write(
-		`</pre><script>setTimeout(() => document.location.href="${ url }", 5000);</script></body>`
+		`</pre><script>setTimeout(() => document.location.replace("${ url }"), 5000);</script></body>`
 	);
 	res.end();
 }
