@@ -1,7 +1,7 @@
-import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
-import * as Dockerode from 'dockerode';
-import * as os from 'os';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
+import Dockerode from 'dockerode';
+import os from 'os';
 
 import { ONE_MINUTE } from '../constants';
 import { Shell } from './app-shell';

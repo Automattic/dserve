@@ -1,8 +1,8 @@
-import * as fs from 'fs-extra';
-import * as git from 'nodegit';
-import * as os from 'os';
-import * as path from 'path';
-import * as tar from 'tar-fs';
+import fs from 'fs-extra';
+import git from 'nodegit';
+import os from 'os';
+import path from 'path';
+import tar from 'tar-fs';
 import { Readable } from 'stream';
 import { sample } from 'lodash';
 

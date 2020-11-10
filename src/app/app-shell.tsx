@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { start } from 'repl';
 import { humanRelativeTime } from './util';
 import { pendingHashes, buildQueue } from '../builder';
