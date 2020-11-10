@@ -19,7 +19,7 @@ type RepoConfig = Readonly< {
 	project: string;
 } >;
 
-type EnvsConfig = Readonly<RunEnv[]>;
+type EnvsConfig = Readonly< RunEnv[] >;
 
 export const config: AppConfig = {
 	build: {
@@ -46,6 +46,6 @@ export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCr
 		case 'jetpack':
 			return {
 				Env: [ 'NODE_ENV=jetpack-cloud-horizon', 'CALYPSO_ENV=jetpack-cloud-horizon' ],
-			}
+			};
 	}
 }

@@ -3,17 +3,31 @@ import * as express from 'express';
 import * as expressSession from 'express-session';
 
 // internal
-import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, touchCommit, RunEnv } from './api';
+import {
+	getCommitHashForBranch,
+	refreshRemoteBranches,
+	CommitHash,
+	touchCommit,
+	RunEnv,
+} from './api';
 import { config } from './config';
 
 const hashPattern = /(?:^|.*?\.)(\w*)-?hash-([a-f0-9]+)\./;
 
-function assembleSubdomainUrlForHash( req: express.Request, commitHash: CommitHash, environment: RunEnv ) {
+function assembleSubdomainUrlForHash(
+	req: express.Request,
+	commitHash: CommitHash,
+	environment: RunEnv
+) {
 	const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? 'https' : 'http';
 
-	const subdomainEnv = environment && environment !== config.envs[0] ? environment + '-' : '';
+	const subdomainEnv = environment && environment !== config.envs[ 0 ] ? environment + '-' : '';
 
-	const newUrl = new URL( `${protocol}://${subdomainEnv}hash-${commitHash}.${stripCommitHashSubdomainFromHost( req.headers.host )}` );
+	const newUrl = new URL(
+		`${ protocol }://${ subdomainEnv }hash-${ commitHash }.${ stripCommitHashSubdomainFromHost(
+			req.headers.host
+		) }`
+	);
 	newUrl.pathname = req.path;
 	for ( let [ key, value ] of Object.entries( req.query ) ) {
 		if ( key === 'hash' || key === 'branch' || key === 'env' ) {
@@ -36,6 +50,8 @@ function getCommitHashFromSubdomain( host: string ) {
 		return null;
 	}
 
+	// https://github.com/prettier/prettier/issues/1013
+	// prettier-ignore
 	const [ /* full match */, /* environment */, hash ] = match;
 	return hash;
 }
@@ -47,6 +63,8 @@ function getEnvironmentFromSubdomain( host: string ) {
 		return null;
 	}
 
+	// https://github.com/prettier/prettier/issues/1013
+	// prettier-ignore
 	const [ /* full match */, environment ] = match;
 	return environment;
 }
@@ -119,13 +137,13 @@ export function determineCommitHash(
 export function determineEnvironment(
 	req: express.Request,
 	res: express.Response,
-	next: express.NextFunction,
+	next: express.NextFunction
 ) {
 	const subdomainEnvironment = getEnvironmentFromSubdomain( req.headers.host );
 	if ( config.envs.includes( subdomainEnvironment ) ) {
 		req.session.runEnv = subdomainEnvironment;
 	} else {
-		req.session.runEnv = config.envs[0];
+		req.session.runEnv = config.envs[ 0 ];
 	}
 	next();
 }

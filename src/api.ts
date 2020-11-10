@@ -55,7 +55,7 @@ export const extractCommitFromImage = ( imageName: string ): CommitHash => {
 
 export const extractEnvironmentFromImage = ( image: ContainerInfo ): RunEnv => {
 	return image.Labels.calypsoEnvironment || undefined;
-}
+};
 
 /**
  * Polls the local Docker daemon to
@@ -138,7 +138,11 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 		return state.startingContainers.get( containerId );
 	}
 
-	async function start( image: string, commitHash: CommitHash, env: RunEnv ): Promise< ContainerInfo > {
+	async function start(
+		image: string,
+		commitHash: CommitHash,
+		env: RunEnv
+	): Promise< ContainerInfo > {
 		// ok, try to start one
 		let freePort: number;
 		try {
@@ -230,7 +234,10 @@ export async function refreshRunningContainers() {
 export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
 	const image = getImageName( hash );
 	return Array.from( state.containers.values() ).find(
-		ci => ci.Image === image && ci.State === 'running' && ( ! env || env === extractEnvironmentFromImage( ci ) )
+		ci =>
+			ci.Image === image &&
+			ci.State === 'running' &&
+			( ! env || env === extractEnvironmentFromImage( ci ) )
 	);
 }
 
@@ -296,7 +303,7 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 	timing( 'git.refresh', Date.now() - start );
 
 	try {
-		const branchesReferences = (await repo.getReferences( )).filter(
+		const branchesReferences = ( await repo.getReferences() ).filter(
 			( x: git.Reference ) => x.isBranch
 		);
 
@@ -468,7 +475,7 @@ export async function proxyRequestToHash( req: any, res: any ) {
 	}
 
 	proxy.web( req, res, { target: `http://localhost:${ port }` }, err => {
-		if ( err && (err as any).code === "ECONNRESET") {
+		if ( err && ( err as any ).code === 'ECONNRESET' ) {
 			return;
 		}
 		l.log( { err, req, res, commitHash }, 'unexpected error occured while proxying' );
