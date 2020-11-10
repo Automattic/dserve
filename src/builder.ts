@@ -27,10 +27,11 @@ import { increment, timing, gauge } from './stats';
 export const MAX_CONCURRENT_BUILDS = 4;
 
 const MAX_CORES = [ 12 ];
-export const getBuildConcurrency = () => Math.max(
-	1,
-	Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( MAX_CORES ) )
-);
+export const getBuildConcurrency = () =>
+	Math.max(
+		1,
+		Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( MAX_CORES ) )
+	);
 
 export const buildQueue: Array< CommitHash > = [];
 export const pendingHashes: Set< CommitHash > = new Set();
@@ -147,7 +148,10 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	const buildConcurrency = getBuildConcurrency();
 
 	try {
-		l.log( { commitHash, buildDir, repoDir, imageName, buildConcurrency }, 'Attempting to build image.' );
+		l.log(
+			{ commitHash, buildDir, repoDir, imageName, buildConcurrency },
+			'Attempting to build image.'
+		);
 
 		const cloneStart = Date.now();
 		buildLogger.info( 'Cloning git repo' );
@@ -212,7 +216,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		if ( ! err ) {
 			const buildImageTime = Date.now() - imageStart;
 			timing( 'build_image', buildImageTime );
-			timing( `build_image_by_core.${buildConcurrency}_cores`, buildImageTime );
+			timing( `build_image_by_core.${ buildConcurrency }_cores`, buildImageTime );
 			increment( 'build.success' );
 			try {
 				await refreshLocalImages();
