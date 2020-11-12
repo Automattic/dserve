@@ -1,14 +1,21 @@
-import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
-import * as Dockerode from 'dockerode';
-import * as os from 'os';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
+import Dockerode from 'dockerode';
+import os from 'os';
 
 import { ONE_MINUTE } from '../constants';
 import { Shell } from './app-shell';
 import { promiseRejections } from '../index';
 import { humanSize, humanRelativeTime, percent, round } from './util';
 
-import { state as apiState, getCommitAccessTime, extractCommitFromImage, extractEnvironmentFromImage } from '../api';
+import {
+	getAllContainers,
+	getLocalImages,
+	extractCommitFromImage,
+	extractEnvironmentFromImage,
+	getContainerAccessTime,
+	getContainerName,
+} from '../api';
 import { buildQueue, pendingHashes } from '../builder';
 
 const Docker = new Dockerode();
@@ -26,10 +33,10 @@ const Debug = ( c: RenderContext ) => {
 	const heapT = memUsage.heapTotal;
 	const memTotal = os.totalmem();
 	const memUsed = memTotal - os.freemem();
-	const images = Array.from( apiState.localImages.entries() ) as Array<
+	const images = Array.from( getLocalImages().entries() ) as Array<
 		[ string, Dockerode.ImageInfo ]
 	>;
-	const apiContainers = Array.from( apiState.containers.entries() );
+	const apiContainers = Array.from( getAllContainers().entries() );
 
 	const shortHash = ( hash: string = '', length = 30 ) => (
 		<span title={ hash }>{ hash.slice( 0, length ) }…</span>
@@ -208,7 +215,12 @@ const Debug = ( c: RenderContext ) => {
 									<li key={ info.Id } className={ info.State }>
 										<strong>{ info.Names }</strong> - { shortHash( info.Id ) }
 										<br />
-										Commit: { commit ? <a href={ `/?hash=${ commit }&env=${ env || '' }` }>{ commit }</a> : 'none' }
+										Commit:{' '}
+										{ commit ? (
+											<a href={ `/?hash=${ commit }&env=${ env || '' }` }>{ commit }</a>
+										) : (
+											'none'
+										) }
 										<br />
 										Image ID: { shortHash( info.ImageID ) }
 										<br />
@@ -217,8 +229,10 @@ const Debug = ( c: RenderContext ) => {
 										Status: { info.Status }
 										<br />
 										Last Access:{' '}
-										{ getCommitAccessTime( commit )
-											? humanRelativeTime( getCommitAccessTime( commit ) / 1000 )
+										{ getContainerAccessTime( getContainerName( info ) )
+											? humanRelativeTime(
+													getContainerAccessTime( getContainerName( info ) ) / 1000
+											  )
 											: 'never' }
 									</li>
 								);

@@ -1,8 +1,8 @@
 // external
-import * as express from 'express';
-import * as fs from 'fs-extra';
-import * as striptags from 'striptags';
-import * as useragent from 'useragent';
+import express from 'express';
+import fs from 'fs-extra';
+import striptags from 'striptags';
+import useragent from 'useragent';
 import { exec } from 'child_process';
 
 // internal
@@ -21,7 +21,7 @@ import {
 	getBranchHashes,
 } from './api';
 
-import { ONE_MINUTE, ONE_SECOND } from './constants';
+import { ONE_MINUTE, ONE_SECOND, TEN_MINUTES } from './constants';
 
 import {
 	isBuildInProgress,
@@ -39,7 +39,7 @@ import {
 	session,
 	determineEnvironment,
 } from './middlewares';
-
+import { middleware as imageRunnerMiddleware } from './image-runner';
 import renderApp from './app/index';
 import renderLocalImages from './app/local-images';
 import renderLog from './app/log';
@@ -51,7 +51,7 @@ import { Writable } from 'stream';
 import {
 	refreshLocalImages,
 	refreshRemoteBranches,
-	refreshRunningContainers,
+	refreshContainers,
 	cleanupExpiredContainers,
 } from './api';
 
@@ -142,6 +142,7 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 	}
 } );
 
+calypsoServer.use( imageRunnerMiddleware );
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
 calypsoServer.use( determineEnvironment );
@@ -270,9 +271,9 @@ if ( process.env.NODE_ENV !== 'test' ) {
 	};
 
 	loop( refreshLocalImages, 5 * ONE_SECOND );
-	loop( refreshRunningContainers, 5 * ONE_SECOND );
+	loop( refreshContainers, 5 * ONE_SECOND );
 	loop( refreshRemoteBranches, ONE_MINUTE );
 	// Wait a bit before starting the expired container cleanup.
 	// This gives us some time to accumulate accesses to existing containers across app restarts
-	setTimeout( () => loop( cleanupExpiredContainers, ONE_MINUTE ), 2 * ONE_MINUTE );
+	setTimeout( () => loop( cleanupExpiredContainers, ONE_MINUTE ), TEN_MINUTES );
 }

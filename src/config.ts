@@ -1,11 +1,13 @@
-import * as Dockerode from 'dockerode';
-import { RunEnv } from './api';
+import Dockerode from 'dockerode';
+import { DockerRepository, RunEnv } from './api';
 
 type Readonly< T > = { readonly [ P in keyof T ]: T[ P ] };
 type AppConfig = Readonly< {
 	build: BuildConfig;
 	repo: RepoConfig;
 	envs: EnvsConfig;
+	allowedDockerRepositories: AllowedDockerRepositories;
+	proxyRetry: number;
 } >;
 
 type BuildConfig = Readonly< {
@@ -19,7 +21,9 @@ type RepoConfig = Readonly< {
 	project: string;
 } >;
 
-type EnvsConfig = Readonly<RunEnv[]>;
+type EnvsConfig = Readonly< RunEnv[] >;
+
+type AllowedDockerRepositories = Readonly< DockerRepository[] >;
 
 export const config: AppConfig = {
 	build: {
@@ -34,6 +38,12 @@ export const config: AppConfig = {
 	},
 
 	envs: [ 'calypso', 'jetpack' ],
+
+	allowedDockerRepositories: [ 'registry.a8c.com' ],
+
+	// When the proxy to the container fails with a ECONNRESET error, retry this number
+	// of times.
+	proxyRetry: 3,
 };
 
 export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCreateOptions {
@@ -46,6 +56,6 @@ export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCr
 		case 'jetpack':
 			return {
 				Env: [ 'NODE_ENV=jetpack-cloud-horizon', 'CALYPSO_ENV=jetpack-cloud-horizon' ],
-			}
+			};
 	}
 }
