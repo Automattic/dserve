@@ -3,13 +3,7 @@ import express from 'express';
 import expressSession from 'express-session';
 
 // internal
-import {
-	getCommitHashForBranch,
-	refreshRemoteBranches,
-	CommitHash,
-	touchCommit,
-	RunEnv,
-} from './api';
+import { getCommitHashForBranch, refreshRemoteBranches, CommitHash, RunEnv } from './api';
 import { config } from './config';
 
 const hashPattern = /(?:^|.*?\.)(\w*)-?hash-([a-f0-9]+)\./;
@@ -128,8 +122,6 @@ export function determineCommitHash(
 	}
 
 	req.session.commitHash = subdomainCommitHash;
-
-	touchCommit( subdomainCommitHash );
 
 	next();
 }
