@@ -18,10 +18,10 @@ import { config } from './config';
 import { l } from './logger';
 import dockerParseImage from 'docker-parse-image';
 
-const imagePattern = /^container-(?<container>\w+)\./;
+const containerPattern = /^container-(?<container>[A-Za-z0-9_-]+)\./;
 
 function stripImageHashSubdomainFromHost( host: string ) {
-	return host.replace( imagePattern, '' );
+	return host.replace( containerPattern, '' );
 }
 
 function assembleSubdomainUrlForContainer( req: express.Request, container: ContainerInfo ) {
@@ -29,7 +29,10 @@ function assembleSubdomainUrlForContainer( req: express.Request, container: Cont
 	const environment = container.Labels[ 'calypsoEnvironment' ];
 
 	const subdomainEnv = environment && environment !== config.envs[ 0 ] ? environment + '-' : '';
-	const name = getContainerName( container );
+
+	// Docker names are in the form <string>_<string>, see https://github.com/docker/engine/blob/master/pkg/namesgenerator/names-generator.go#L843
+	// But we don't want to generate URLs with `_` because in a few other systems (eg: Calypso, wpcom) we assume the URL will match [a-zA-Z0-9-].calypso.live
+	const name = getContainerName( container ).replace( /_/g, '-' );
 
 	const newUrl = new URL(
 		`${ protocol }://${ subdomainEnv }container-${ name }.${ stripImageHashSubdomainFromHost(
@@ -48,7 +51,7 @@ function assembleSubdomainUrlForContainer( req: express.Request, container: Cont
 }
 
 function getContainerNameFromSubdomain( host: string ) {
-	const match = host.match( imagePattern );
+	const match = host.match( containerPattern );
 	if ( ! match ) {
 		return null;
 	}
@@ -113,16 +116,17 @@ async function startAndProxyRequestsToContainer( req: express.Request, res: expr
 	const shouldDelete = 'delete' in req.query;
 
 	container = findContainer( {
-		name: containerName,
+		sanitizedName: containerName,
 	} );
 	if ( ! container ) {
 		throw new Error( `Container ${ containerName } not found` );
 	}
 
 	if ( shouldDelete ) {
-		l.log( { containerName }, `Hard reset for ${ containerName }` );
+		const containerRealName = getContainerName( container );
+		l.log( { containerRealName }, `Hard reset for ${ containerRealName }` );
 		await deleteContainer( container );
-		res.send( `Container ${ containerName } deleted` );
+		res.send( `Container ${ containerRealName } deleted` );
 		return;
 	}
 

@@ -55,6 +55,7 @@ export type ContainerSearchOptions = {
 	status?: string;
 	id?: string;
 	name?: string;
+	sanitizedName?: string;
 };
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
@@ -502,7 +503,14 @@ export function getContainerName( container: ContainerInfo ) {
 	return container.Names[ 0 ].substring( 1 );
 }
 
-export function findContainer( { id, image, env, status, name }: ContainerSearchOptions ) {
+export function findContainer( {
+	id,
+	image,
+	env,
+	status,
+	name,
+	sanitizedName,
+}: ContainerSearchOptions ) {
 	return Array.from( state.containers.values() ).find( container => {
 		if ( image && ( container.Image !== image && container.ImageID !== image ) ) return false;
 		if ( env && container.Labels[ 'calypsoEnvironment' ] !== env ) return false;
@@ -510,6 +518,17 @@ export function findContainer( { id, image, env, status, name }: ContainerSearch
 		if ( id && container.Id !== id ) return false;
 		// In the Docker internal list, names start with `/`
 		if ( name && ! container.Names.includes( '/' + name ) ) return false;
+
+		// Sanitized name is the URL friendly version of the container's name (`_` got replaced with `-`)
+		if (
+			sanitizedName &&
+			! container.Names.map( name => name.replace( /_/g, '-' ).substr( 1 ) ).includes(
+				sanitizedName
+			)
+		) {
+			return false;
+		}
+
 		return true;
 	} );
 }
