@@ -142,7 +142,8 @@ calypsoServer.get( '/debug', async ( req: express.Request, res: express.Response
 	}
 } );
 
-calypsoServer.use( imageRunnerMiddleware );
+// Disabled for now due security reasons
+// calypsoServer.use( imageRunnerMiddleware );
 calypsoServer.use( redirectHashFromQueryStringToSubdomain );
 calypsoServer.use( determineCommitHash );
 calypsoServer.use( determineEnvironment );
