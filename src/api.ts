@@ -112,6 +112,15 @@ export function getAllContainers() {
 	return state.containers;
 }
 
+export function isValidImage( imageInfo: ImageInfo ) {
+	if ( ! imageInfo.Labels ) return false;
+
+	for ( const [ label, value ] of Object.entries( config.allowedLabels ) ) {
+		if ( imageInfo.Labels[ label ] !== value ) return false;
+	}
+	return true;
+}
+
 export async function hasHashLocally( hash: CommitHash ): Promise< boolean > {
 	return getLocalImages().has( getImageName( hash ) );
 }
