@@ -45,7 +45,7 @@ export const config: AppConfig = {
 	allowedDockerRepositories: [ 'registry.a8c.com' ],
 
 	allowedLabels: {
-		'com.a8c.image-builder': 'teamcity',
+		'com.a8c.target': 'calypso-live',
 	},
 
 	// When the proxy to the container fails with a ECONNRESET error, retry this number
