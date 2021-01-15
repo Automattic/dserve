@@ -13,6 +13,8 @@ import {
 	reviveContainer,
 	createContainer,
 	getContainerName,
+	isValidImage,
+	refreshLocalImages,
 } from './api';
 import { config } from './config';
 import { l } from './logger';
@@ -87,6 +89,12 @@ async function loadImage( req: express.Request, res: express.Response ) {
 
 	// There is no a container for this image, but the image exists in our repo. Create the container and redirect
 	if ( getAllImages().has( imageName ) ) {
+		const image = getAllImages().get( imageName );
+		if ( ! isValidImage( image ) ) {
+			res.status( 403 ).send( `The image ${ imageName } is not valid` );
+			return;
+		}
+
 		const container = await createContainer( imageName, environment );
 		res.redirect( assembleSubdomainUrlForContainer( req, container ) );
 		return;
@@ -99,6 +107,13 @@ async function loadImage( req: express.Request, res: express.Response ) {
 	await pullImage( imageName, data => {
 		res.write( `${ Date.now() } - ${ JSON.stringify( data ) }\n` );
 	} );
+	await refreshLocalImages();
+	const image = getAllImages().get( imageName );
+	if ( ! isValidImage( image ) ) {
+		res.status( 403 ).send( `The image ${ imageName } is not valid` );
+		return;
+	}
+
 	const container = await createContainer( imageName, environment );
 	const url = assembleSubdomainUrlForContainer( req, container );
 	res.write(

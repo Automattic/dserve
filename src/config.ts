@@ -7,6 +7,7 @@ type AppConfig = Readonly< {
 	repo: RepoConfig;
 	envs: EnvsConfig;
 	allowedDockerRepositories: AllowedDockerRepositories;
+	allowedLabels: AllowedLabels;
 	proxyRetry: number;
 } >;
 
@@ -25,6 +26,8 @@ type EnvsConfig = Readonly< RunEnv[] >;
 
 type AllowedDockerRepositories = Readonly< DockerRepository[] >;
 
+type AllowedLabels = Readonly< Record< string, string > >;
+
 export const config: AppConfig = {
 	build: {
 		containerCreateOptions: {},
@@ -40,6 +43,10 @@ export const config: AppConfig = {
 	envs: [ 'calypso', 'jetpack' ],
 
 	allowedDockerRepositories: [ 'registry.a8c.com' ],
+
+	allowedLabels: {
+		'com.a8c.target': 'calypso-live',
+	},
 
 	// When the proxy to the container fails with a ECONNRESET error, retry this number
 	// of times.
