@@ -1,7 +1,7 @@
 import httpProxy from 'http-proxy';
 import Docker, { ImageInfo } from 'dockerode';
 import _ from 'lodash';
-import portfinder from 'portfinder';
+import getPort from 'get-port';
 import git from 'nodegit';
 import fs from 'fs-extra';
 import path from 'path';
@@ -187,7 +187,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 		// ok, try to start one
 		let freePort: number;
 		try {
-			freePort = await portfinder.getPortPromise();
+			freePort = await getPort();
 		} catch ( err ) {
 			l.error(
 				{ err, image, commitHash },
@@ -571,7 +571,7 @@ export async function proxyRequestToContainer( req: any, res: any, container: Co
  * Pulls an image. Calls onProgress() when there is an update, resolves the returned promise
  * when the image is pulled
  */
-export async function pullImage( imageName: ImageName, onProgress: ( data: any ) => void ) {
+export async function pullImage( imageName: ImageName, onProgress: ( data: any ) => void ):Promise<void> {
 	// Store the stream in memory, so other requets can "join" and listen for the progress
 	if ( ! state.pullingImages.has( imageName ) ) {
 		const stream = docker.pull( imageName, {} ) as Promise< DockerodeStream >;
@@ -620,7 +620,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 
 	let freePort: number;
 	try {
-		freePort = await portfinder.getPortPromise();
+		freePort = await getPort();
 	} catch ( err ) {
 		l.error( { err, imageName }, `Error while attempting to find a free port for ${ imageName }` );
 		throw err;
