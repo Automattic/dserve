@@ -33,7 +33,7 @@
 		"forever-monitor": "^1.7.1",
 		"fs-extra": "^8.0.0",
 		"get-port": "^5.1.1",
-		"hot-shots": "^6.3.0",
+		"hot-shots": "^8.0.0",
 		"http-proxy": "^1.17.0",
 		"jest": "^24.0.0",
 		"lodash": "^4.17.10",
