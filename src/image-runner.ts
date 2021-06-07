@@ -28,16 +28,13 @@ function stripImageHashSubdomainFromHost( host: string ) {
 
 function assembleSubdomainUrlForContainer( req: express.Request, container: ContainerInfo ) {
 	const protocol = req.secure || req.headers.host.indexOf( 'calypso.live' ) > -1 ? 'https' : 'http';
-	const environment = container.Labels[ 'calypsoEnvironment' ];
-
-	const subdomainEnv = environment && environment !== config.envs[ 0 ] ? environment + '-' : '';
 
 	// Docker names are in the form <string>_<string>, see https://github.com/docker/engine/blob/master/pkg/namesgenerator/names-generator.go#L843
 	// But we don't want to generate URLs with `_` because in a few other systems (eg: Calypso, wpcom) we assume the URL will match [a-zA-Z0-9-].calypso.live
 	const name = getContainerName( container ).replace( /_/g, '-' );
 
 	const newUrl = new URL(
-		`${ protocol }://${ subdomainEnv }container-${ name }.${ stripImageHashSubdomainFromHost(
+		`${ protocol }://container-${ name }.${ stripImageHashSubdomainFromHost(
 			req.headers.host
 		) }`
 	);
