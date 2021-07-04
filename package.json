@@ -35,7 +35,7 @@
 		"get-port": "^5.1.1",
 		"hot-shots": "^6.3.0",
 		"http-proxy": "^1.17.0",
-		"jest": "^24.0.0",
+		"jest": "^27.0.0",
 		"lodash": "^4.17.10",
 		"node-fetch": "^2.2.1",
 		"nodegit": "^0.26.5",
@@ -44,7 +44,7 @@
 		"strip-ansi": "^5.0.0",
 		"striptags": "^3.1.1",
 		"tar-fs": "^2.0.0",
-		"ts-jest": "^24.0.0",
+		"ts-jest": "^27.0.0",
 		"typescript": "^3.1.6",
 		"useragent": "^2.3.0"
 	},
