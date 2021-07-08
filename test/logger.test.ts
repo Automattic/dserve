@@ -1,6 +1,7 @@
 jest.mock( 'bunyan', () => ( {
 	createLogger: jest.fn( () => ( {
 		info: () => {},
+		warn: () => {},
 		error: () => {},
 	} ) ),
 	RingBuffer: jest.fn(),
@@ -14,6 +15,7 @@ describe( 'logger', () => {
 		jest.resetModules();
 		logger = {
 			info: jest.fn(),
+			warn: jest.fn(),
 			error: jest.fn(),
 			child: jest.fn( options => ( { streams: options.streams } ) ),
 		};
@@ -29,6 +31,7 @@ describe( 'logger', () => {
 			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
 			expect( l ).toBeInstanceOf( Object );
 			expect( l.log ).toBeInstanceOf( Function );
+			expect( l.warn ).toBeInstanceOf( Function );
 			expect( l.error ).toBeInstanceOf( Function );
 		} );
 
@@ -44,9 +47,11 @@ describe( 'logger', () => {
 			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
 
 			l.log( 'testLog' );
+			l.warn( 'testLog' );
 			l.error( 'testLog' );
 
 			expect( logger.info.mock.calls.length ).toBe( 1 );
+			expect( logger.warn.mock.calls.length ).toBe( 1 );
 			expect( logger.error.mock.calls.length ).toBe( 1 );
 		} );
 	} );
