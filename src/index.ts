@@ -46,7 +46,6 @@ import renderLog from './app/log';
 import renderDebug from './app/debug';
 import { l, ringbuffer } from './logger';
 import { increment } from './stats';
-import { Writable } from 'stream';
 
 import {
 	refreshLocalImages,
@@ -54,6 +53,7 @@ import {
 	refreshContainers,
 	cleanupExpiredContainers,
 } from './api';
+import { ImageNotFound, InvalidImage, InvalidRegistry } from './error';
 
 const startedServerAt = new Date();
 increment( 'server_start' );
@@ -216,11 +216,29 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 
 // log errors
 calypsoServer.use(
-	( err: any, req: express.Request, res: express.Response, next: express.NextFunction ) => {
-		if ( err ) {
-			l.error( err, `Error serving request for ${ req.originalUrl }` );
+	( err: Error, req: express.Request, res: express.Response, next: express.NextFunction ) => {
+
+		if (err instanceof ImageNotFound) {
+			l.warn( {err, url:req.originalUrl, image:err.name});
+			res.status(404).send(`Image ${err.name} not found`);
+			return;
 		}
-		next( err );
+
+		if (err instanceof InvalidImage) {
+			l.warn( {err, url:req.originalUrl, image:err.name});
+			res.status(403).send(err.message);
+			return;
+		}
+
+		if (err instanceof InvalidRegistry) {
+			l.warn( {err, url:req.originalUrl, registry:err.registry});
+			res.status(403).send(`Registry ${err.registry} is not valid`);
+			return;
+		}
+
+		// Catch all for unknown errors
+		l.error(err);
+		res.status(500).send(err.message);
 	}
 );
 
