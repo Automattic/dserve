@@ -648,7 +648,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 			id: container.id,
 		} );
 	} catch ( error ) {
-		error.message = `Failed creating container for ${ imageName }: ` + error.message;
+		error.message = `Failed creating container for ${ imageName }: ${error.message}`;
 		throw error;
 	}
 }
