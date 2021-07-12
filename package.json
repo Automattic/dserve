@@ -52,6 +52,7 @@
 		"test": "jest --testURL=http://localhost/",
 		"start": "yarn run build-ts && yarn run serve",
 		"serve": "node build/index.js",
+		"serve:debug": "node build/index.js | bunyan",
 		"serve:forever": "node build/daemon.js",
 		"build-ts": "tsc",
 		"watch-ts": "tsc -w",

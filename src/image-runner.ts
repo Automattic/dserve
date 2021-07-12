@@ -19,6 +19,7 @@ import {
 import { config } from './config';
 import { l } from './logger';
 import dockerParseImage from 'docker-parse-image';
+import {ImageNotFound, InvalidImage, InvalidRegistry} from './error';
 
 const containerPattern = /^container-(?<container>[A-Za-z0-9_-]+)\./;
 
@@ -70,53 +71,59 @@ async function loadImage( req: express.Request, res: express.Response ) {
 
 	const { registry } = dockerParseImage( imageName );
 	if ( ! config.allowedDockerRepositories.includes( registry ) ) {
-		res.status( 403 ).send( `The registry ${ registry } is invalid` );
-		return;
+		throw new InvalidRegistry(registry)
 	}
 
-	// There is a container for this image/environment. Redirect to http://container-<name>.calypso.live
+	// Check if there is a container for this image+environment
 	const existingContainer = findContainer( {
 		image: imageName,
 		env: environment,
 	} );
 	if ( existingContainer ) {
+		// Redirect to http://container-<name>.calypso.live
 		res.redirect( assembleSubdomainUrlForContainer( req, existingContainer ) );
 		return;
 	}
 
-	// There is no a container for this image, but the image exists in our repo. Create the container and redirect
-	if ( getAllImages().has( imageName ) ) {
-		const image = getAllImages().get( imageName );
-		if ( ! isValidImage( image ) ) {
-			res.status( 403 ).send( `The image ${ imageName } is not valid` );
-			return;
-		}
-
-		const container = await createContainer( imageName, environment );
-		res.redirect( assembleSubdomainUrlForContainer( req, container ) );
-		return;
-	}
-
-	// Neither the container nor the image exits. Pull the image, create the container and redirect. If they image is
-	// already being pulled, this will "attach" to the output of the existing pull.
-	res.status( 202 );
-	res.write( '<!DOCTYPE html><body><pre>' );
-	await pullImage( imageName, data => {
-		res.write( `${ Date.now() } - ${ JSON.stringify( data ) }\n` );
-	} );
-	await refreshLocalImages();
+	// There is no container. Check if we have the image already downloaded
 	const image = getAllImages().get( imageName );
-	if ( ! isValidImage( image ) ) {
-		res.status( 403 ).send( `The image ${ imageName } is not valid` );
-		return;
+	if (!image) {
+		// No image in local repo, try to fetch it and reload the page when it's done.
+		try{
+			let responseStarted = false;
+			await pullImage( imageName, data => {
+				// This callback is called when the image starts to download. At this point we know the image exists.
+				// Start streaming the download logs.
+				if (!responseStarted) {
+					res.status( 202 ).write( '<!DOCTYPE html><body><pre>' );
+					responseStarted=true;
+				}
+				res.write( `${ Date.now() } - ${ JSON.stringify( data ) }\n` );
+			} );
+
+			// After the imge is pulled, reload the page. This will invoke this same express handler, but now that the
+			// image has been downloaded it will follow a different code path
+			res.write( `</pre><script>document.location.reload()</script></body>` );
+			res.end();
+			return;
+		}catch(err) {
+			if (err.message.match(/HTTP code 404/)) {
+				throw new ImageNotFound(imageName)
+			} else {
+				throw err;
+			}
+		}
 	}
 
+	// We have the image! Validate it (i.e. validate it was built with TeamCity)
+	if ( ! isValidImage( image ) ) {
+		throw new InvalidImage(imageName)
+	}
+
+	// The image is valid, create the container and redirect to http://container-<name>.calypso.live
 	const container = await createContainer( imageName, environment );
-	const url = assembleSubdomainUrlForContainer( req, container );
-	res.write(
-		`</pre><script>setTimeout(() => document.location.replace("${ url }"), 5000);</script></body>`
-	);
-	res.end();
+	res.redirect( assembleSubdomainUrlForContainer( req, container ) );
+	return;
 }
 
 /**

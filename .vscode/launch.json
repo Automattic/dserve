@@ -5,9 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch",
             "request": "launch",
-            "name": "Debug",
-            "program": "${workspaceFolder}/build/index.js",
+            "runtimeArgs": [
+                "run",
+                "serve:debug"
+            ],
+            "runtimeExecutable": "yarn",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -21,7 +25,7 @@
         },
         {
             "request": "launch",
-            "name": "Test",
+            "name": "Run tests",
             "program": "${workspaceFolder}/node_modules/.bin/jest",
             "skipFiles": [
                 "<node_internals>/**"

@@ -34,6 +34,7 @@ const dserveLogger = bunyan.createLogger( {
 /* super convenient name */
 export const l = {
 	log: dserveLogger.info.bind( dserveLogger ),
+	warn: dserveLogger.warn.bind( dserveLogger ),
 	error: dserveLogger.error.bind( dserveLogger ),
 };
 

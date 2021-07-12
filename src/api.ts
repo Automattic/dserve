@@ -580,17 +580,19 @@ export async function pullImage( imageName: ImageName, onProgress: ( data: any )
 
 	const stream = state.pullingImages.get( imageName );
 	return new Promise( async ( resolve, reject ) => {
-		const resolvedStream = await stream;
-
-		docker.modem.followProgress(
-			resolvedStream,
-			( err: any ) => {
-				state.pullingImages.delete( imageName );
-				if ( err ) reject( err );
-				else resolve();
-			},
-			onProgress
-		);
+		try {
+			docker.modem.followProgress(
+				await stream,
+				( err: any ) => {
+					state.pullingImages.delete( imageName );
+					if ( err ) reject( err );
+					else resolve();
+				},
+				onProgress
+			);
+		} catch( err ) {
+			reject(err);
+		}
 	} );
 }
 
@@ -622,8 +624,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 	try {
 		freePort = await getPort();
 	} catch ( err ) {
-		l.error( { err, imageName }, `Error while attempting to find a free port for ${ imageName }` );
-		throw err;
+		throw new Error(`Error while attempting to find a free port for ${ imageName }`);
 	}
 
 	try {
@@ -647,7 +648,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 			id: container.id,
 		} );
 	} catch ( error ) {
-		l.error( { imageName, error }, `Failed creating container for ${ imageName }` );
+		error.message = `Failed creating container for ${ imageName }: ${error.message}`;
 		throw error;
 	}
 }
