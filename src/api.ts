@@ -555,12 +555,19 @@ export async function proxyRequestToContainer( req: any, res: any, container: Co
 	let retryCounter = config.proxyRetry;
 	const proxyToContainer = () =>
 		proxy.web( req, res, { target: `http://localhost:${ port }` }, errorHandler );
+
 	const errorHandler = ( err: any ) => {
-		if ( err && ( err as any ).code === 'ECONNRESET' ) {
+		if ( err && err.code === 'ECONNRESET' ) {
 			retryCounter--;
-			if ( retryCounter > 0 ) setTimeout( proxyToContainer, 1000 );
+			if ( retryCounter > 0 ) {
+				l.warn( { err, containerName }, `ECONNRESET error occured while proxying, retrying (${retryCounter} retries left)` );
+				setTimeout( proxyToContainer, 1000 );
+				return
+			} else {
+				l.error( { err, containerName }, 'ECONNRESET error occured while proxying, no more retries left' );
+			}
 		}
-		l.log( { err, req, res, containerName }, 'unexpected error occured while proxying' );
+
 		throw new Error( 'unexpected error occured while proxying' );
 	};
 	touchContainer( containerName );
