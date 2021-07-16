@@ -42,7 +42,7 @@
 		"react": "^16.4.2",
 		"react-dom": "^16.4.2",
 		"strip-ansi": "^5.0.0",
-		"striptags": "^3.1.1",
+		"striptags": "^3.2.0",
 		"tar-fs": "^2.0.0",
 		"ts-jest": "^24.0.0",
 		"typescript": "^3.1.6",
