@@ -14,7 +14,7 @@
 		"@types/forever-monitor": "^1.7.3",
 		"@types/fs-extra": "^8.0.0",
 		"@types/http-proxy": "^1.16.2",
-		"@types/jest": "^24.0.0",
+		"@types/jest": "^26.0.0",
 		"@types/lodash": "^4.14.116",
 		"@types/node": "^10.12.2",
 		"@types/node-fetch": "^2.1.2",
