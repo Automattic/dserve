@@ -658,18 +658,28 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
  */
 export async function reviveContainer( containerInfo: ContainerInfo ) {
 	const containerName = getContainerName( containerInfo );
-	const container = docker.getContainer( containerInfo.Id );
 
 	try {
+		// Wait for it if the container is alerady starting
+		if (containerInfo.State === "restarting") {
+			// Refresh container info until it is not 'restarting' anymore with a throttle of 1s
+			while ( containerInfo.State==="restarting" ) {
+				await new Promise((resolve) => setTimeout(resolve, 1000))
+				await refreshContainers();
+				containerInfo = findContainer( {id: containerInfo.Id});
+			}
+			return containerInfo;
+		}
+
+		const container = docker.getContainer( containerInfo.Id );
 		await container.start();
+		l.log( { containerName }, `Successfully started container` );
 		await refreshContainers();
 
 		// This returns the same containerInfo object, but updated
-		return findContainer( {
-			id: container.id,
-		} );
+		return findContainer( { id: container.id } );
 	} catch ( error ) {
-		l.error( { containerName, error }, `Failed starting container ${ containerName }` );
+		error.message = `Failed reviving ${containerInfo.State} container  ${ containerName }: ${error.message}`;
 		throw error;
 	}
 }
