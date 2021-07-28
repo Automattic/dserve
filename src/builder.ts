@@ -66,7 +66,7 @@ export function getBuildDir( hash: CommitHash ) {
 
 export async function cleanupBuildDir( hash: CommitHash ) {
 	const buildDir = getBuildDir( hash );
-	l.log( `removing directory: ${ buildDir }` );
+	l.info( `removing directory: ${ buildDir }` );
 	pendingHashes.delete( hash );
 	return fs.remove( buildDir );
 }
@@ -107,7 +107,7 @@ export async function addToBuildQueue( commitHash: CommitHash ) {
 	if ( buildQueue.includes( commitHash ) || pendingHashes.has( commitHash ) ) {
 		return;
 	}
-	l.log(
+	l.info(
 		{ buildQueueSize: buildQueue.length, commitHash },
 		'Adding a commitHash to the buildQueue'
 	);
@@ -126,7 +126,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	let imageStart: number;
 
 	if ( await isBuildInProgress( commitHash ) ) {
-		l.log( { commitHash, buildDir }, 'Skipping build because a build is already in progress' );
+		l.info( { commitHash, buildDir }, 'Skipping build because a build is already in progress' );
 		return;
 	}
 
@@ -148,7 +148,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	const buildConcurrency = getBuildConcurrency();
 
 	try {
-		l.log(
+		l.info(
 			{ commitHash, buildDir, repoDir, imageName, buildConcurrency },
 			'Attempting to build image.'
 		);
@@ -160,7 +160,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		buildLogger.info( 'Finished cloning repo' );
 		const cloneTime = Date.now() - cloneStart;
 		timing( 'git.build.clone', cloneTime );
-		l.log( { commitHash, cloneTime }, 'Finished cloning repo' );
+		l.info( { commitHash, cloneTime }, 'Finished cloning repo' );
 
 		const checkoutStart = Date.now();
 		const commit = await repo.getCommit( commitHash );
@@ -168,11 +168,11 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		await repo.checkoutBranch( branch );
 		const checkoutTime = Date.now() - checkoutStart;
 		timing( 'git.build.checkout', checkoutTime );
-		l.log( { commitHash, checkoutTime }, 'Checked out branch' );
+		l.info( { commitHash, checkoutTime }, 'Checked out branch' );
 		buildLogger.info( 'Checked out the correct branch' );
 
 		buildLogger.info( 'Placing all the contents into a tarball stream for docker\n' );
-		l.log(
+		l.info(
 			{ commitHash, repoDir, imageName, buildConcurrency },
 			'Placing contents of repoDir into a tarball and sending to docker for a build'
 		);
@@ -221,9 +221,9 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			try {
 				await refreshLocalImages();
 			} catch ( err ) {
-				l.log( { commitHash, err }, 'Error refreshing local images' );
+				l.info( { commitHash, err }, 'Error refreshing local images' );
 			}
-			l.log(
+			l.info(
 				{ commitHash, buildImageTime, repoDir, imageName, buildConcurrency },
 				`Successfully built image. Now cleaning up build directory`
 			);
@@ -263,7 +263,7 @@ const loop = ( f: Function, delay: number ) => {
 
 function warnOnQueueBuildup() {
 	if ( buildQueue.length > MAX_CONCURRENT_BUILDS ) {
-		l.log(
+		l.info(
 			{ buildQueue },
 			'There are images waiting to be built that are stuck because of too many concurrent builds'
 		);
@@ -274,7 +274,7 @@ export function buildFromQueue() {
 	buildQueue
 		.splice( 0, MAX_CONCURRENT_BUILDS - pendingHashes.size ) // grab the next batch of builds
 		.forEach( commitHash => {
-			l.log( { commitHash }, 'Popping a commitHash off of the buildQueue' );
+			l.info( { commitHash }, 'Popping a commitHash off of the buildQueue' );
 			buildImageForHash( commitHash );
 		} );
 	if ( buildQueue.length !== currentLength ) {

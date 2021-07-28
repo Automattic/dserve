@@ -1,9 +1,31 @@
-export class ImageNotFound extends Error {
-    name: string;
+
+export class ContainerError extends Error {
+    containerName: string;
+    constructor(containerName:string, message:string) {
+        super(message);
+        this.containerName = containerName;
+        Error.captureStackTrace(this, ContainerError);
+    }
+}
+
+export class ImageError extends Error {
+    imageName: string;
+    constructor(imageName:string, message:string) {
+        super(message);
+        this.imageName = imageName;
+        Error.captureStackTrace(this, ImageError);
+    }
+}
+
+export class ImageNotFound extends ImageError {
     constructor(name:string) {
-        super("Docker image not found");
-        this.name = name;
-        Error.captureStackTrace(this, ImageNotFound);
+        super(name, "Docker image not found");
+    }
+}
+
+export class InvalidImage extends ImageError {
+    constructor(name:string) {
+        super(name, "Image is invalid");
     }
 }
 
@@ -16,11 +38,4 @@ export class InvalidRegistry extends Error {
     }
 }
 
-export class InvalidImage extends Error {
-    name: string;
-    constructor(name:string) {
-        super("Image is invalid");
-        this.name = name;
-        Error.captureStackTrace(this, InvalidImage);
-    }
-}
+

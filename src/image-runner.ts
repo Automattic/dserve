@@ -143,7 +143,7 @@ async function startAndProxyRequestsToContainer( req: express.Request, res: expr
 
 	if ( shouldDelete ) {
 		const containerRealName = getContainerName( container );
-		l.log( { containerRealName }, `Hard reset for ${ containerRealName }` );
+		l.info( { containerRealName }, `Hard reset for ${ containerRealName }` );
 		await deleteContainer( container );
 		res.send( `Container ${ containerRealName } deleted` );
 		return;

@@ -14,19 +14,19 @@ child.on( 'error', err => {
 } );
 
 child.on( 'restart', () => {
-	l.log( 'forever: Restarting' );
+	l.info( 'forever: Restarting' );
 } );
 
 child.on( 'exit:code', ( code, signal ) => {
-	l.log( { code, signal }, 'forever: exited child', code, signal );
+	l.info( { code, signal }, 'forever: exited child', code, signal );
 } );
 
 child.on( 'exit', ( child, spinning ) => {
-	l.log( { child, spinning }, 'forever: really exited', child, spinning );
+	l.info( { child, spinning }, 'forever: really exited', child, spinning );
 } );
 
 child.on( 'stop', childData => {
-	l.log( { data: childData }, 'forever: child stopping' );
+	l.info( { data: childData }, 'forever: child stopping' );
 } );
 
 child.start();

@@ -27,14 +27,6 @@ describe( 'logger', () => {
 	} );
 
 	describe( 'l', () => {
-		test( 'should be an object with two functions: log and error', () => {
-			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
-			expect( l ).toBeInstanceOf( Object );
-			expect( l.log ).toBeInstanceOf( Function );
-			expect( l.warn ).toBeInstanceOf( Function );
-			expect( l.error ).toBeInstanceOf( Function );
-		} );
-
 		test( 'should only make one base logger', () => {
 			const bunyan = require( 'bunyan' );
 			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
@@ -46,7 +38,7 @@ describe( 'logger', () => {
 			jest.setMock( 'bunyan', { createLogger, RingBuffer: jest.fn() } );
 			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
 
-			l.log( 'testLog' );
+			l.info( 'testLog' );
 			l.warn( 'testLog' );
 			l.error( 'testLog' );
 

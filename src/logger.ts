@@ -32,11 +32,7 @@ const dserveLogger = bunyan.createLogger( {
 } );
 
 /* super convenient name */
-export const l = {
-	log: dserveLogger.info.bind( dserveLogger ),
-	warn: dserveLogger.warn.bind( dserveLogger ),
-	error: dserveLogger.error.bind( dserveLogger ),
-};
+export const l = dserveLogger;
 
 /**
  * Creates a child logger that outputs to the build directory and

@@ -53,7 +53,7 @@ import {
 	refreshContainers,
 	cleanupExpiredContainers,
 } from './api';
-import { ImageNotFound, InvalidImage, InvalidRegistry } from './error';
+import { ContainerError, ImageError, ImageNotFound, InvalidImage, InvalidRegistry } from './error';
 
 const startedServerAt = new Date();
 increment( 'server_start' );
@@ -66,7 +66,7 @@ calypsoServer.use( session );
 
 // global node process junk - catched unhandled errors
 process.on( 'uncaughtException', error => {
-	l.log( { error }, 'Crashing on uncaught error' );
+	l.info( { error }, 'Crashing on uncaught error' );
 	increment( 'uncaught_error' );
 } );
 
@@ -82,7 +82,7 @@ const logRejections = () => {
 				'unreported' === status && now.getTime() - ts.getTime() > ONE_MINUTE
 		)
 		.forEach( ( [ promise, [ ts, reason ] ] ) => {
-			l.log( { reason }, 'Unhandled rejection sitting in queue for at least one minute' );
+			l.info( { reason }, 'Unhandled rejection sitting in queue for at least one minute' );
 			promiseRejections.set( promise, [ ts, reason, 'reported' ] );
 		} );
 
@@ -174,7 +174,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 	const shouldReset = req.query.reset;
 
 	if ( shouldReset ) {
-		l.log( { commitHash }, `Hard reset for ${ commitHash }` );
+		l.info( { commitHash }, `Hard reset for ${ commitHash }` );
 		increment( 'hash_reset' );
 		await deleteImage( commitHash );
 		await cleanupBuildDir( commitHash );
@@ -236,6 +236,18 @@ calypsoServer.use(
 			return;
 		}
 
+		if (err instanceof ContainerError) {
+			l.error( {err, url:req.originalUrl, containerName: err.containerName});
+			res.status(500).send(err.message);
+			return;
+		}
+
+		if (err instanceof ImageError) {
+			l.error( {err, url:req.originalUrl, imageName: err.imageName});
+			res.status(500).send(err.message);
+			return;
+		}
+
 		// Catch all for unknown errors
 		l.error(err);
 		res.status(500).send(err.message);
@@ -243,7 +255,7 @@ calypsoServer.use(
 );
 
 const server = calypsoServer.listen( 3000, () =>
-	l.log(
+	l.info(
 		`✅ dserve is listening on 3000 - started at ${ startedServerAt.toLocaleTimeString( undefined, {
 			timeZoneName: 'long',
 			hour12: true,
@@ -257,7 +269,7 @@ server.on( 'error', err => {
 } );
 server.on( 'close', () => {
 	console.log( 'close' );
-	l.log( {}, 'Server shutting down' );
+	l.info( {}, 'Server shutting down' );
 } );
 
 function isBrowser( req: express.Request ): Boolean {

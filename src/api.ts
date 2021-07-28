@@ -15,6 +15,7 @@ import { exec } from 'child_process';
 
 import { CONTAINER_EXPIRY_TIME } from './constants';
 import { timing } from './stats';
+import { ContainerError, ImageError } from './error';
 
 type APIState = {
 	accesses: Map< ContainerName, number >;
@@ -126,7 +127,7 @@ export async function hasHashLocally( hash: CommitHash ): Promise< boolean > {
 }
 
 export async function deleteImage( hash: CommitHash ) {
-	l.log( { commitHash: hash }, 'attempting to remove image for hash' );
+	l.info( { commitHash: hash }, 'attempting to remove image for hash' );
 
 	const runningContainer = state.containers.get( getImageName( hash ) );
 	if ( runningContainer ) {
@@ -137,14 +138,14 @@ export async function deleteImage( hash: CommitHash ) {
 	try {
 		img = docker.getImage( getImageName( hash ) );
 		if ( ! img ) {
-			l.log(
+			l.info(
 				{ commitHash: hash },
 				'did not have an image locally with name' + getImageName( hash )
 			);
 			return;
 		}
 	} catch ( err ) {
-		l.log(
+		l.info(
 			{ commitHash: hash, err },
 			'error trying to find image locally with name' + getImageName( hash )
 		);
@@ -153,20 +154,20 @@ export async function deleteImage( hash: CommitHash ) {
 
 	try {
 		await img.remove( { force: true } );
-		l.log( { commitHash: hash }, 'succesfully removed image' );
+		l.info( { commitHash: hash }, 'succesfully removed image' );
 	} catch ( err ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
 export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
-	//l.log( { commitHash }, `Request to start a container for ${ commitHash }` );
+	//l.info( { commitHash }, `Request to start a container for ${ commitHash }` );
 	const image = getImageName( commitHash );
 	const containerId = `${ env }:${ image }`;
 
 	// do we have an existing container?
 	const existingContainer = getRunningContainerForHash( commitHash, env );
 	if ( existingContainer ) {
-		l.log(
+		l.info(
 			{ commitHash, containerId: existingContainer.Id },
 			`Found a running container for ${ commitHash }`
 		);
@@ -175,7 +176,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 
 	// are we starting one already?
 	if ( state.startingContainers.has( containerId ) ) {
-		//l.log( { commitHash }, `Already starting a container for ${ commitHash }` );
+		//l.info( { commitHash }, `Already starting a container for ${ commitHash }` );
 		return state.startingContainers.get( containerId );
 	}
 
@@ -200,7 +201,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 		const dockerPromise = new Promise( ( resolve, reject ) => {
 			let runError: any;
 
-			l.log( { image, commitHash }, `Starting a container for ${ commitHash }` );
+			l.info( { image, commitHash }, `Starting a container for ${ commitHash }` );
 
 			docker.run(
 				image,
@@ -233,7 +234,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 		} );
 		return dockerPromise.then(
 			( { success, freePort } ) => {
-				l.log(
+				l.info(
 					{ image, freePort, commitHash },
 					`Successfully started container for ${ image } on ${ freePort }`
 				);
@@ -458,29 +459,28 @@ export async function cleanupExpiredContainers() {
 	await refreshContainers();
 	const expiredContainers = getExpiredContainers();
 	for ( let container of expiredContainers ) {
-		const imageName: string = container.Image;
+		const containerName = getContainerName( container )
 
-		l.log(
-			{
-				imageName,
-				containerId: container.Id,
-			},
-			'Cleaning up stale container'
-		);
+		const log = l.child({
+			containerId: container.Id,
+			containerName
+		})
+
+		log.info( 'Cleaning up stale container' );
 
 		if ( container.State === 'running' ) {
 			try {
 				await docker.getContainer( container.Id ).stop();
-				l.log( { containerId: container.Id, imageName }, `Successfully stopped container` );
+				log.info( `Successfully stopped container` );
 			} catch ( err ) {
-				l.error( { err, imageName, containerId: container.Id }, 'Failed to stop container' );
+				log.error( err, 'Failed to stop container' );
 			}
 		}
 		try {
 			await docker.getContainer( container.Id ).remove();
-			l.log( { containerId: container.Id, imageName }, `Successfully removed container` );
+			log.info(`Successfully removed container` );
 		} catch ( err ) {
-			l.error( { err, imageName, containerId: container.Id }, 'Failed to remove container' );
+			log.error( err, 'Failed to remove container' );
 		}
 	}
 	refreshContainers();
@@ -492,7 +492,7 @@ export async function proxyRequestToHash( req: any, res: any ) {
 	let port = await getPortForContainer( commitHash, runEnv );
 
 	if ( ! port ) {
-		l.log( { port, commitHash, runEnv }, `Could not find port for commitHash` );
+		l.info( { port, commitHash, runEnv }, `Could not find port for commitHash` );
 		res.send( 'Error setting up port!' );
 		res.end();
 		return;
@@ -503,7 +503,7 @@ export async function proxyRequestToHash( req: any, res: any ) {
 		if ( err && ( err as any ).code === 'ECONNRESET' ) {
 			return;
 		}
-		l.log( { err, req, res, commitHash }, 'unexpected error occured while proxying' );
+		l.info( { err, req, res, commitHash }, 'unexpected error occured while proxying' );
 	} );
 }
 
@@ -547,7 +547,7 @@ export async function proxyRequestToContainer( req: any, res: any, container: Co
 	const containerName = getContainerName( container );
 
 	if ( ! container.Ports[ 0 ] ) {
-		l.log( { containerName }, `Could not find port for container` );
+		l.info( { containerName }, `Could not find port for container` );
 		throw new Error( `Could not find port for container ${ containerName }` );
 	}
 	const port = container.Ports[ 0 ].PublicPort;
@@ -631,7 +631,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 	try {
 		freePort = await getPort();
 	} catch ( err ) {
-		throw new Error(`Error while attempting to find a free port for ${ imageName }`);
+		throw new ImageError(imageName, `Error while attempting to find a free port: ${err.message}`);
 	}
 
 	try {
@@ -647,7 +647,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 				calypsoEnvironment: env,
 			},
 		} );
-		l.log( { imageName }, `Successfully created container for ${ imageName }` );
+		l.info( { imageName }, `Successfully created container for ${ imageName }` );
 		await refreshContainers();
 
 		// Returns a ContainerInfo for the created container, in order to avoid exposing a real Container object.
@@ -655,8 +655,7 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 			id: container.id,
 		} );
 	} catch ( error ) {
-		error.message = `Failed creating container for ${ imageName }: ${error.message}`;
-		throw error;
+		throw new ImageError(imageName, `Failed creating container: ${error.message}`);
 	}
 }
 
@@ -671,13 +670,12 @@ export async function reviveContainer( containerInfo: ContainerInfo ) {
 	// maybe alredy be starting at this point anyway.
 	try {
 		await container.start();
-		l.log( { containerName }, `Successfully started container` );
+		l.info( { containerName }, `Successfully started container` );
 	} catch(error) {
 		if (error.statusCode === 304) {
-			l.log( { containerName }, `Container already started` );
+			l.info( { containerName }, `Container already started` );
 		} else {
-			error.message = `Failed reviving ${containerInfo.State} container  ${ containerName }: ${error.message}`;
-			throw error;
+			throw new ContainerError(containerName, `Failed reviving ${containerInfo.State} container: ${error.message}`);
 		}
 	}
 
