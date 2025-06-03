@@ -51,7 +51,7 @@ describe( 'api', () => {
 		} );
 
 		test( 'young images are not returned, regardless of access time', () => {
-			state.containers.get( getImageName( '1' ) ).Created = Date.now() / 1000;
+			state.containers.get( getImageName( '1' ) )!.Created = Date.now() / 1000;
 
 			expect( getExpiredContainers() ).toEqual( [ state.containers.get( getImageName( '2' ) ) ] );
 		} );
