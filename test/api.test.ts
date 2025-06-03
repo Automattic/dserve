@@ -37,7 +37,7 @@ describe( 'api', () => {
 			expect( getExpiredContainers() ).toEqual( images );
 		} );
 
-		test.only( 'returns empty list if everything was accessed before expiry', () => {
+		test( 'returns empty list if everything was accessed before expiry', () => {
 			state.accesses.set( 'foo', GOOD_TIME );
 			state.accesses.set( 'bar', GOOD_TIME );
 
