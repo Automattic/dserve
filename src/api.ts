@@ -647,6 +647,13 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 				calypsoEnvironment: env,
 			},
 		} );
+
+		if (env === 'dashboard-ciab') {
+			// Append a `-ciab` suffix to the container name
+			const info = await container.inspect();
+			await container.rename({ name: `${info.Name.substring(1)}-ciab` });
+		}
+
 		l.info( { imageName }, `Successfully created container for ${ imageName }` );
 		await refreshContainers();
 
