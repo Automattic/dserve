@@ -598,6 +598,7 @@ export async function pullImage( imageName: ImageName, onProgress: ( data: any )
 				onProgress
 			);
 		} catch( err ) {
+			state.pullingImages.delete( imageName );
 			reject(err);
 		}
 	} );

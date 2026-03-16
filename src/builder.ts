@@ -286,8 +286,10 @@ function reportQueueDepth() {
 	gauge( 'build_queue', buildQueue.length );
 }
 
-loop( warnOnQueueBuildup, ONE_MINUTE );
-loop( buildFromQueue, ONE_SECOND );
+if ( process.env.NODE_ENV !== 'test' ) {
+	loop( warnOnQueueBuildup, ONE_MINUTE );
+	loop( buildFromQueue, ONE_SECOND );
 
-// report the queue depth every five seconds to keep statsd aggregations happy
-loop( reportQueueDepth, ONE_SECOND * 5 );
+	// report the queue depth every five seconds to keep statsd aggregations happy
+	loop( reportQueueDepth, ONE_SECOND * 5 );
+}
