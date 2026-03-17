@@ -14,9 +14,47 @@ while, proxy requests to the right container based on query params, etc.
 ```bash
 git clone git@github.com:Automattic/dserve.git
 cd dserve
+nvm install
 nvm use
-yarn
-yarn start
+npm install -g yarn@1.22.22
+yarn install --frozen-lockfile
+```
+
+On macOS with Node 20, `yarn install` may log native build failures for optional dependencies such as `unix-dgram` and `fsevents`. Those warnings can be ignored as long as Yarn still finishes successfully.
+
+## Docker / Colima
+
+If you run Docker through Colima, set `DOCKER_HOST` in the same shell where you start dserve:
+
+```bash
+export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+docker version
+```
+
+If Docker pulls need to go through a host proxy, configure that in `~/.colima/default/colima.yaml` and restart Colima:
+
+```yaml
+docker:
+  proxies:
+    http-proxy: "http://host.docker.internal:1080"
+    https-proxy: "http://host.docker.internal:1080"
+    no-proxy: "localhost,127.0.0.1,host.docker.internal,host.lima.internal,.local"
+```
+
+Then:
+
+```bash
+colima stop
+colima start
+```
+
+## Unit tests
+
+The unit test workflow does not require Docker:
+
+```bash
+yarn run build-ts
+yarn test --runInBand
 ```
 
 ## Use
@@ -86,14 +124,24 @@ Note that any time you see `branch=${branchName}` you can subsitute `hash=${sha}
 
 **e2e test locally**
 
-1. start up dserve with `yarn start`
-2. try to access a branch that you've never built before by going to localhost:3000?branch=${branchName}. After a successful build you should be proxied to calypso
-3. try to access an already built branch (by looking at the result of `docker images` you can find repo-tags with the right sha to specify). After a succesfful build you should be proxied to that branch's version of calypso.
-4. you might need access to the private Docker registry: PCYsg-stw-p2
+1. start up dserve with `export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"` and `yarn start`
+2. smoke test the server before trying a real build:
+   - `curl http://localhost:3000/`
+   - `curl http://localhost:3000/log`
+   - `curl http://localhost:3000/localimages`
+   - `curl http://localhost:3000/debug`
+3. try to access a branch that you've never built before by going to `http://calypso.localhost:3000?branch=${branchName}`. After a successful build you should be proxied to calypso
+4. try to access an already built branch by using its hash with `http://calypso.localhost:3000?hash=${sha}`. After a successful start you should be proxied to that branch's version of calypso
+5. if a build fails, inspect the build status page at `http://calypso.localhost:3000/status?branch=${branchName}` and the application log at `http://localhost:3000/log`
+6. on macOS, dserve build directories live under `$TMPDIR`, not necessarily `/tmp`. A failed build will usually leave a directory like `$TMPDIR/dserve-build-Automattic-wp-calypso-${sha}/`
+7. if you need to retry a failed build, add `reset=1` to the main route, for example `http://calypso.localhost:3000/?branch=${branchName}&reset=1`
+8. you might need access to the private Docker registry: PCYsg-stw-p2
 
 **fixing errors**
 
+
 - Docker connection error ("connect ENOENT /var/run/docker.sock"): You can easily fix this by running [sudo ln -s ~/.docker/run/docker.sock /var/run/docker.sock](https://github.com/lando/lando/issues/3533#issuecomment-1464252377)
+- Docker connection error (colima) (`connect ENOENT /var/run/docker.sock`): If you use Colima, export `DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"` before running `yarn start`. A symlink in `/var/run/docker.sock` is a fallback, but the environment variable is the cleaner fix for Colima
 - Error when building image: Make sure the image of the branch you are trying to build is available.
 
 **things that have broken in the past**

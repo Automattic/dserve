@@ -6,7 +6,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/node:10
+      - image: cimg/node:20.20
 
     working_directory: ~/repo
 
@@ -34,4 +34,3 @@ jobs:
 
       # run tests!
       - run: yarn test
-
