@@ -2,16 +2,19 @@ import httpProxy from 'http-proxy';
 import Docker, { ImageInfo } from 'dockerode';
 import _ from 'lodash';
 import getPort from 'get-port';
-import git from 'nodegit';
 import fs from 'fs-extra';
 import path from 'path';
-import { promisify } from 'util';
 import { ContainerInfo } from 'dockerode';
 
 import { config, envContainerConfig } from './config';
 import { l } from './logger';
 import { pendingHashes } from './builder';
-import { exec } from 'child_process';
+import {
+	ensureRepoCloned,
+	fetchRemoteBranches,
+	gcRepo,
+	listRemoteBranches,
+} from './git';
 
 import { CONTAINER_EXPIRY_TIME } from './constants';
 import { timing } from './stats';
@@ -306,61 +309,30 @@ export function getPortForContainer( hash: CommitHash, env: RunEnv ): number | b
 async function getRemoteBranches(): Promise< Map< string, string > > {
 	const repoDir = path.join( __dirname, '../repos' );
 	const calypsoDir = path.join( repoDir, 'wp-calypso' );
-	let repo: git.Repository;
 
 	const start = Date.now();
 
 	try {
-		if ( ! ( await fs.pathExists( repoDir ) ) ) {
-			await fs.mkdir( repoDir );
-		}
-		if ( ! ( await fs.pathExists( calypsoDir ) ) ) {
-			repo = await git.Clone.clone( `https://github.com/${ config.repo.project }`, calypsoDir );
-		} else {
-			repo = await git.Repository.open( calypsoDir );
-		}
-
-		// this code here is all for retrieving origin
-		// and then pruning out old branches
-		const origin: git.Remote = await repo.getRemote( 'origin' );
-		await origin.connect( git.Enums.DIRECTION.FETCH, {} );
-		await origin.download( null );
-		const pruneError = origin.prune( new git.RemoteCallbacks() );
-		if ( pruneError ) {
-			throw new Error( `invoking remote prune returned error code: ${ pruneError }` );
-		}
-		//
-		await repo.fetchAll();
+		await ensureRepoCloned( `https://github.com/${ config.repo.project }`, calypsoDir );
+		await fetchRemoteBranches( calypsoDir );
 	} catch ( err ) {
 		l.error( { err }, 'Could not fetch repo to update branches list' );
 	}
 
-	if ( ! repo ) {
+	if ( ! ( await fs.pathExists( calypsoDir ) ) ) {
 		l.error( 'Something went very wrong while trying to refresh branches' );
+		return;
 	}
 
 	timing( 'git.refresh', Date.now() - start );
 
 	try {
-		const branchesReferences = ( await repo.getReferences() ).filter(
-			( x: git.Reference ) => x.isBranch
-		);
-
-		const branchToCommitHashMap: Map< string, string > = new Map(
-			branchesReferences.map( reference => {
-				const name = reference.shorthand().replace( 'origin/', '' );
-				const commitHash = reference.target().tostrS();
-
-				return [ name, commitHash ] as [ string, CommitHash ];
-			} )
-		);
+		const branchToCommitHashMap = await listRemoteBranches( calypsoDir );
 
 		// gc the repo if no builds are running
 		if ( pendingHashes.size === 0 ) {
 			try {
-				await promisify( exec )( 'git gc', {
-					cwd: calypsoDir,
-				} );
+				await gcRepo( calypsoDir );
 			} catch ( err ) {
 				l.error( { err }, 'git gc failed' );
 			}

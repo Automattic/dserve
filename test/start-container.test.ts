@@ -25,7 +25,6 @@ describe( 'startContainer', () => {
 			} ) )
 		);
 		jest.doMock( 'get-port', () => jest.fn().mockResolvedValue( 12345 ) );
-		jest.doMock( 'nodegit' );
 		jest.doMock( '../src/builder', () => ( {
 			pendingHashes: new Set(),
 		} ) );
