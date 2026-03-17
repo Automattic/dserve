@@ -1,3 +1,12 @@
+jest.mock( 'hot-shots', () => ( {
+	StatsD: jest.fn( () => ( {
+		increment: jest.fn(),
+		decrement: jest.fn(),
+		gauge: jest.fn(),
+		timing: jest.fn(),
+	} ) ),
+} ) );
+
 jest.mock( 'bunyan', () => ( {
 	createLogger: jest.fn( () => ( {
 		info: () => {},

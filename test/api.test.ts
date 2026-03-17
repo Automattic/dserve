@@ -1,6 +1,15 @@
-import { getExpiredContainers, getImageName, state } from '../src/api';
+jest.mock( 'hot-shots', () => ( {
+	StatsD: jest.fn( () => ( {
+		increment: jest.fn(),
+		decrement: jest.fn(),
+		gauge: jest.fn(),
+		timing: jest.fn(),
+	} ) ),
+} ) );
 
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
+
+const { getExpiredContainers, getImageName, state } = require( '../src/api' );
 
 describe( 'api', () => {
 	describe( 'getExpiredContainers', () => {
@@ -37,7 +46,7 @@ describe( 'api', () => {
 			expect( getExpiredContainers() ).toEqual( images );
 		} );
 
-		test.only( 'returns empty list if everything was accessed before expiry', () => {
+		test( 'returns empty list if everything was accessed before expiry', () => {
 			state.accesses.set( 'foo', GOOD_TIME );
 			state.accesses.set( 'bar', GOOD_TIME );
 
