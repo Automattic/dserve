@@ -1,28 +1,21 @@
 import fs from 'fs-extra';
-import git from 'nodegit';
 import os from 'os';
 import path from 'path';
 import tar from 'tar-fs';
-import { Readable } from 'stream';
 import { sample } from 'lodash';
 
 import {
 	CommitHash,
 	getImageName,
 	docker,
-	BranchName,
 	refreshLocalImages,
 	refreshRemoteBranches,
-	getCommitHashForBranch,
 } from './api';
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
-import { ONE_SECOND, ONE_MINUTE, FIVE_MINUTES } from './constants';
+import { ONE_SECOND, ONE_MINUTE } from './constants';
 import { increment, timing, gauge } from './stats';
-
-// hidden method in nodegit that turns on thread safety
-// see https://github.com/nodegit/nodegit/pull/836
-( git as any ).enableThreadSafety();
+import { checkoutCommit, cloneRepo, hasCommit } from './git';
 
 export const MAX_CONCURRENT_BUILDS = 4;
 
@@ -73,20 +66,13 @@ export async function cleanupBuildDir( hash: CommitHash ) {
 
 const waitingOnCommits: Set< CommitHash > = new Set();
 async function waitForCommit( commitHash: CommitHash ): Promise< boolean > {
-	let repo = await git.Repository.open( path.join( __dirname, '..', 'repos', 'wp-calypso' ) );
-	try {
-		await repo.getCommit( commitHash );
+	const repoDir = path.join( __dirname, '..', 'repos', 'wp-calypso' );
+	if ( await hasCommit( repoDir, commitHash ) ) {
 		return true;
-	} catch {
-		// commit not found, refresh
-		await refreshRemoteBranches();
-		try {
-			await repo.getCommit( commitHash );
-			return true;
-		} catch {
-			return false;
-		}
 	}
+
+	await refreshRemoteBranches();
+	return hasCommit( repoDir, commitHash );
 }
 
 export async function addToBuildQueue( commitHash: CommitHash ) {
@@ -156,16 +142,14 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		const cloneStart = Date.now();
 		buildLogger.info( 'Cloning git repo' );
 		const calypsoDir = path.join( __dirname, '../repos', 'wp-calypso' );
-		const repo = await git.Clone.clone( calypsoDir, repoDir );
+		await cloneRepo( calypsoDir, repoDir );
 		buildLogger.info( 'Finished cloning repo' );
 		const cloneTime = Date.now() - cloneStart;
 		timing( 'git.build.clone', cloneTime );
 		l.info( { commitHash, cloneTime }, 'Finished cloning repo' );
 
 		const checkoutStart = Date.now();
-		const commit = await repo.getCommit( commitHash );
-		const branch = await repo.createBranch( 'dserve', commit, true );
-		await repo.checkoutBranch( branch );
+		await checkoutCommit( repoDir, commitHash );
 		const checkoutTime = Date.now() - checkoutStart;
 		timing( 'git.build.checkout', checkoutTime );
 		l.info( { commitHash, checkoutTime }, 'Checked out branch' );
