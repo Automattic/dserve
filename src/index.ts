@@ -256,7 +256,7 @@ calypsoServer.use(
 
 const server = calypsoServer.listen( 3000, () =>
 	l.info(
-		`✅ dserve is listening on 3000 - started at ${ startedServerAt.toLocaleTimeString( undefined, {
+		`✅ dserve is listening on 3000 - node ${ process.version } - started at ${ startedServerAt.toLocaleTimeString( undefined, {
 			timeZoneName: 'long',
 			hour12: true,
 		} ) }`
