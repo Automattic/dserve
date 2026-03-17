@@ -200,6 +200,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 		const exposedPort = `${ config.build.exposedPort }/tcp`;
 		const dockerPromise = new Promise( ( resolve, reject ) => {
 			let runError: any;
+			const containerCreateOptions = config.build.containerCreateOptions || {};
 
 			l.info( { image, commitHash }, `Starting a container for ${ commitHash }` );
 
@@ -208,10 +209,13 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 				[],
 				process.stdout,
 				{
-					...config.build.containerCreateOptions,
+					...containerCreateOptions,
 					...envContainerConfig( env ),
 					ExposedPorts: { [ exposedPort ]: {} },
-					PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
+					HostConfig: {
+						...( containerCreateOptions.HostConfig || {} ),
+						PortBindings: { [ exposedPort ]: [ { HostPort: freePort.toString() } ] },
+					},
 					Tty: false,
 					Labels: {
 						calypsoEnvironment: env,
