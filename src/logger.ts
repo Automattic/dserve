@@ -20,7 +20,7 @@ const dserveLogger = bunyan.createLogger( {
 		{
 			level: bunyan.DEBUG,
 			type: 'raw',
-			stream: ringbuffer,
+			stream: ringbuffer as any,
 		},
 		{
 			stream: process.stdout,
