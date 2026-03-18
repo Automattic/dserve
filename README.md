@@ -20,7 +20,7 @@ npm install -g yarn@1.22.22
 yarn install --frozen-lockfile
 ```
 
-On macOS with Node 20, `yarn install` may log native build failures for optional dependencies such as `unix-dgram` and `fsevents`. Those warnings can be ignored as long as Yarn still finishes successfully.
+On macOS with Node 24, `yarn install` may log native build failures for optional dependencies such as `unix-dgram` and `fsevents`. Those warnings can be ignored as long as Yarn still finishes successfully.
 
 ## Docker / Colima
 
