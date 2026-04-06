@@ -1,5 +1,7 @@
 import httpProxy from 'http-proxy';
 import Docker, { ImageInfo } from 'dockerode';
+import http from 'http';
+import https from 'https';
 import _ from 'lodash';
 import getPort from 'get-port';
 import fs from 'fs-extra';
@@ -42,6 +44,36 @@ export const state: APIState = {
 
 export const docker = new Docker();
 
+type DockerBuildBackend = 'buildkit' | 'classic' | 'unknown';
+type DockerDiagnostics = {
+	endpoint: string;
+	serverVersion: string;
+	apiVersion: string;
+	minApiVersion: string;
+	os: string;
+	arch: string;
+	kernelVersion: string;
+	platform?: string;
+	driver?: string;
+	operatingSystem?: string;
+	osType?: string;
+	builderVersionHeader: string | null;
+	buildBackend: DockerBuildBackend;
+	buildBackendSource: string;
+	experimental?: string;
+};
+type DockerModemLike = {
+	socketPath?: string;
+	host?: string;
+	port?: string | number;
+	protocol?: string;
+	version?: string;
+	headers?: Record< string, string >;
+	key?: string | string[] | Buffer | Buffer[];
+	cert?: string | string[] | Buffer | Buffer[];
+	ca?: string | string[] | Buffer | Buffer[];
+};
+
 // types
 export type NotFound = Error;
 export type CommitHash = string;
@@ -61,6 +93,115 @@ export type ContainerSearchOptions = {
 	name?: string;
 	sanitizedName?: string;
 };
+
+function normalizeHeaderValue( headerValue: string | string[] | undefined ): string | null {
+	if ( Array.isArray( headerValue ) ) {
+		return headerValue[ 0 ] || null;
+	}
+
+	return headerValue || null;
+}
+
+export function getBuildBackendFromBuilderVersion(
+	builderVersionHeader: string | null
+): DockerBuildBackend {
+	switch ( builderVersionHeader ) {
+		case '2':
+			return 'buildkit';
+		case '1':
+			return 'classic';
+		default:
+			return 'unknown';
+	}
+}
+
+function getDockerEndpoint(): string {
+	const modem = docker.modem as DockerModemLike;
+	if ( modem.socketPath ) {
+		return `unix://${ modem.socketPath }`;
+	}
+
+	if ( modem.protocol === 'ssh' ) {
+		return `ssh://${ modem.host || 'docker' }${ modem.port ? `:${ modem.port }` : '' }`;
+	}
+
+	const protocol = modem.protocol || 'http';
+	const host = modem.host || 'localhost';
+	const port = modem.port ? `:${ modem.port }` : '';
+	return `${ protocol }://${ host }${ port }`;
+}
+
+async function getBuilderVersionHeader(): Promise< string | null > {
+	const modem = docker.modem as DockerModemLike;
+	if ( modem.protocol === 'ssh' ) {
+		return null;
+	}
+
+	const requestPath = modem.version ? `/${ modem.version }/_ping` : '/_ping';
+	const headers = { ...( modem.headers || {} ) };
+	const requestOptions: any = {
+		method: 'GET',
+		path: requestPath,
+		headers,
+	};
+
+	if ( modem.socketPath ) {
+		requestOptions.socketPath = modem.socketPath;
+	} else {
+		requestOptions.hostname = modem.host || 'localhost';
+		requestOptions.port = modem.port;
+		requestOptions.key = modem.key;
+		requestOptions.cert = modem.cert;
+		requestOptions.ca = modem.ca;
+	}
+
+	const requestModule = modem.protocol === 'https' ? https : http;
+
+	return new Promise( ( resolve, reject ) => {
+		const req = requestModule.request( requestOptions, res => {
+			res.resume();
+			res.on( 'end', () => {
+				resolve( normalizeHeaderValue( res.headers[ 'builder-version' ] ) );
+			} );
+		} );
+
+		req.on( 'error', reject );
+		req.end();
+	} );
+}
+
+export async function getDockerDiagnostics(): Promise< DockerDiagnostics > {
+	const [ version, info, builderVersionHeader ] = await Promise.all( [
+		docker.version(),
+		docker.info(),
+		getBuilderVersionHeader(),
+	] );
+	const engineComponent = Array.isArray( version.Components )
+		? version.Components.find( component => component.Name === 'Engine' )
+		: null;
+
+	return {
+		endpoint: getDockerEndpoint(),
+		serverVersion: version.Version,
+		apiVersion: version.ApiVersion,
+		minApiVersion: version.MinAPIVersion,
+		os: version.Os,
+		arch: version.Arch,
+		kernelVersion: version.KernelVersion,
+		platform: version.Platform && version.Platform.Name,
+		driver: info.Driver,
+		operatingSystem: info.OperatingSystem,
+		osType: info.OSType,
+		builderVersionHeader,
+		buildBackend: getBuildBackendFromBuilderVersion( builderVersionHeader ),
+		buildBackendSource: builderVersionHeader
+			? 'daemon Builder-Version header from /_ping'
+			: 'daemon did not return Builder-Version header',
+		experimental: engineComponent && engineComponent.Details
+			? engineComponent.Details.Experimental
+			: undefined,
+	};
+}
 
 export const getImageName = ( hash: CommitHash ) => `${ config.build.tagPrefix }:${ hash }`;
 export const extractCommitFromImage = ( imageName: string ): CommitHash => {
