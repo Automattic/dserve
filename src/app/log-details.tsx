@@ -10,6 +10,7 @@ const interestingDetails = new Set( [
 	'commitHash',
 	'containerId',
 	'data',
+	'docker',
 	'err',
 	'error',
 	'freePort',

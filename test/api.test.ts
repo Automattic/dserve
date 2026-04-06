@@ -9,9 +9,28 @@ jest.mock( 'hot-shots', () => ( {
 
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 
-const { getExpiredContainers, getImageName, state } = require( '../src/api' );
+const {
+	getBuildBackendFromBuilderVersion,
+	getExpiredContainers,
+	getImageName,
+	state,
+} = require( '../src/api' );
 
 describe( 'api', () => {
+	describe( 'getBuildBackendFromBuilderVersion', () => {
+		test( 'maps Builder-Version=2 to BuildKit', () => {
+			expect( getBuildBackendFromBuilderVersion( '2' ) ).toBe( 'buildkit' );
+		} );
+
+		test( 'maps Builder-Version=1 to the classic builder', () => {
+			expect( getBuildBackendFromBuilderVersion( '1' ) ).toBe( 'classic' );
+		} );
+
+		test( 'returns unknown when the daemon omits the header', () => {
+			expect( getBuildBackendFromBuilderVersion( null ) ).toBe( 'unknown' );
+		} );
+	} );
+
 	describe( 'getExpiredContainers', () => {
 		const RealNow = Date.now;
 		const fakeNow = RealNow() + 24 * 60 * 1000;

@@ -52,11 +52,28 @@ import {
 	refreshRemoteBranches,
 	refreshContainers,
 	cleanupExpiredContainers,
+	getDockerDiagnostics,
 } from './api';
 import { ContainerError, ImageError, ImageNotFound, InvalidImage, InvalidRegistry } from './error';
 
 const startedServerAt = new Date();
 increment( 'server_start' );
+
+async function logDockerStartupDiagnostics() {
+	try {
+		const diagnostics = await getDockerDiagnostics();
+		l.info( { docker: diagnostics }, 'Docker startup diagnostics' );
+
+		if ( diagnostics.buildBackend !== 'buildkit' ) {
+			l.warn(
+				{ docker: diagnostics },
+				'Docker daemon is not advertising BuildKit as the default builder; some Calypso Dockerfiles may fail'
+			);
+		}
+	} catch ( err ) {
+		l.warn( { err }, 'Could not query Docker startup diagnostics' );
+	}
+}
 
 // calypso proxy server.
 // checks branch names, decides to start a build or a container,
@@ -262,6 +279,8 @@ const server = calypsoServer.listen( 3000, () =>
 		} ) }`
 	)
 );
+
+logDockerStartupDiagnostics();
 
 server.on( 'error', err => {
 	console.log( 'err' );
