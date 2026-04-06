@@ -7,6 +7,7 @@ import { sample } from 'lodash';
 import {
 	CommitHash,
 	getImageName,
+	getLocalImages,
 	docker,
 	refreshLocalImages,
 	refreshRemoteBranches,
@@ -168,6 +169,8 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			t: imageName,
 			nocache: false,
 			forcerm: true,
+			version: '2',
+			outputs: JSON.stringify( [ { type: 'image', attrs: { name: imageName } } ] ),
 			buildargs: {
 				commit_sha: commitHash,
 				workers: String( buildConcurrency ),
@@ -204,8 +207,30 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			increment( 'build.success' );
 			try {
 				await refreshLocalImages();
+				const imageLoadedLocally = getLocalImages().has( imageName );
+				l.info(
+					{ commitHash, imageName, imageLoadedLocally },
+					'Checked whether the built image is available locally after refresh'
+				);
+				if ( ! imageLoadedLocally ) {
+					throw new Error(
+						`Build completed but image ${ imageName } is not available locally after refresh`
+					);
+				}
 			} catch ( err ) {
-				l.info( { commitHash, err }, 'Error refreshing local images' );
+				increment( 'build.error' );
+				buildLogger.error(
+					{ err },
+					'Built image stream completed but the image was not available locally'
+				);
+				l.error(
+					{ err, commitHash, imageName },
+					'Built image stream completed but the image was not available locally'
+				);
+				failedHashes.add( commitHash );
+				pendingHashes.delete( commitHash );
+				closeLogger( buildLogger as any );
+				return;
 			}
 			l.info(
 				{ commitHash, buildImageTime, repoDir, imageName, buildConcurrency },
