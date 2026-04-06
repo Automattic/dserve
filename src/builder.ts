@@ -31,6 +31,24 @@ export const buildQueue: Array< CommitHash > = [];
 export const pendingHashes: Set< CommitHash > = new Set();
 const failedHashes: Set< CommitHash > = new Set();
 
+function getBuildStreamError( output: any[] = [] ): Error | null {
+	for ( const event of [ ...output ].reverse() ) {
+		if ( ! event || typeof event !== 'object' ) {
+			continue;
+		}
+
+		const message =
+			event.errorDetail?.message ||
+			event.error ||
+			event.message;
+		if ( message ) {
+			return new Error( message );
+		}
+	}
+
+	return null;
+}
+
 export const getLogPath = ( hash: CommitHash ) =>
 	path.join( getBuildDir( hash ), config.build.logFilename );
 export async function isBuildInProgress( hash: CommitHash ): Promise< boolean > {
@@ -199,7 +217,22 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		return;
 	}
 
-	async function onFinished( err: Error ) {
+	async function onFinished( err: Error, output: any[] = [] ) {
+		const streamErr = err || getBuildStreamError( output );
+
+		if ( streamErr ) {
+			increment( 'build.error' );
+			buildLogger.error( { err: streamErr, output }, 'Encountered error when building image' );
+			l.error(
+				{ err: streamErr, commitHash },
+				`Failed to build image for. Leaving build files in place`
+			);
+			failedHashes.add( commitHash );
+			pendingHashes.delete( commitHash );
+			closeLogger( buildLogger as any );
+			return;
+		}
+
 		if ( ! err ) {
 			const buildImageTime = Date.now() - imageStart;
 			timing( 'build_image', buildImageTime );
@@ -220,7 +253,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			} catch ( err ) {
 				increment( 'build.error' );
 				buildLogger.error(
-					{ err },
+					{ err, output },
 					'Built image stream completed but the image was not available locally'
 				);
 				l.error(
@@ -237,11 +270,6 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 				`Successfully built image. Now cleaning up build directory`
 			);
 			cleanupBuildDir( commitHash );
-		} else {
-			increment( 'build.error' );
-			buildLogger.error( { err }, 'Encountered error when building image' );
-			l.error( { err, commitHash }, `Failed to build image for. Leaving build files in place` );
-			failedHashes.add( commitHash );
 		}
 		pendingHashes.delete( commitHash );
 		closeLogger( buildLogger as any );
