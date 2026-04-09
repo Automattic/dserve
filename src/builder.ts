@@ -152,6 +152,8 @@ async function buildWithDockerCli( {
 		`workers=${ buildConcurrency }`,
 		'--build-arg',
 		`node_memory=16384`,
+		'--memory',
+		'48g',
 		'.',
 	];
 
