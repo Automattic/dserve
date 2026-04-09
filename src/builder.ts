@@ -168,6 +168,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			t: imageName,
 			nocache: false,
 			forcerm: true,
+			version: '2',
 			buildargs: {
 				commit_sha: commitHash,
 				workers: String( buildConcurrency ),
