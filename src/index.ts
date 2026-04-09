@@ -280,6 +280,9 @@ const server = calypsoServer.listen( 3000, () =>
 	)
 );
 
+const dockerodeVersion = require('dockerode/package.json').version;
+const modemVersion = require('docker-modem/package.json').version;
+l.info({ data: { dockerodeVersion, modemVersion }}, 'Dockerode library versions');
 logDockerStartupDiagnostics();
 
 server.on( 'error', err => {
