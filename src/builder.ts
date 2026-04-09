@@ -1,17 +1,10 @@
 import fs from 'fs-extra';
 import os from 'os';
+import { spawn } from 'child_process';
 import path from 'path';
-import tar from 'tar-fs';
 import { sample } from 'lodash';
 
-import {
-	CommitHash,
-	getImageName,
-	docker,
-	refreshLocalImages,
-	refreshRemoteBranches,
-	pullImage,
-} from './api';
+import { CommitHash, getImageName, refreshLocalImages, refreshRemoteBranches } from './api';
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
 import { ONE_SECOND, ONE_MINUTE } from './constants';
@@ -104,13 +97,99 @@ export async function addToBuildQueue( commitHash: CommitHash ) {
 	gauge( 'build_queue', buildQueue.length );
 }
 
-export async function buildImageForHash( commitHash: CommitHash ): Promise< void > {
-	let buildStream: NodeJS.ReadableStream;
+function pipeLines( stream: NodeJS.ReadableStream | null, onLine: ( line: string ) => void ) {
+	if ( ! stream ) return;
 
+	stream.setEncoding( 'utf8' );
+	let buf = '';
+
+	stream.on( 'data', chunk => {
+		buf += chunk;
+		let nl = buf.indexOf( '\n' );
+
+		while ( nl !== -1 ) {
+			const line = buf.slice( 0, nl ).replace( /\r$/, '' );
+			buf = buf.slice( nl + 1 );
+			if ( line ) onLine( line );
+			nl = buf.indexOf( '\n' );
+		}
+	} );
+
+	stream.on( 'end', () => {
+		const line = buf.replace( /\r$/, '' );
+		if ( line ) onLine( line );
+	} );
+}
+
+async function buildWithDockerCli( {
+	repoDir,
+	imageName,
+	commitHash,
+	buildConcurrency,
+	buildLogger,
+	buildDir,
+}: {
+	repoDir: string;
+	imageName: string;
+	commitHash: string;
+	buildConcurrency: number;
+	buildLogger: any;
+	buildDir: string;
+} ) {
+	const iidFile = path.join( buildDir, 'image.iid' );
+
+	const args = [
+		'build',
+		'--progress=plain',
+		'--iidfile',
+		iidFile,
+		'-t',
+		imageName,
+		'--force-rm',
+		'--build-arg',
+		`commit_sha=${ commitHash }`,
+		'--build-arg',
+		`workers=${ buildConcurrency }`,
+		'.',
+	];
+
+	await new Promise< void >( ( resolve, reject ) => {
+		const child = spawn( 'docker', args, {
+			cwd: repoDir,
+			env: {
+				...process.env,
+				DOCKER_BUILDKIT: '1',
+				BUILDKIT_PROGRESS: 'plain',
+			},
+			stdio: [ 'ignore', 'pipe', 'pipe' ],
+		} );
+
+		child.on( 'error', reject );
+
+		pipeLines( child.stdout, line => {
+			buildLogger.info( { fromDockerCli: true, stream: 'stdout' }, line );
+		} );
+
+		pipeLines( child.stderr, line => {
+			buildLogger.info( { fromDockerCli: true, stream: 'stderr' }, line );
+		} );
+
+		child.on( 'close', code => {
+			if ( code === 0 ) {
+				resolve();
+			} else {
+				reject( new Error( `docker build exited with code ${ code }` ) );
+			}
+		} );
+	} );
+}
+
+export async function buildImageForHash( commitHash: CommitHash ): Promise< void > {
 	const buildDir = getBuildDir( commitHash );
 	const repoDir = path.join( buildDir, 'repo' );
 	const imageName = getImageName( commitHash );
 	let imageStart: number;
+	let shouldCleanup = false;
 
 	if ( await isBuildInProgress( commitHash ) ) {
 		l.info( { commitHash, buildDir }, 'Skipping build because a build is already in progress' );
@@ -156,93 +235,57 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		l.info( { commitHash, checkoutTime }, 'Checked out branch' );
 		buildLogger.info( 'Checked out the correct branch' );
 
-		buildLogger.info( 'Placing all the contents into a tarball stream for docker\n' );
+		buildLogger.info( 'Handing repo directory to docker CLI for the rest of the legwork\n' );
 		l.info(
 			{ commitHash, repoDir, imageName, buildConcurrency },
-			'Placing contents of repoDir into a tarball and sending to docker for a build'
+			'Building repoDir through docker CLI'
 		);
-
-		try {
-			buildLogger.info( 'Pre-pulling dockerfile:1.20\n' );
-			await pullImage( 'docker/dockerfile:1.20', () => {} );
-			l.info( 'Pre-pulled dockerfile:1.20' );
-		} catch ( err ) {
-			buildLogger.info( 'Could not pre-pull\n' );
-			l.warn( { err }, 'Could not pre-pull BuildKit frontend' );
-		}
-
-		const tarStream = tar.pack( repoDir );
-		buildLogger.info( 'Handing off tarball to Docker for the rest of the legwork\n' );
 
 		imageStart = Date.now();
-		buildStream = await docker.buildImage( tarStream, {
-			t: imageName,
-			nocache: false,
-			forcerm: true,
-			version: '2',
-			buildargs: {
-				commit_sha: commitHash,
-				workers: String( buildConcurrency ),
-			},
+		await buildWithDockerCli( {
+			repoDir,
+			imageName,
+			commitHash,
+			buildConcurrency,
+			buildLogger,
+			buildDir,
 		} );
+
+		const buildImageTime = Date.now() - imageStart;
+		timing( 'build_image', buildImageTime );
+		timing( `build_image_by_core.${ buildConcurrency }_cores`, buildImageTime );
+
+		try {
+			await refreshLocalImages();
+		} catch ( err ) {
+			l.info( { commitHash, err }, 'Error refreshing local images' );
+		}
+
+		increment( 'build.success' );
+		shouldCleanup = true;
+
+		l.info(
+			{ commitHash, buildImageTime, repoDir, imageName, buildConcurrency },
+			'Successfully built image. Now cleaning up build directory'
+		);
 	} catch ( err ) {
-		buildLogger.error(
-			{ err },
-			`Encountered error while git checking out, tarballing, or handing to docker`
-		);
-		l.error(
-			{ err },
-			`Encountered error while git checking out, tarballing, or handing to docker`
-		);
 		increment( 'build.error' );
-		pendingHashes.delete( commitHash );
+		buildLogger.error( { err }, 'Encountered error while building image' );
+		l.error( { err, commitHash }, 'Failed to build image for. Leaving build files in place' );
 		failedHashes.add( commitHash );
-	}
-
-	if ( ! buildStream ) {
-		l.error( { buildStream, commitHash }, "Failed to build image but didn't throw an error" );
-		increment( 'build.error' );
-		pendingHashes.delete( commitHash );
-		failedHashes.add( commitHash );
-		closeLogger( buildLogger as any );
 		return;
-	}
-
-	async function onFinished( err: Error ) {
-		if ( ! err ) {
-			const buildImageTime = Date.now() - imageStart;
-			timing( 'build_image', buildImageTime );
-			timing( `build_image_by_core.${ buildConcurrency }_cores`, buildImageTime );
-			increment( 'build.success' );
-			try {
-				await refreshLocalImages();
-			} catch ( err ) {
-				l.info( { commitHash, err }, 'Error refreshing local images' );
-			}
-			l.info(
-				{ commitHash, buildImageTime, repoDir, imageName, buildConcurrency },
-				`Successfully built image. Now cleaning up build directory`
-			);
-			cleanupBuildDir( commitHash );
-		} else {
-			increment( 'build.error' );
-			buildLogger.error( { err }, 'Encountered error when building image' );
-			l.error( { err, commitHash }, `Failed to build image for. Leaving build files in place` );
-			failedHashes.add( commitHash );
-		}
+	} finally {
 		pendingHashes.delete( commitHash );
 		closeLogger( buildLogger as any );
-	}
 
-	function onProgress( event: any ) {
-		if ( event.stream ) {
-			buildLogger.info( { fromDocker: true }, event.stream );
-		} else {
-			buildLogger.info( { fromDocker: true }, event );
+		if ( shouldCleanup ) {
+			try {
+				await cleanupBuildDir( commitHash );
+			} catch ( err ) {
+				l.warn( { err, commitHash, buildDir }, 'Failed to clean up build directory' );
+			}
 		}
 	}
-
-	docker.modem.followProgress( buildStream, onFinished, onProgress );
 }
 
 // Background tasks
