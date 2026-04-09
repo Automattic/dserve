@@ -140,6 +140,7 @@ async function buildWithDockerCli( {
 
 	const args = [
 		'build',
+		'--pull',
 		'--progress=plain',
 		'--iidfile',
 		iidFile,
