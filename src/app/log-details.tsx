@@ -44,7 +44,7 @@ const LogDetails = ( { data, details }: any ) => {
 	details = details || interestingDetails;
 	const detailsToShow = new Map();
 	for ( let detail of details ) {
-		if ( data[ detail ] ) {
+		if ( data[ detail ] !== undefined && data[ detail ] !== null ) {
 			detailsToShow.set( detail, data[ detail ] );
 		}
 	}
