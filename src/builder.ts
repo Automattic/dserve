@@ -150,6 +150,8 @@ async function buildWithDockerCli( {
 		`commit_sha=${ commitHash }`,
 		'--build-arg',
 		`workers=${ buildConcurrency }`,
+		'--build-arg',
+		`node_memory=16384`,
 		'.',
 	];
 
