@@ -10,6 +10,7 @@ import {
 	docker,
 	refreshLocalImages,
 	refreshRemoteBranches,
+	pullImage,
 } from './api';
 import { config } from './config';
 import { closeLogger, l, getLoggerForBuild } from './logger';
@@ -160,6 +161,16 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 			{ commitHash, repoDir, imageName, buildConcurrency },
 			'Placing contents of repoDir into a tarball and sending to docker for a build'
 		);
+
+		try {
+			buildLogger.info( 'Pre-pulling dockerfile:1.20\n' );
+			await pullImage( 'docker/dockerfile:1.20', () => {} );
+			l.info( 'Pre-pulled dockerfile:1.20' );
+		} catch ( err ) {
+			buildLogger.info( 'Could not pre-pull\n' );
+			l.warn( { err }, 'Could not pre-pull BuildKit frontend' );
+		}
+
 		const tarStream = tar.pack( repoDir );
 		buildLogger.info( 'Handing off tarball to Docker for the rest of the legwork\n' );
 
