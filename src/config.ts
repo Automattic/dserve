@@ -16,6 +16,9 @@ type BuildConfig = Readonly< {
 	exposedPort: number;
 	logFilename: string;
 	tagPrefix: string;
+	healthPath: string;
+	healthProbeIntervalMs: number;
+	healthProbeCeilingMs: number;
 } >;
 
 type RepoConfig = Readonly< {
@@ -34,6 +37,9 @@ export const config: AppConfig = {
 		exposedPort: 3000,
 		logFilename: 'dserve-build-log.txt',
 		tagPrefix: 'dserve-wpcalypso',
+		healthPath: '/health',
+		healthProbeIntervalMs: 500,
+		healthProbeCeilingMs: 30000,
 	},
 
 	repo: {
