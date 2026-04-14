@@ -29,6 +29,7 @@ type APIState = {
 	branchHashes: Map< CommitHash, BranchName >;
 	containers: Map< string, Docker.ContainerInfo >;
 	healthyContainers: Set< string >;
+	probingContainers: Set< string >;
 	localImages: Map< ImageName, Docker.ImageInfo >;
 	pullingImages: Map< ImageName, Promise< DockerodeStream > >;
 	remoteBranches: Map< BranchName, CommitHash >;
@@ -40,6 +41,7 @@ export const state: APIState = {
 	branchHashes: new Map(),
 	containers: new Map(),
 	healthyContainers: new Set(),
+	probingContainers: new Set(),
 	localImages: new Map(),
 	pullingImages: new Map(),
 	remoteBranches: new Map(),
@@ -307,13 +309,40 @@ export async function deleteImage( hash: CommitHash ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
-function startHealthProbe(
-	containerId: string,
-	freePort: number,
-	commitHash: CommitHash
-): void {
+export function ensureHealthProbeFor( container: ContainerInfo ): void {
+	const containerId = container.Id;
+
+	// Skip if already marked healthy.
+	if ( state.healthyContainers.has( containerId ) ) {
+		return;
+	}
+
+	// Skip if a probe is already in flight.
+	if ( state.probingContainers.has( containerId ) ) {
+		return;
+	}
+
+	// Only probe dserve-managed containers (image tag matches our prefix).
+	const commitHash = extractCommitFromImage( container.Image );
+	if ( ! commitHash ) {
+		return;
+	}
+
+	// Need a published host port; if Docker hasn't published one yet, wait for
+	// the next refresh cycle.
+	const port = container.Ports && container.Ports[ 0 ] && container.Ports[ 0 ].PublicPort;
+	if ( ! port ) {
+		return;
+	}
+
+	state.probingContainers.add( containerId );
+
+	const cleanup = () => {
+		state.probingContainers.delete( containerId );
+	};
+
 	pollUntilHealthy( {
-		port: freePort,
+		port,
 		fetchImpl: fetch as any,
 		healthPath: config.build.healthPath,
 		intervalMs: config.build.healthProbeIntervalMs,
@@ -322,25 +351,27 @@ function startHealthProbe(
 		shouldAbort: () => ! state.containers.has( containerId ),
 	} ).then(
 		outcome => {
+			cleanup();
 			if ( outcome === 'healthy' ) {
-				l.info( { containerId, commitHash, freePort }, 'Container reported healthy' );
+				l.info( { containerId, commitHash, freePort: port }, 'Container reported healthy' );
 				markContainerHealthy( containerId );
 			} else if ( outcome === 'ceiling-exceeded' ) {
 				l.warn(
-					{ containerId, commitHash, freePort },
+					{ containerId, commitHash, freePort: port },
 					'Container /health did not return 200 before ceiling; failing open'
 				);
 				markContainerHealthy( containerId );
 			} else {
 				l.info(
-					{ containerId, commitHash, freePort },
+					{ containerId, commitHash, freePort: port },
 					'Health probe aborted (container disappeared)'
 				);
 			}
 		},
 		err => {
+			cleanup();
 			l.error(
-				{ err, containerId, commitHash, freePort },
+				{ err, containerId, commitHash, freePort: port },
 				'Unexpected error in health probe loop'
 			);
 		}
@@ -433,7 +464,7 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 				return refreshContainers().then( () => {
 					const container = getRunningContainerForHash( commitHash, env );
 					if ( container ) {
-						startHealthProbe( container.Id, freePort, commitHash );
+						ensureHealthProbeFor( container );
 					}
 					return container;
 				} );
