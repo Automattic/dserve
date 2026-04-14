@@ -84,4 +84,31 @@ describe( 'api', () => {
 			expect( getExpiredContainers() ).toEqual( [ state.containers.get( getImageName( '2' ) ) ] );
 		} );
 	} );
+
+	describe( 'refreshContainers healthyContainers cleanup', () => {
+		test( 'drops healthy ids that are no longer present in state.containers', () => {
+			const { state, reconcileHealthyContainers } = require( '../src/api' );
+			state.containers = new Map( [
+				[ 'alive', { Id: 'alive', Image: 'dserve-wpcalypso:a' } ],
+			] );
+			state.healthyContainers = new Set( [ 'alive', 'ghost' ] );
+
+			reconcileHealthyContainers();
+
+			expect( Array.from( state.healthyContainers ) ).toEqual( [ 'alive' ] );
+		} );
+
+		test( 'is a no-op when every healthy id is still present', () => {
+			const { state, reconcileHealthyContainers } = require( '../src/api' );
+			state.containers = new Map( [
+				[ 'a', { Id: 'a' } ],
+				[ 'b', { Id: 'b' } ],
+			] );
+			state.healthyContainers = new Set( [ 'a', 'b' ] );
+
+			reconcileHealthyContainers();
+
+			expect( Array.from( state.healthyContainers ).sort() ).toEqual( [ 'a', 'b' ] );
+		} );
+	} );
 } );

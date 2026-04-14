@@ -421,6 +421,7 @@ export async function refreshContainers() {
 	state.containers = new Map(
 		containers.map( container => [ container.Id, container ] as [ string, ContainerInfo ] )
 	);
+	reconcileHealthyContainers();
 }
 
 export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
@@ -451,6 +452,18 @@ export function isContainerHealthy( hash: CommitHash, env?: RunEnv ): boolean {
 		return false;
 	}
 	return state.healthyContainers.has( container.Id );
+}
+
+export function reconcileHealthyContainers(): void {
+	const aliveIds = new Set< string >();
+	for ( const container of state.containers.values() ) {
+		aliveIds.add( container.Id );
+	}
+	for ( const id of Array.from( state.healthyContainers ) ) {
+		if ( ! aliveIds.has( id ) ) {
+			state.healthyContainers.delete( id );
+		}
+	}
 }
 
 export function getPortForContainer( hash: CommitHash, env: RunEnv ): number | boolean {
