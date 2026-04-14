@@ -21,3 +21,48 @@ export async function probeContainerHealth(
 		return false;
 	}
 }
+
+export type PollOptions = {
+	port: number;
+	fetchImpl: HealthFetchImpl;
+	healthPath: string;
+	intervalMs: number;
+	ceilingMs: number;
+	probeTimeoutMs: number;
+	shouldAbort?: () => boolean;
+	now?: () => number;
+};
+
+export type PollOutcome = 'healthy' | 'ceiling-exceeded' | 'aborted';
+
+export async function pollUntilHealthy( options: PollOptions ): Promise< PollOutcome > {
+	const now = options.now || ( () => Date.now() );
+	const startedAt = now();
+
+	const sleep = ( ms: number ) =>
+		new Promise< void >( resolve => {
+			setTimeout( resolve, ms );
+		} );
+
+	while ( true ) {
+		if ( options.shouldAbort && options.shouldAbort() ) {
+			return 'aborted';
+		}
+
+		const healthy = await probeContainerHealth( options.port, {
+			fetchImpl: options.fetchImpl,
+			healthPath: options.healthPath,
+			timeoutMs: options.probeTimeoutMs,
+		} );
+
+		if ( healthy ) {
+			return 'healthy';
+		}
+
+		if ( now() - startedAt >= options.ceilingMs ) {
+			return 'ceiling-exceeded';
+		}
+
+		await sleep( options.intervalMs );
+	}
+}
