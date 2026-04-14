@@ -7,6 +7,25 @@ jest.mock( 'hot-shots', () => ( {
 	} ) ),
 } ) );
 
+jest.mock( '../src/health', () => ( {
+	pollUntilHealthy: jest.fn().mockResolvedValue( 'healthy' ),
+	probeContainerHealth: jest.fn(),
+} ) );
+
+jest.mock( '../src/logger', () => ( {
+	l: {
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		child: jest.fn().mockReturnValue( {
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		} ),
+	},
+	ringbuffer: { records: [] as any[] },
+} ) );
+
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 
 const {
@@ -109,6 +128,71 @@ describe( 'api', () => {
 			reconcileHealthyContainers();
 
 			expect( Array.from( state.healthyContainers ).sort() ).toEqual( [ 'a', 'b' ] );
+		} );
+	} );
+
+	describe( 'ensureHealthProbesForRunningContainers', () => {
+		test( 'starts a probe for each running dserve container that is not yet healthy', () => {
+			const {
+				ensureHealthProbesForRunningContainers,
+				state,
+			} = require( '../src/api' );
+
+			state.containers = new Map( [
+				[
+					'cid-1',
+					{
+						Id: 'cid-1',
+						Image: 'dserve-wpcalypso:aaa',
+						State: 'running',
+						Ports: [ { PublicPort: 11111 } ],
+						Labels: { calypsoEnvironment: 'calypso' },
+					},
+				],
+				[
+					'cid-2',
+					{
+						Id: 'cid-2',
+						Image: 'dserve-wpcalypso:bbb',
+						State: 'running',
+						Ports: [ { PublicPort: 22222 } ],
+						Labels: { calypsoEnvironment: 'jetpack' },
+					},
+				],
+			] );
+			state.healthyContainers = new Set();
+			state.probingContainers = new Set();
+
+			ensureHealthProbesForRunningContainers();
+
+			expect( state.probingContainers.has( 'cid-1' ) ).toBe( true );
+			expect( state.probingContainers.has( 'cid-2' ) ).toBe( true );
+		} );
+
+		test( 'skips containers that are not in running state', () => {
+			const {
+				ensureHealthProbesForRunningContainers,
+				state,
+			} = require( '../src/api' );
+
+			state.containers = new Map( [
+				[
+					'cid-1',
+					{
+						Id: 'cid-1',
+						Image: 'dserve-wpcalypso:aaa',
+						State: 'exited',
+						Ports: [ { PublicPort: 11111 } ],
+						Labels: { calypsoEnvironment: 'calypso' },
+					},
+				],
+			] );
+			state.healthyContainers = new Set();
+			state.probingContainers = new Set();
+
+			ensureHealthProbesForRunningContainers();
+
+			expect( state.probingContainers.size ).toBe( 0 );
 		} );
 	} );
 } );

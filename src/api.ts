@@ -501,6 +501,7 @@ export async function refreshContainers() {
 		containers.map( container => [ container.Id, container ] as [ string, ContainerInfo ] )
 	);
 	reconcileHealthyContainers();
+	ensureHealthProbesForRunningContainers();
 }
 
 export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
@@ -542,6 +543,15 @@ export function reconcileHealthyContainers(): void {
 		if ( ! aliveIds.has( id ) ) {
 			state.healthyContainers.delete( id );
 		}
+	}
+}
+
+export function ensureHealthProbesForRunningContainers(): void {
+	for ( const container of state.containers.values() ) {
+		if ( container.State !== 'running' ) {
+			continue;
+		}
+		ensureHealthProbeFor( container );
 	}
 }
 
