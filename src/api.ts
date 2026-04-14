@@ -544,6 +544,11 @@ export function reconcileHealthyContainers(): void {
 			state.healthyContainers.delete( id );
 		}
 	}
+	for ( const id of Array.from( state.probingContainers ) ) {
+		if ( ! aliveIds.has( id ) ) {
+			state.probingContainers.delete( id );
+		}
+	}
 }
 
 export function ensureHealthProbesForRunningContainers(): void {

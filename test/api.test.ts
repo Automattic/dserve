@@ -129,6 +129,19 @@ describe( 'api', () => {
 
 			expect( Array.from( state.healthyContainers ).sort() ).toEqual( [ 'a', 'b' ] );
 		} );
+
+		test( 'drops probing ids that are no longer present in state.containers', () => {
+			const { state, reconcileHealthyContainers } = require( '../src/api' );
+			state.containers = new Map( [
+				[ 'alive', { Id: 'alive', Image: 'dserve-wpcalypso:a' } ],
+			] );
+			state.healthyContainers = new Set();
+			state.probingContainers = new Set( [ 'alive', 'ghost' ] );
+
+			reconcileHealthyContainers();
+
+			expect( Array.from( state.probingContainers ) ).toEqual( [ 'alive' ] );
+		} );
 	} );
 
 	describe( 'ensureHealthProbesForRunningContainers', () => {
