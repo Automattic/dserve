@@ -6,11 +6,13 @@ import _ from 'lodash';
 import getPort from 'get-port';
 import fs from 'fs-extra';
 import path from 'path';
+import fetch from 'node-fetch';
 import { ContainerInfo } from 'dockerode';
 
 import { config, envContainerConfig } from './config';
 import { l } from './logger';
 import { pendingHashes } from './builder';
+import { pollUntilHealthy } from './health';
 import {
 	ensureRepoCloned,
 	fetchRemoteBranches,
@@ -305,6 +307,46 @@ export async function deleteImage( hash: CommitHash ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
+function startHealthProbe(
+	containerId: string,
+	freePort: number,
+	commitHash: CommitHash
+): void {
+	pollUntilHealthy( {
+		port: freePort,
+		fetchImpl: fetch as any,
+		healthPath: config.build.healthPath,
+		intervalMs: config.build.healthProbeIntervalMs,
+		ceilingMs: config.build.healthProbeCeilingMs,
+		probeTimeoutMs: 1000,
+		shouldAbort: () => ! state.containers.has( containerId ),
+	} ).then(
+		outcome => {
+			if ( outcome === 'healthy' ) {
+				l.info( { containerId, commitHash, freePort }, 'Container reported healthy' );
+				markContainerHealthy( containerId );
+			} else if ( outcome === 'ceiling-exceeded' ) {
+				l.warn(
+					{ containerId, commitHash, freePort },
+					'Container /health did not return 200 before ceiling; failing open'
+				);
+				markContainerHealthy( containerId );
+			} else {
+				l.info(
+					{ containerId, commitHash, freePort },
+					'Health probe aborted (container disappeared)'
+				);
+			}
+		},
+		err => {
+			l.error(
+				{ err, containerId, commitHash, freePort },
+				'Unexpected error in health probe loop'
+			);
+		}
+	);
+}
+
 export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 	//l.info( { commitHash }, `Request to start a container for ${ commitHash }` );
 	const image = getImageName( commitHash );
@@ -388,7 +430,13 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 					{ image, freePort, commitHash },
 					`Successfully started container for ${ image } on ${ freePort }`
 				);
-				return refreshContainers().then( () => getRunningContainerForHash( commitHash ) );
+				return refreshContainers().then( () => {
+					const container = getRunningContainerForHash( commitHash, env );
+					if ( container ) {
+						startHealthProbe( container.Id, freePort, commitHash );
+					}
+					return container;
+				} );
 			},
 			( { error, freePort } ) => {
 				l.error(
