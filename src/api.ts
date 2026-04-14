@@ -26,6 +26,7 @@ type APIState = {
 	accesses: Map< ContainerName, number >;
 	branchHashes: Map< CommitHash, BranchName >;
 	containers: Map< string, Docker.ContainerInfo >;
+	healthyContainers: Set< string >;
 	localImages: Map< ImageName, Docker.ImageInfo >;
 	pullingImages: Map< ImageName, Promise< DockerodeStream > >;
 	remoteBranches: Map< BranchName, CommitHash >;
@@ -36,6 +37,7 @@ export const state: APIState = {
 	accesses: new Map(),
 	branchHashes: new Map(),
 	containers: new Map(),
+	healthyContainers: new Set(),
 	localImages: new Map(),
 	pullingImages: new Map(),
 	remoteBranches: new Map(),
@@ -433,6 +435,22 @@ export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): Co
 
 export function isContainerRunning( hash: CommitHash, env?: RunEnv ): boolean {
 	return !! getRunningContainerForHash( hash, env );
+}
+
+export function markContainerHealthy( containerId: string ): void {
+	state.healthyContainers.add( containerId );
+}
+
+export function forgetContainerHealth( containerId: string ): void {
+	state.healthyContainers.delete( containerId );
+}
+
+export function isContainerHealthy( hash: CommitHash, env?: RunEnv ): boolean {
+	const container = getRunningContainerForHash( hash, env );
+	if ( ! container ) {
+		return false;
+	}
+	return state.healthyContainers.has( container.Id );
 }
 
 export function getPortForContainer( hash: CommitHash, env: RunEnv ): number | boolean {
