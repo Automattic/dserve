@@ -21,7 +21,7 @@ import {
 } from './git';
 
 import { CONTAINER_EXPIRY_TIME } from './constants';
-import { timing } from './stats';
+import { increment, timing } from './stats';
 import { ContainerError, ImageError } from './error';
 
 type APIState = {
@@ -315,6 +315,7 @@ function firePollLoop(
 	port: number
 ): Promise< void > {
 	state.probingContainers.add( containerId );
+	increment( 'health.probe.started' );
 
 	const cleanup = () => {
 		state.probingContainers.delete( containerId );
@@ -333,15 +334,18 @@ function firePollLoop(
 			outcome => {
 				cleanup();
 				if ( outcome === 'healthy' ) {
+					increment( 'health.probe.healthy' );
 					l.info( { containerId, commitHash, freePort: port }, 'Container reported healthy' );
 					markContainerHealthy( containerId );
 				} else if ( outcome === 'ceiling-exceeded' ) {
+					increment( 'health.probe.fail_open' );
 					l.warn(
 						{ containerId, commitHash, freePort: port },
 						'Container /health did not return 200 before ceiling; failing open'
 					);
 					markContainerHealthy( containerId );
 				} else {
+					increment( 'health.probe.aborted' );
 					l.info(
 						{ containerId, commitHash, freePort: port },
 						'Health probe aborted (container disappeared)'
@@ -350,6 +354,7 @@ function firePollLoop(
 			},
 			err => {
 				cleanup();
+				increment( 'health.probe.error' );
 				l.error(
 					{ err, containerId, commitHash, freePort: port },
 					'Unexpected error in health probe loop'

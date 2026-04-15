@@ -37,6 +37,9 @@ describe( 'startContainer', () => {
 			},
 		} ) );
 		jest.doMock( '../src/stats', () => ( {
+			increment: jest.fn(),
+			decrement: jest.fn(),
+			gauge: jest.fn(),
 			timing: jest.fn(),
 		} ) );
 		jest.doMock( '../src/health', () => ( {
