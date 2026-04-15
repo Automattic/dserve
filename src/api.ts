@@ -534,6 +534,16 @@ export function isContainerHealthy( hash: CommitHash, env?: RunEnv ): boolean {
 	return state.healthyContainers.has( container.Id );
 }
 
+// Policy layer on top of isContainerHealthy: honors the healthGateEnabled kill
+// switch. When the gate is disabled, any running container is considered ready
+// to serve (pre-QAO-358 behavior).
+export function isContainerReadyToServe( hash: CommitHash, env?: RunEnv ): boolean {
+	if ( ! config.build.healthGateEnabled ) {
+		return isContainerRunning( hash, env );
+	}
+	return isContainerHealthy( hash, env );
+}
+
 export function reconcileHealthyContainers(): void {
 	const aliveIds = new Set< string >();
 	for ( const container of state.containers.values() ) {

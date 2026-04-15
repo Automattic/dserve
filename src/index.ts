@@ -15,7 +15,7 @@ import {
 	getPortForContainer,
 	startContainer,
 	isContainerRunning,
-	isContainerHealthy,
+	isContainerReadyToServe,
 	proxyRequestToHash as proxy,
 	deleteImage,
 	getLocalImages,
@@ -169,7 +169,7 @@ calypsoServer.use( determineEnvironment );
 calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;
 	let status;
-	if ( isContainerHealthy( commitHash ) ) {
+	if ( isContainerReadyToServe( commitHash ) ) {
 		status = 'Ready';
 	} else if ( isContainerRunning( commitHash ) ) {
 		status = 'Starting';
@@ -191,7 +191,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 	const hasLocally = await hasHashLocally( commitHash );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
 	const isRunning = isContainerRunning( commitHash, runEnv );
-	const isHealthy = isContainerHealthy( commitHash, runEnv );
+	const isHealthy = isContainerReadyToServe( commitHash, runEnv );
 	const shouldReset = Boolean( req.query.reset );
 	const acceptsHtml = ( req.header( 'accept' ) || '' ).includes( 'text/html' );
 
