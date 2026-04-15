@@ -309,39 +309,18 @@ export async function deleteImage( hash: CommitHash ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
-export function ensureHealthProbeFor( container: ContainerInfo ): void {
-	const containerId = container.Id;
-
-	// Skip if already marked healthy.
-	if ( state.healthyContainers.has( containerId ) ) {
-		return;
-	}
-
-	// Skip if a probe is already in flight.
-	if ( state.probingContainers.has( containerId ) ) {
-		return;
-	}
-
-	// Only probe dserve-managed containers (image tag matches our prefix).
-	const commitHash = extractCommitFromImage( container.Image );
-	if ( ! commitHash ) {
-		return;
-	}
-
-	// Need a published host port; if Docker hasn't published one yet, wait for
-	// the next refresh cycle.
-	const port = container.Ports && container.Ports[ 0 ] && container.Ports[ 0 ].PublicPort;
-	if ( ! port ) {
-		return;
-	}
-
+function firePollLoop(
+	containerId: string,
+	commitHash: CommitHash,
+	port: number
+): Promise< void > {
 	state.probingContainers.add( containerId );
 
 	const cleanup = () => {
 		state.probingContainers.delete( containerId );
 	};
 
-	pollUntilHealthy( {
+	return pollUntilHealthy( {
 		port,
 		fetchImpl: fetch as any,
 		healthPath: config.build.healthPath,
@@ -349,33 +328,54 @@ export function ensureHealthProbeFor( container: ContainerInfo ): void {
 		ceilingMs: config.build.healthProbeCeilingMs,
 		probeTimeoutMs: 1000,
 		shouldAbort: () => ! state.containers.has( containerId ),
-	} ).then(
-		outcome => {
-			cleanup();
-			if ( outcome === 'healthy' ) {
-				l.info( { containerId, commitHash, freePort: port }, 'Container reported healthy' );
-				markContainerHealthy( containerId );
-			} else if ( outcome === 'ceiling-exceeded' ) {
-				l.warn(
-					{ containerId, commitHash, freePort: port },
-					'Container /health did not return 200 before ceiling; failing open'
-				);
-				markContainerHealthy( containerId );
-			} else {
-				l.info(
-					{ containerId, commitHash, freePort: port },
-					'Health probe aborted (container disappeared)'
+	} )
+		.then(
+			outcome => {
+				cleanup();
+				if ( outcome === 'healthy' ) {
+					l.info( { containerId, commitHash, freePort: port }, 'Container reported healthy' );
+					markContainerHealthy( containerId );
+				} else if ( outcome === 'ceiling-exceeded' ) {
+					l.warn(
+						{ containerId, commitHash, freePort: port },
+						'Container /health did not return 200 before ceiling; failing open'
+					);
+					markContainerHealthy( containerId );
+				} else {
+					l.info(
+						{ containerId, commitHash, freePort: port },
+						'Health probe aborted (container disappeared)'
+					);
+				}
+			},
+			err => {
+				cleanup();
+				l.error(
+					{ err, containerId, commitHash, freePort: port },
+					'Unexpected error in health probe loop'
 				);
 			}
-		},
-		err => {
-			cleanup();
-			l.error(
-				{ err, containerId, commitHash, freePort: port },
-				'Unexpected error in health probe loop'
-			);
-		}
-	);
+		)
+		// Belt-and-suspenders: the .then handlers above catch both branches, so
+		// this chain is always fulfilled today. The terminal .catch guards against
+		// a future edit that reintroduces a throw inside a handler — otherwise
+		// every fire-and-forget caller would produce an unhandled rejection.
+		.catch( () => {} );
+}
+
+export function ensureHealthProbeFor( container: ContainerInfo ): Promise< void > {
+	const containerId = container.Id;
+
+	if ( state.healthyContainers.has( containerId ) ) return Promise.resolve();
+	if ( state.probingContainers.has( containerId ) ) return Promise.resolve();
+
+	const commitHash = extractCommitFromImage( container.Image );
+	if ( ! commitHash ) return Promise.resolve();
+
+	const port = container.Ports && container.Ports[ 0 ] && container.Ports[ 0 ].PublicPort;
+	if ( ! port ) return Promise.resolve();
+
+	return firePollLoop( containerId, commitHash, port );
 }
 
 export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
@@ -561,13 +561,17 @@ export function reconcileHealthyContainers(): void {
 	}
 }
 
-export function ensureHealthProbesForRunningContainers(): void {
+export function ensureHealthProbesForRunningContainers(): Promise< void > {
+	const promises: Promise< void >[] = [];
 	for ( const container of state.containers.values() ) {
 		if ( container.State !== 'running' ) {
 			continue;
 		}
-		ensureHealthProbeFor( container );
+		promises.push( ensureHealthProbeFor( container ) );
 	}
+	// allSettled (not all) so a future change that breaks the "probe promise
+	// never rejects" invariant doesn't orphan sibling probes via fail-fast.
+	return Promise.allSettled( promises ).then( (): void => undefined );
 }
 
 export function getPortForContainer( hash: CommitHash, env: RunEnv ): number | boolean {

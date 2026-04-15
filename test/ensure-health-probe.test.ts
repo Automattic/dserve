@@ -132,10 +132,7 @@ describe( 'ensureHealthProbeFor', () => {
 		const container = runningDserveContainer( 'cid-1', 'abcdef', 12345 );
 		state.containers.set( container.Id, container );
 
-		ensureHealthProbeFor( container );
-
-		// Let the fire-and-forget promise settle.
-		await new Promise( resolve => setImmediate( resolve ) );
+		await ensureHealthProbeFor( container );
 
 		expect( state.probingContainers.has( 'cid-1' ) ).toBe( false );
 		expect( state.healthyContainers.has( 'cid-1' ) ).toBe( true );
@@ -151,9 +148,7 @@ describe( 'ensureHealthProbeFor', () => {
 		const container = runningDserveContainer( 'cid-1', 'abcdef', 12345 );
 		state.containers.set( container.Id, container );
 
-		ensureHealthProbeFor( container );
-
-		await new Promise( resolve => setImmediate( resolve ) );
+		await ensureHealthProbeFor( container );
 
 		expect( state.probingContainers.has( 'cid-1' ) ).toBe( false );
 		expect( state.healthyContainers.has( 'cid-1' ) ).toBe( true );

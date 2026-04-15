@@ -59,11 +59,10 @@ describe( 'dserve restart recovery', () => {
 		state.healthyContainers = new Set();
 		state.probingContainers = new Set();
 
-		ensureHealthProbesForRunningContainers();
-
-		// The probe is fire-and-forget; let it settle.
-		await new Promise( resolve => setImmediate( resolve ) );
-		await new Promise( resolve => setImmediate( resolve ) );
+		// In production this is called fire-and-forget from refreshContainers, but
+		// the function returns a Promise<void> explicitly so tests can await the
+		// full chain deterministically without microtask bookkeeping.
+		await ensureHealthProbesForRunningContainers();
 
 		expect( state.healthyContainers.has( 'post-restart-id' ) ).toBe( true );
 		expect( state.probingContainers.has( 'post-restart-id' ) ).toBe( false );
