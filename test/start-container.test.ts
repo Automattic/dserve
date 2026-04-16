@@ -1,6 +1,7 @@
 describe( 'startContainer', () => {
 	const listContainers = jest.fn();
 	const run = jest.fn();
+	const pollUntilHealthy = jest.fn();
 
 	beforeEach( () => {
 		jest.resetModules();
@@ -36,7 +37,14 @@ describe( 'startContainer', () => {
 			},
 		} ) );
 		jest.doMock( '../src/stats', () => ( {
+			increment: jest.fn(),
+			decrement: jest.fn(),
+			gauge: jest.fn(),
 			timing: jest.fn(),
+		} ) );
+		jest.doMock( '../src/health', () => ( {
+			pollUntilHealthy: pollUntilHealthy.mockResolvedValue( 'healthy' ),
+			probeContainerHealth: jest.fn(),
 		} ) );
 	} );
 
@@ -68,6 +76,71 @@ describe( 'startContainer', () => {
 				Tty: false,
 			} );
 			expect( run.mock.calls[ 0 ][ 3 ] ).not.toHaveProperty( 'PortBindings' );
+		} finally {
+			global.setTimeout = realSetTimeout;
+		}
+	} );
+
+	test( 'starts health polling for the freshly started container', async () => {
+		const realSetTimeout = global.setTimeout;
+		try {
+			( global as any ).setTimeout = ( fn: Function ) => {
+				fn();
+				return 0;
+			};
+
+			const { startContainer } = require( '../src/api' );
+
+			await startContainer( 'feedface', 'calypso' );
+
+			expect( pollUntilHealthy ).toHaveBeenCalledTimes( 1 );
+			const call = pollUntilHealthy.mock.calls[ 0 ][ 0 ];
+			expect( call.port ).toBe( 12345 );
+			expect( call.healthPath ).toBe( '/health' );
+			expect( call.intervalMs ).toBe( 500 );
+			expect( call.ceilingMs ).toBe( 30000 );
+		} finally {
+			global.setTimeout = realSetTimeout;
+		}
+	} );
+
+	test( 'marks the container healthy when pollUntilHealthy resolves to healthy', async () => {
+		const realSetTimeout = global.setTimeout;
+		try {
+			( global as any ).setTimeout = ( fn: Function ) => {
+				fn();
+				return 0;
+			};
+
+			pollUntilHealthy.mockResolvedValueOnce( 'healthy' );
+			const { startContainer, state } = require( '../src/api' );
+
+			await startContainer( 'feedface', 'calypso' );
+
+			// Let the fire-and-forget promise settle.
+			await new Promise( resolve => setImmediate( resolve ) );
+
+			expect( state.healthyContainers.has( 'container-id' ) ).toBe( true );
+		} finally {
+			global.setTimeout = realSetTimeout;
+		}
+	} );
+
+	test( 'fails open and marks healthy on ceiling-exceeded', async () => {
+		const realSetTimeout = global.setTimeout;
+		try {
+			( global as any ).setTimeout = ( fn: Function ) => {
+				fn();
+				return 0;
+			};
+
+			pollUntilHealthy.mockResolvedValueOnce( 'ceiling-exceeded' );
+			const { startContainer, state } = require( '../src/api' );
+
+			await startContainer( 'feedface', 'calypso' );
+			await new Promise( resolve => setImmediate( resolve ) );
+
+			expect( state.healthyContainers.has( 'container-id' ) ).toBe( true );
 		} finally {
 			global.setTimeout = realSetTimeout;
 		}

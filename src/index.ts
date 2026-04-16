@@ -15,11 +15,13 @@ import {
 	getPortForContainer,
 	startContainer,
 	isContainerRunning,
+	isContainerReadyToServe,
 	proxyRequestToHash as proxy,
 	deleteImage,
 	getLocalImages,
 	getBranchHashes,
 } from './api';
+import { decideRouteAction } from './route-actions';
 
 import { ONE_MINUTE, ONE_SECOND, TEN_MINUTES } from './constants';
 
@@ -167,8 +169,10 @@ calypsoServer.use( determineEnvironment );
 calypsoServer.get( '/status', async ( req: express.Request, res: express.Response ) => {
 	const commitHash = req.session.commitHash;
 	let status;
-	if ( isContainerRunning( commitHash ) ) {
+	if ( isContainerReadyToServe( commitHash ) ) {
 		status = 'Ready';
+	} else if ( isContainerRunning( commitHash ) ) {
+		status = 'Starting';
 	} else if ( didBuildFail( commitHash ) ) {
 		status = 'FAIL';
 	} else if ( await hasHashLocally( commitHash ) ) {
@@ -186,49 +190,72 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 	const { commitHash, runEnv } = req.session;
 	const hasLocally = await hasHashLocally( commitHash );
 	const isCurrentlyBuilding = ! hasLocally && ( await isBuildInProgress( commitHash ) );
-	const needsToBuild = ! isCurrentlyBuilding && ! hasLocally;
-	const shouldStartContainer = hasLocally && ! isContainerRunning( commitHash, runEnv );
-	const shouldReset = req.query.reset;
+	const isRunning = isContainerRunning( commitHash, runEnv );
+	const isHealthy = isContainerReadyToServe( commitHash, runEnv );
+	const shouldReset = Boolean( req.query.reset );
+	const acceptsHtml = ( req.header( 'accept' ) || '' ).includes( 'text/html' );
 
-	if ( shouldReset ) {
-		l.info( { commitHash }, `Hard reset for ${ commitHash }` );
-		increment( 'hash_reset' );
-		await deleteImage( commitHash );
-		await cleanupBuildDir( commitHash );
-		const response = `hard reset hash: ${ commitHash } and loading it now...`;
-		res.set( 'Refresh', `5;url=${ req.path }` );
-		res.send( striptags( response ) );
-		return;
-	}
+	const action = decideRouteAction( {
+		commitHash,
+		runEnv: runEnv || '',
+		hasLocally,
+		isCurrentlyBuilding,
+		isRunning,
+		isHealthy,
+		didFail: didBuildFail( commitHash ),
+		shouldReset,
+		acceptsHtml,
+	} );
 
-	if ( isContainerRunning( commitHash, runEnv ) ) {
-		proxy( req, res );
-		return;
-	}
-
-	let buildLog;
-	let message;
-	if ( isCurrentlyBuilding ) {
-		buildLog = await readBuildLog( commitHash );
-	} else if ( needsToBuild ) {
-		message = 'Starting build now';
-		addToBuildQueue( commitHash );
-	} else if ( shouldStartContainer ) {
-		//message = 'Just started your hash, this page will restart automatically';
-		// TODO: fix race condition where multiple containers may be spun up
-		// within the same subsecond time period.
-		try {
-			await startContainer( commitHash, runEnv );
-			res.set( 'Refresh', `1;url=${ req.path }` );
-			res.send( striptags( 'build complete, loading now...' ) );
+	switch ( action.kind ) {
+		case 'reset': {
+			l.info( { commitHash }, `Hard reset for ${ commitHash }` );
+			increment( 'hash_reset' );
+			await deleteImage( commitHash );
+			await cleanupBuildDir( commitHash );
+			res.set( 'Refresh', `5;url=${ req.path }` );
+			res.send( striptags( `hard reset hash: ${ commitHash } and loading it now...` ) );
 			return;
-		} catch ( err ) {
-			message = 'Error starting that commit...';
-			l.error( { err }, 'Error starting commit' );
+		}
+		case 'proxy': {
+			proxy( req, res );
+			return;
+		}
+		case 'loading': {
+			res.set( 'Refresh', `2;url=${ req.path }` );
+			renderApp( { message: action.message, startedServerAt } ).pipe( res );
+			return;
+		}
+		case 'not-ready': {
+			res.set( 'Retry-After', '2' );
+			res.status( 503 ).send( 'Container not ready' );
+			return;
+		}
+		case 'show-build-log': {
+			const buildLog = await readBuildLog( commitHash );
+			renderApp( { buildLog, startedServerAt } ).pipe( res );
+			return;
+		}
+		case 'enqueue-build': {
+			addToBuildQueue( commitHash );
+			renderApp( { message: 'Starting build now', startedServerAt } ).pipe( res );
+			return;
+		}
+		case 'start-container': {
+			try {
+				await startContainer( commitHash, runEnv );
+				res.set( 'Refresh', `1;url=${ req.path }` );
+				res.send( striptags( 'build complete, loading now...' ) );
+			} catch ( err ) {
+				l.error( { err }, 'Error starting commit' );
+				renderApp( {
+					message: 'Error starting that commit...',
+					startedServerAt,
+				} ).pipe( res );
+			}
+			return;
 		}
 	}
-
-	renderApp( { message, buildLog, startedServerAt } ).pipe( res );
 } );
 
 // log errors
