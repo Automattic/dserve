@@ -52,6 +52,7 @@
 		"protobufjs": "7.5.5"
 	},
 	"scripts": {
+		"audit:critical": "node scripts/audit-critical.js",
 		"test": "jest",
 		"start": "yarn run build-ts && yarn run serve",
 		"serve": "node build/index.js",
