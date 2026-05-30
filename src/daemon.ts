@@ -1,32 +1,46 @@
-import forever from 'forever-monitor';
+import { ChildProcess, spawn } from 'child_process';
 
 import { l } from './logger';
 
-const child = new forever.Monitor( 'build/index.js', {
-	watch: false,
-	silent: false,
-	max: Infinity,
-	minUptime: 2000,
-} ) as any;
+const childScript = 'build/index.js';
+const minUptime = 2000;
 
-child.on( 'error', ( err: unknown ) => {
-	l.error( { err }, 'forever: Error during run' );
-} );
+let stopping = false;
+let child: ChildProcess | undefined;
 
-child.on( 'restart', () => {
-	l.info( 'forever: Restarting' );
-} );
+function stop( signal: NodeJS.Signals ) {
+	stopping = true;
+	if ( child && ! child.killed ) {
+		child.kill( signal );
+	}
+}
 
-child.on( 'exit:code', ( code: number, signal: string ) => {
-	l.info( { code, signal }, 'forever: exited child', code, signal );
-} );
+function start() {
+	const startedAt = Date.now();
+	child = spawn( process.execPath, [ childScript ], {
+		stdio: 'inherit',
+	} );
 
-child.on( 'exit', ( exitedChild: unknown, spinning: boolean ) => {
-	l.info( { child: exitedChild, spinning }, 'forever: really exited', exitedChild, spinning );
-} );
+	l.info( { pid: child.pid }, 'daemon: started child process' );
 
-child.on( 'stop', ( childData: unknown ) => {
-	l.info( { data: childData }, 'forever: child stopping' );
-} );
+	child.on( 'error', ( err: unknown ) => {
+		l.error( { err }, 'daemon: child process error' );
+	} );
 
-child.start();
+	child.on( 'exit', ( code: number | null, signal: NodeJS.Signals | null ) => {
+		const uptime = Date.now() - startedAt;
+		l.info( { code, signal, uptime }, 'daemon: child process exited' );
+
+		if ( stopping ) {
+			return;
+		}
+
+		const restartDelay = uptime < minUptime ? minUptime : 0;
+		setTimeout( start, restartDelay );
+	} );
+}
+
+process.on( 'SIGINT', () => stop( 'SIGINT' ) );
+process.on( 'SIGTERM', () => stop( 'SIGTERM' ) );
+
+start();
