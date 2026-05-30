@@ -1,6 +1,6 @@
 # dserve
 
-[![CircleCI](https://circleci.com/gh/Automattic/dserve/tree/master.svg?style=svg&circle-token=061a56710d3d75a9251ff74141b1c758a0790461)](https://circleci.com/gh/Automattic/dserve/tree/master)
+[![CI](https://github.com/Automattic/dserve/actions/workflows/ci.yml/badge.svg)](https://github.com/Automattic/dserve/actions/workflows/ci.yml)
 
 <img src="https://raw.githubusercontent.com/Automattic/dserve/f699948673de4600a181484f5ab96a4a153eb552/logo.png" width=256 />
 
@@ -55,6 +55,7 @@ The unit test workflow does not require Docker:
 ```bash
 yarn run build-ts
 yarn test --runInBand
+yarn run audit:critical
 ```
 
 ## Use
