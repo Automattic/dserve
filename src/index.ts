@@ -2,7 +2,6 @@
 import express from 'express';
 import fs from 'fs-extra';
 import striptags from 'striptags';
-import useragent from 'useragent';
 import { exec } from 'child_process';
 
 // internal
@@ -295,15 +294,14 @@ server.on( 'close', () => {
 } );
 
 function isBrowser( req: express.Request ): Boolean {
-	const ua = useragent.lookup( req.header( 'user-agent' ) );
-	const family = ua.family.toLocaleLowerCase();
+	const ua = ( req.header( 'user-agent' ) || '' ).toLocaleLowerCase();
 
 	return (
-		family === 'chrome' ||
-		family === 'safari' ||
-		family === 'firefox' ||
-		family === 'chrome mobile' ||
-		family === 'mobile safari'
+		ua.includes( 'chrome' ) ||
+		ua.includes( 'crios' ) ||
+		ua.includes( 'firefox' ) ||
+		ua.includes( 'fxios' ) ||
+		ua.includes( 'safari' )
 	);
 }
 
