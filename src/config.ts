@@ -40,7 +40,7 @@ export const config: AppConfig = {
 		project: 'Automattic/wp-calypso',
 	},
 
-	envs: [ 'calypso', 'jetpack', 'a8c-for-agencies', 'dashboard', 'dashboard-ciab' ],
+	envs: [ 'calypso', 'jetpack', 'a8c-for-agencies', 'dashboard', 'dashboard-a4a' ],
 
 	allowedDockerRepositories: [ 'registry.a8c.com' ],
 
@@ -69,7 +69,7 @@ export function envContainerConfig( environment: RunEnv ): Dockerode.ContainerCr
 				Env: [ 'NODE_ENV=a8c-for-agencies-horizon', 'CALYPSO_ENV=a8c-for-agencies-horizon' ],
 			};
     case 'dashboard':
-    case 'dashboard-ciab':
+    case 'dashboard-a4a':
 			return {
 				Env: [ 'NODE_ENV=dashboard-horizon', 'CALYPSO_ENV=dashboard-horizon' ],
 			};
