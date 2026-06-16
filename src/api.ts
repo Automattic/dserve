@@ -765,10 +765,10 @@ export async function createContainer( imageName: ImageName, env: RunEnv ) {
 			},
 		} );
 
-		if (env === 'dashboard-a4a') {
-			// Append a `-a4a` suffix to the container name
+		if (env === 'dashboard-ciab') {
+			// Append a `-ciab` suffix to the container name
 			const info = await container.inspect();
-			await container.rename({ name: `${info.Name.substring(1)}-a4a` });
+			await container.rename({ name: `${info.Name.substring(1)}-ciab` });
 		}
 
 		l.info( { imageName }, `Successfully created container for ${ imageName }` );
