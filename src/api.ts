@@ -6,11 +6,13 @@ import _ from 'lodash';
 import getPort from 'get-port';
 import fs from 'fs-extra';
 import path from 'path';
+import fetch from 'node-fetch';
 import { ContainerInfo } from 'dockerode';
 
 import { config, envContainerConfig } from './config';
 import { l } from './logger';
 import { pendingHashes } from './builder';
+import { pollUntilHealthy } from './health';
 import {
 	ensureRepoCloned,
 	fetchRemoteBranches,
@@ -19,13 +21,15 @@ import {
 } from './git';
 
 import { CONTAINER_EXPIRY_TIME } from './constants';
-import { timing } from './stats';
+import { increment, timing } from './stats';
 import { ContainerError, ImageError } from './error';
 
 type APIState = {
 	accesses: Map< ContainerName, number >;
 	branchHashes: Map< CommitHash, BranchName >;
 	containers: Map< string, Docker.ContainerInfo >;
+	healthyContainers: Set< string >;
+	probingContainers: Set< string >;
 	localImages: Map< ImageName, Docker.ImageInfo >;
 	pullingImages: Map< ImageName, Promise< DockerodeStream > >;
 	remoteBranches: Map< BranchName, CommitHash >;
@@ -36,6 +40,8 @@ export const state: APIState = {
 	accesses: new Map(),
 	branchHashes: new Map(),
 	containers: new Map(),
+	healthyContainers: new Set(),
+	probingContainers: new Set(),
 	localImages: new Map(),
 	pullingImages: new Map(),
 	remoteBranches: new Map(),
@@ -303,6 +309,80 @@ export async function deleteImage( hash: CommitHash ) {
 		l.error( { err, commitHash: hash }, 'failed to remove image' );
 	}
 }
+function firePollLoop(
+	containerId: string,
+	commitHash: CommitHash,
+	port: number
+): Promise< void > {
+	state.probingContainers.add( containerId );
+	increment( 'health.probe.started' );
+
+	const cleanup = () => {
+		state.probingContainers.delete( containerId );
+	};
+
+	return pollUntilHealthy( {
+		port,
+		fetchImpl: fetch as any,
+		healthPath: config.build.healthPath,
+		intervalMs: config.build.healthProbeIntervalMs,
+		ceilingMs: config.build.healthProbeCeilingMs,
+		probeTimeoutMs: 1000,
+		shouldAbort: () => ! state.containers.has( containerId ),
+	} )
+		.then(
+			outcome => {
+				cleanup();
+				if ( outcome === 'healthy' ) {
+					increment( 'health.probe.healthy' );
+					l.info( { containerId, commitHash, freePort: port }, 'Container reported healthy' );
+					markContainerHealthy( containerId );
+				} else if ( outcome === 'ceiling-exceeded' ) {
+					increment( 'health.probe.fail_open' );
+					l.warn(
+						{ containerId, commitHash, freePort: port },
+						'Container /health did not return 200 before ceiling; failing open'
+					);
+					markContainerHealthy( containerId );
+				} else {
+					increment( 'health.probe.aborted' );
+					l.info(
+						{ containerId, commitHash, freePort: port },
+						'Health probe aborted (container disappeared)'
+					);
+				}
+			},
+			err => {
+				cleanup();
+				increment( 'health.probe.error' );
+				l.error(
+					{ err, containerId, commitHash, freePort: port },
+					'Unexpected error in health probe loop'
+				);
+			}
+		)
+		// Belt-and-suspenders: the .then handlers above catch both branches, so
+		// this chain is always fulfilled today. The terminal .catch guards against
+		// a future edit that reintroduces a throw inside a handler — otherwise
+		// every fire-and-forget caller would produce an unhandled rejection.
+		.catch( () => {} );
+}
+
+export function ensureHealthProbeFor( container: ContainerInfo ): Promise< void > {
+	const containerId = container.Id;
+
+	if ( state.healthyContainers.has( containerId ) ) return Promise.resolve();
+	if ( state.probingContainers.has( containerId ) ) return Promise.resolve();
+
+	const commitHash = extractCommitFromImage( container.Image );
+	if ( ! commitHash ) return Promise.resolve();
+
+	const port = container.Ports && container.Ports[ 0 ] && container.Ports[ 0 ].PublicPort;
+	if ( ! port ) return Promise.resolve();
+
+	return firePollLoop( containerId, commitHash, port );
+}
+
 export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 	//l.info( { commitHash }, `Request to start a container for ${ commitHash }` );
 	const image = getImageName( commitHash );
@@ -386,7 +466,13 @@ export async function startContainer( commitHash: CommitHash, env: RunEnv ) {
 					{ image, freePort, commitHash },
 					`Successfully started container for ${ image } on ${ freePort }`
 				);
-				return refreshContainers().then( () => getRunningContainerForHash( commitHash ) );
+				return refreshContainers().then( () => {
+					const container = getRunningContainerForHash( commitHash, env );
+					if ( container ) {
+						ensureHealthProbeFor( container );
+					}
+					return container;
+				} );
 			},
 			( { error, freePort } ) => {
 				l.error(
@@ -419,6 +505,8 @@ export async function refreshContainers() {
 	state.containers = new Map(
 		containers.map( container => [ container.Id, container ] as [ string, ContainerInfo ] )
 	);
+	reconcileHealthyContainers();
+	ensureHealthProbesForRunningContainers();
 }
 
 export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): ContainerInfo | null {
@@ -433,6 +521,62 @@ export function getRunningContainerForHash( hash: CommitHash, env?: RunEnv ): Co
 
 export function isContainerRunning( hash: CommitHash, env?: RunEnv ): boolean {
 	return !! getRunningContainerForHash( hash, env );
+}
+
+export function markContainerHealthy( containerId: string ): void {
+	state.healthyContainers.add( containerId );
+}
+
+export function forgetContainerHealth( containerId: string ): void {
+	state.healthyContainers.delete( containerId );
+}
+
+export function isContainerHealthy( hash: CommitHash, env?: RunEnv ): boolean {
+	const container = getRunningContainerForHash( hash, env );
+	if ( ! container ) {
+		return false;
+	}
+	return state.healthyContainers.has( container.Id );
+}
+
+// Policy layer on top of isContainerHealthy: honors the healthGateEnabled kill
+// switch. When the gate is disabled, any running container is considered ready
+// to serve (pre-QAO-358 behavior).
+export function isContainerReadyToServe( hash: CommitHash, env?: RunEnv ): boolean {
+	if ( ! config.build.healthGateEnabled ) {
+		return isContainerRunning( hash, env );
+	}
+	return isContainerHealthy( hash, env );
+}
+
+export function reconcileHealthyContainers(): void {
+	const aliveIds = new Set< string >();
+	for ( const container of state.containers.values() ) {
+		aliveIds.add( container.Id );
+	}
+	for ( const id of Array.from( state.healthyContainers ) ) {
+		if ( ! aliveIds.has( id ) ) {
+			state.healthyContainers.delete( id );
+		}
+	}
+	for ( const id of Array.from( state.probingContainers ) ) {
+		if ( ! aliveIds.has( id ) ) {
+			state.probingContainers.delete( id );
+		}
+	}
+}
+
+export function ensureHealthProbesForRunningContainers(): Promise< void > {
+	const promises: Promise< void >[] = [];
+	for ( const container of state.containers.values() ) {
+		if ( container.State !== 'running' ) {
+			continue;
+		}
+		promises.push( ensureHealthProbeFor( container ) );
+	}
+	// allSettled (not all) so a future change that breaks the "probe promise
+	// never rejects" invariant doesn't orphan sibling probes via fail-fast.
+	return Promise.allSettled( promises ).then( (): void => undefined );
 }
 
 export function getPortForContainer( hash: CommitHash, env: RunEnv ): number | boolean {

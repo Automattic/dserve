@@ -16,6 +16,10 @@ type BuildConfig = Readonly< {
 	exposedPort: number;
 	logFilename: string;
 	tagPrefix: string;
+	healthPath: string;
+	healthProbeIntervalMs: number;
+	healthProbeCeilingMs: number;
+	healthGateEnabled: boolean;
 } >;
 
 type RepoConfig = Readonly< {
@@ -34,6 +38,13 @@ export const config: AppConfig = {
 		exposedPort: 3000,
 		logFilename: 'dserve-build-log.txt',
 		tagPrefix: 'dserve-wpcalypso',
+		healthPath: '/health',
+		healthProbeIntervalMs: 500,
+		healthProbeCeilingMs: 30000,
+		// Kill switch for the container-readiness gate. Set the env var
+		// DSERVE_HEALTH_GATE_ENABLED=false to fall back to pre-QAO-358 behavior
+		// (proxy to any running container). Requires a dserve restart to take effect.
+		healthGateEnabled: process.env.DSERVE_HEALTH_GATE_ENABLED !== 'false',
 	},
 
 	repo: {
