@@ -172,7 +172,7 @@ describe( 'image-runner middleware', () => {
 			},
 			{
 				Id: 'sha256:other-repo',
-				RepoTags: [ 'test-registry.local/other/app:build-1' ],
+				RepoTags: [ `${ REPO }-other:build-1` ],
 				Labels: VALID_LABELS,
 				Created: 300,
 				sha: SHA,
