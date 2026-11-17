@@ -248,7 +248,7 @@ calypsoServer.use(
 
 		if (err instanceof InvalidRegistry) {
 			l.warn( {err, url:req.originalUrl, registry:err.registry});
-			res.status(403).send(`Registry ${err.registry} is not valid`);
+			res.status(403).send(err.message);
 			return;
 		}
 
