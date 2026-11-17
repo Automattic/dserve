@@ -99,7 +99,7 @@ async function loadImage( req: express.Request, res: express.Response ) {
 					res.status( 202 ).write( '<!DOCTYPE html><body><pre>' );
 					responseStarted=true;
 				}
-				res.write( `${ Date.now() } - ${ JSON.stringify( data ) }\n` );
+				res.write( `${ Date.now() } - ${ JSON.stringify( data ).replace( /&/g, '&amp;' ).replace( /</g, '&lt;' ) }\n` );
 			} );
 
 			// After the imge is pulled, reload the page. This will invoke this same express handler, but now that the

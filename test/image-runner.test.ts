@@ -28,6 +28,7 @@ describe( 'image-runner middleware', () => {
 	const tag = jest.fn();
 	const createContainer = jest.fn();
 	const pull = jest.fn();
+	const followProgress = jest.fn();
 
 	// Loads the modules against a mocked Docker daemon holding `localImages`.
 	async function loadModules() {
@@ -36,7 +37,7 @@ describe( 'image-runner middleware', () => {
 				listImages: jest.fn( async () => localImages.map( ( { sha, ...image } ) => image ) ),
 				listContainers: jest.fn( async () => containers ),
 				pull,
-				modem: { followProgress: jest.fn() },
+				modem: { followProgress },
 				createContainer,
 				getImage: ( id: string ) => ( {
 					inspect: () => inspect( id ),
@@ -243,6 +244,30 @@ describe( 'image-runner middleware', () => {
 		expect( result.error ).toBe( registryError );
 		expect( inspect ).not.toHaveBeenCalled();
 		expect( tag ).not.toHaveBeenCalled();
+	} );
+
+	test( 'escapes HTML in the streamed pull log', async () => {
+		pull.mockResolvedValue( {} );
+		followProgress.mockImplementation( ( _stream, onFinished, onProgress ) => {
+			onProgress( { status: '</pre><script>alert(1)</script> & done' } );
+			onFinished( null );
+		} );
+		const { middleware } = await loadModules();
+		const writes: string[] = [];
+
+		await new Promise< void >( resolve => {
+			const res = {
+				header: jest.fn(),
+				status: () => res,
+				write: ( chunk: string ) => writes.push( chunk ),
+				end: resolve,
+			};
+			middleware( { query: { image: COMMIT_IMAGE } }, res, resolve );
+		} );
+
+		expect( writes[ 1 ] ).toMatch(
+			/^\d+ - \{"status":"&lt;\/pre>&lt;script>alert\(1\)&lt;\/script> &amp; done"\}\n$/
+		);
 	} );
 
 	test.each( [ [ 'inspecting', inspect ], [ 'tagging', tag ] ] )(

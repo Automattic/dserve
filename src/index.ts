@@ -233,6 +233,11 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 // log errors
 calypsoServer.use(
 	( err: Error, req: express.Request, res: express.Response, next: express.NextFunction ) => {
+		// Error responses are plain text.
+		if ( ! res.headersSent ) {
+			res.type( 'text/plain' );
+			res.set( 'X-Content-Type-Options', 'nosniff' );
+		}
 
 		if (err instanceof ImageNotFound) {
 			l.warn( {err, url:req.originalUrl, image:err.imageName});
@@ -248,7 +253,7 @@ calypsoServer.use(
 
 		if (err instanceof InvalidRegistry) {
 			l.warn( {err, url:req.originalUrl, registry:err.registry});
-			res.status(403).send(`Registry ${err.registry} is not valid`);
+			res.status(403).send(err.message);
 			return;
 		}
 
