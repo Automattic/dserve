@@ -44,6 +44,11 @@ export const state: APIState = {
 
 export const docker = new Docker();
 
+// `<registry>/calypso/app:commit-<sha>`, the tag CI pushes for each commit.
+const COMMIT_TAG_PATTERN = /^(?<repo>.+):(?<tag>commit-(?<sha>[0-9a-f]{40}))$/;
+// Env var holding the commit an image was built from, set by wp-calypso's Dockerfile.
+const COMMIT_SHA_ENV = 'COMMIT_SHA';
+
 type DockerBuildBackend = 'buildkit' | 'classic' | 'unknown';
 type DockerDiagnostics = {
 	endpoint: string;
@@ -264,6 +269,47 @@ export function isValidImage( imageInfo: ImageInfo ) {
 		if ( imageInfo.Labels[ label ] !== value ) return false;
 	}
 	return true;
+}
+
+/**
+ * Tags a local image built from the commit in `imageName` (`<repo>:commit-<sha>`) as `imageName`.
+ *
+ * The registry drops `commit-<sha>` tags within hours, while the same image often stays on disk
+ * under another tag (e.g. `<repo>:build-208013`). Calypso images carry `COMMIT_SHA=<sha>` in their
+ * env, so the newest valid image of the same repo with that env gets the tag back.
+ * Returns the tagged image, or undefined when `imageName` is not a commit tag or nothing matches.
+ */
+export async function tagLocalCommitImage(
+	imageName: ImageName
+): Promise< ImageInfo | undefined > {
+	const match = imageName.match( COMMIT_TAG_PATTERN );
+	if ( ! match ) {
+		return undefined;
+	}
+
+	const { repo, tag, sha } = match.groups;
+	const candidates = _.uniqBy(
+		Array.from( state.localImages.entries() )
+			.filter( ( [ name, image ] ) => name.startsWith( `${ repo }:` ) && isValidImage( image ) )
+			.map( ( [ , image ] ) => image ),
+		'Id'
+	).sort( ( a, b ) => b.Created - a.Created );
+
+	// Newest first, so the first match is the newest image built from the commit.
+	for ( const candidate of candidates ) {
+		const image = docker.getImage( candidate.Id );
+		const { Config } = await image.inspect();
+		if ( ! ( Config.Env || [] ).includes( `${ COMMIT_SHA_ENV }=${ sha }` ) ) {
+			continue;
+		}
+
+		l.info( { imageName, imageId: candidate.Id }, 'Tagging local image built from commit' );
+		await image.tag( { repo, tag } );
+		await refreshLocalImages();
+		return getAllImages().get( imageName );
+	}
+
+	return undefined;
 }
 
 export async function hasHashLocally( hash: CommitHash ): Promise< boolean > {
