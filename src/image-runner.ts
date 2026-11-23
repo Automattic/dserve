@@ -15,6 +15,7 @@ import {
 	getContainerName,
 	isValidImage,
 	refreshLocalImages,
+	tagLocalCommitImage,
 } from './api';
 import { config } from './config';
 import { l } from './logger';
@@ -86,7 +87,7 @@ async function loadImage( req: express.Request, res: express.Response ) {
 	}
 
 	// There is no container. Check if we have the image already downloaded
-	const image = getAllImages().get( imageName );
+	let image = getAllImages().get( imageName );
 	if (!image) {
 		// No image in local repo, try to fetch it and reload the page when it's done.
 		try{
@@ -98,7 +99,7 @@ async function loadImage( req: express.Request, res: express.Response ) {
 					res.status( 202 ).write( '<!DOCTYPE html><body><pre>' );
 					responseStarted=true;
 				}
-				res.write( `${ Date.now() } - ${ JSON.stringify( data ) }\n` );
+				res.write( `${ Date.now() } - ${ JSON.stringify( data ).replace( /&/g, '&amp;' ).replace( /</g, '&lt;' ) }\n` );
 			} );
 
 			// After the imge is pulled, reload the page. This will invoke this same express handler, but now that the
@@ -107,10 +108,14 @@ async function loadImage( req: express.Request, res: express.Response ) {
 			res.end();
 			return;
 		}catch(err) {
-			if (err.message.match(/HTTP code 404/)) {
-				throw new ImageNotFound(imageName)
-			} else {
+			if ( ! err.message.match(/HTTP code 404/) ) {
 				throw err;
+			}
+
+			// The registry may have dropped a `commit-<sha>` tag whose image is still on disk.
+			image = await tagLocalCommitImage( imageName );
+			if ( ! image ) {
+				throw new ImageNotFound(imageName)
 			}
 		}
 	}
