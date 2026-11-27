@@ -1,5 +1,4 @@
 import bunyan from 'bunyan';
-import _ from 'lodash';
 import { Writable } from 'stream';
 
 import { CommitHash, getImageName } from './api';
@@ -62,7 +61,9 @@ export function getLoggerForBuild( commitHash: CommitHash ) {
 	// except we don't want any of the parents streams
 	// so this line removes them all
 	// @ts-ignore this needs to be fixed with proper typing
-	( ( logger as any ) as Logger ).streams = _.filter( ( logger as any ).streams, { path } );
+	( ( logger as any ) as Logger ).streams = ( logger as any ).streams.filter(
+		( stream: { path?: string } ) => stream.path === path
+	);
 
 	return logger;
 }

@@ -2,7 +2,6 @@ import { mkdir, readFile, rm } from 'fs/promises';
 import os from 'os';
 import { spawn } from 'child_process';
 import path from 'path';
-import { sample } from 'lodash';
 
 import { CommitHash, getImageName, refreshLocalImages, refreshRemoteBranches } from './api';
 import { config } from './config';
@@ -14,11 +13,11 @@ import { pathExists } from './file-utils';
 
 export const MAX_CONCURRENT_BUILDS = 4;
 
-const MAX_CORES = [ 12 ];
+const MAX_CORES = 12;
 export const getBuildConcurrency = () =>
 	Math.max(
 		1,
-		Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), sample( MAX_CORES ) )
+		Math.min( Math.floor( os.cpus().length / MAX_CONCURRENT_BUILDS ), MAX_CORES )
 	);
 
 export const buildQueue: Array< CommitHash > = [];

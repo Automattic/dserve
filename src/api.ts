@@ -2,7 +2,6 @@ import httpProxy from 'http-proxy';
 import Docker, { ImageInfo } from 'dockerode';
 import http from 'http';
 import https from 'https';
-import _ from 'lodash';
 import getPort from 'get-port';
 import path from 'path';
 import { ContainerInfo } from 'dockerode';
@@ -288,12 +287,13 @@ export async function tagLocalCommitImage(
 	}
 
 	const { repo, tag, sha } = match.groups;
-	const candidates = _.uniqBy(
+	// One entry per image: the same image can be listed under several tags.
+	const imagesById = new Map(
 		Array.from( state.localImages.entries() )
 			.filter( ( [ name, image ] ) => name.startsWith( `${ repo }:` ) && isValidImage( image ) )
-			.map( ( [ , image ] ) => image ),
-		'Id'
-	).sort( ( a, b ) => b.Created - a.Created );
+			.map( ( [ , image ] ) => [ image.Id, image ] as const )
+	);
+	const candidates = Array.from( imagesById.values() ).sort( ( a, b ) => b.Created - a.Created );
 
 	// Newest first, so the first match is the newest image built from the commit.
 	for ( const candidate of candidates ) {
@@ -612,7 +612,7 @@ export function getExpiredContainers() {
 
 		return (
 			createdAgo > CONTAINER_EXPIRY_TIME &&
-			( _.isUndefined( lastAccessed ) || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME )
+			( lastAccessed === undefined || Date.now() - lastAccessed > CONTAINER_EXPIRY_TIME )
 		);
 	} );
 }
