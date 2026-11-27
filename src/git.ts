@@ -1,5 +1,5 @@
 import { execFile } from 'child_process';
-import fs from 'fs-extra';
+import { mkdir, rm } from 'fs/promises';
 import path from 'path';
 import { promisify } from 'util';
 
@@ -40,14 +40,12 @@ async function runGit(
 }
 
 export async function ensureRepoCloned( remoteUrl: string, repoDir: string ) {
-	await fs.ensureDir( path.dirname( repoDir ) );
+	await mkdir( path.dirname( repoDir ), { recursive: true } );
 	if ( await isGitRepo( repoDir ) ) {
 		return;
 	}
 
-	if ( await fs.pathExists( repoDir ) ) {
-		await fs.remove( repoDir );
-	}
+	await rm( repoDir, { recursive: true, force: true } );
 
 	await runGit( [ 'clone', '--no-checkout', remoteUrl, repoDir ] );
 }
