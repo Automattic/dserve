@@ -7,18 +7,11 @@
  * Opt-in, as they need a daemon and build images: `DSERVE_DOCKER_TESTS=1 yarn test`.
  */
 
-jest.mock( 'hot-shots', () => ( {
-	StatsD: jest.fn( () => ( {
-		increment: jest.fn(),
-		decrement: jest.fn(),
-		gauge: jest.fn(),
-		timing: jest.fn(),
-	} ) ),
-} ) );
+import { afterAll, describe, expect, test } from 'vitest';
 
 import * as tar from 'tar-stream';
 
-const { docker, getAllImages, refreshLocalImages, tagLocalCommitImage } = require( '../src/api' );
+import { docker, getAllImages, refreshLocalImages, tagLocalCommitImage } from '../src/api';
 
 // A repository of its own, so the tests never touch images of the repository dserve serves.
 const REPO = 'dserve-it.local/calypso/app';

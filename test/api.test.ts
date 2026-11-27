@@ -1,20 +1,13 @@
-jest.mock( 'hot-shots', () => ( {
-	StatsD: jest.fn( () => ( {
-		increment: jest.fn(),
-		decrement: jest.fn(),
-		gauge: jest.fn(),
-		timing: jest.fn(),
-	} ) ),
-} ) );
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 
-const {
+import {
 	getBuildBackendFromBuilderVersion,
 	getExpiredContainers,
 	getImageName,
 	state,
-} = require( '../src/api' );
+} from '../src/api';
 
 describe( 'api', () => {
 	describe( 'getBuildBackendFromBuilderVersion', () => {

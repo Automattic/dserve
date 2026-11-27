@@ -1,10 +1,12 @@
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+
 describe( 'startContainer', () => {
-	const listContainers = jest.fn();
-	const run = jest.fn();
+	const listContainers = vi.fn();
+	const run = vi.fn();
 
 	beforeEach( () => {
-		jest.resetModules();
-		jest.clearAllMocks();
+		vi.resetModules();
+		vi.clearAllMocks();
 
 		listContainers.mockResolvedValue( [
 			{
@@ -18,25 +20,25 @@ describe( 'startContainer', () => {
 			},
 		] );
 
-		jest.doMock( 'dockerode', () =>
-			jest.fn().mockImplementation( () => ( {
-				listContainers,
-				run,
-			} ) )
-		);
-		jest.doMock( 'get-port', () => jest.fn().mockResolvedValue( 12345 ) );
-		jest.doMock( '../src/builder', () => ( {
+		vi.doMock( 'dockerode', () => ( {
+			// A function, not an arrow, as dserve constructs it with `new`.
+			default: vi.fn( function () {
+				return { listContainers, run };
+			} ),
+		} ) );
+		vi.doMock( 'get-port', () => ( { default: vi.fn().mockResolvedValue( 12345 ) } ) );
+		vi.doMock( '../src/builder', () => ( {
 			pendingHashes: new Set(),
 		} ) );
-		jest.doMock( '../src/logger', () => ( {
+		vi.doMock( '../src/logger', () => ( {
 			l: {
-				info: jest.fn(),
-				warn: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				warn: vi.fn(),
+				error: vi.fn(),
 			},
 		} ) );
-		jest.doMock( '../src/stats', () => ( {
-			timing: jest.fn(),
+		vi.doMock( '../src/stats', () => ( {
+			timing: vi.fn(),
 		} ) );
 	} );
 
@@ -48,7 +50,7 @@ describe( 'startContainer', () => {
 				return 0;
 			};
 
-			const { startContainer } = require( '../src/api' );
+			const { startContainer } = await import( '../src/api' );
 
 			await startContainer( 'feedface', 'calypso' );
 

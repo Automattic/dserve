@@ -1,11 +1,4 @@
-jest.mock( 'hot-shots', () => ( {
-	StatsD: jest.fn( () => ( {
-		increment: jest.fn(),
-		decrement: jest.fn(),
-		gauge: jest.fn(),
-		timing: jest.fn(),
-	} ) ),
-} ) );
+import { describe, expect, test } from 'vitest';
 
 import { parseRemoteBranchRefs } from '../src/git';
 

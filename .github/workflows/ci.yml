@@ -33,8 +33,11 @@ jobs:
       - name: Build TypeScript
         run: yarn run build-ts
 
-      - name: Run Jest
-        run: yarn test --runInBand
+      - name: Type-check tests
+        run: yarn run typecheck
+
+      - name: Run tests
+        run: yarn test
 
       - name: Audit critical dependencies
         run: yarn run audit:critical
