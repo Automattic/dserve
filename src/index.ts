@@ -1,6 +1,5 @@
 // external
 import express from 'express';
-import striptags from 'striptags';
 import { exec } from 'child_process';
 
 // internal
@@ -195,7 +194,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		await cleanupBuildDir( commitHash );
 		const response = `hard reset hash: ${ commitHash } and loading it now...`;
 		res.set( 'Refresh', `5;url=${ req.path }` );
-		res.send( striptags( response ) );
+		res.send( response );
 		return;
 	}
 
@@ -218,7 +217,7 @@ calypsoServer.get( '*', async ( req: express.Request, res: express.Response ) =>
 		try {
 			await startContainer( commitHash, runEnv );
 			res.set( 'Refresh', `1;url=${ req.path }` );
-			res.send( striptags( 'build complete, loading now...' ) );
+			res.send( 'build complete, loading now...' );
 			return;
 		} catch ( err ) {
 			message = 'Error starting that commit...';

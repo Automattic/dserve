@@ -30,7 +30,6 @@
 		"http-proxy": "^1.18.1",
 		"react": "^16.4.2",
 		"react-dom": "^16.4.2",
-		"striptags": "^3.2.0",
 		"typescript": "5"
 	},
 	"resolutions": {
