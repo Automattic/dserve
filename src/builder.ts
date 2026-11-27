@@ -279,7 +279,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 		return;
 	} finally {
 		pendingHashes.delete( commitHash );
-		closeLogger( buildLogger as any );
+		closeLogger( buildLogger );
 
 		if ( shouldCleanup ) {
 			try {
