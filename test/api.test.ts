@@ -1,16 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-
-vi.mock( 'hot-shots', () => ( {
-	// A function, not an arrow, as dserve constructs it with `new`.
-	StatsD: vi.fn( function () {
-		return {
-			increment: vi.fn(),
-			decrement: vi.fn(),
-			gauge: vi.fn(),
-			timing: vi.fn(),
-		};
-	} ),
-} ) );
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { CONTAINER_EXPIRY_TIME } from '../src/constants';
 

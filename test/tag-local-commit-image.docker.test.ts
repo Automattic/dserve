@@ -7,19 +7,7 @@
  * Opt-in, as they need a daemon and build images: `DSERVE_DOCKER_TESTS=1 yarn test`.
  */
 
-import { afterAll, describe, expect, test, vi } from 'vitest';
-
-vi.mock( 'hot-shots', () => ( {
-	// A function, not an arrow, as dserve constructs it with `new`.
-	StatsD: vi.fn( function () {
-		return {
-			increment: vi.fn(),
-			decrement: vi.fn(),
-			gauge: vi.fn(),
-			timing: vi.fn(),
-		};
-	} ),
-} ) );
+import { afterAll, describe, expect, test } from 'vitest';
 
 import * as tar from 'tar-stream';
 

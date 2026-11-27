@@ -1,18 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-vi.mock( 'hot-shots', () => ( {
-	// A function, not an arrow, as dserve constructs it with `new`.
-	StatsD: vi.fn( function () {
-		return {
-			increment: vi.fn(),
-			decrement: vi.fn(),
-			gauge: vi.fn(),
-			timing: vi.fn(),
-		};
-	} ),
-} ) );
-
-// src/logger default-imports bunyan, so the mock provides a default export.
 vi.mock( 'bunyan', () => ( {
 	default: {
 		createLogger: vi.fn( () => ( {
@@ -75,7 +62,7 @@ describe( 'logger', () => {
 		test( 'should write to a file at the correct path', async () => {
 			const { getLoggerForBuild } = await import( '../src/logger' );
 			const childLogger = getLoggerForBuild( 'build-hash' );
-			expect( ( childLogger as any ).streams ).toEqual( [
+			expect( childLogger.streams ).toEqual( [
 				{
 					path: expect.stringContaining(
 						'dserve-build-Automattic-wp-calypso-build-hash/dserve-build-log.txt'
