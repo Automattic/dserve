@@ -1,5 +1,4 @@
 import bunyan from 'bunyan';
-import _ from 'lodash';
 import { Writable } from 'stream';
 
 import { CommitHash, getImageName } from './api';
@@ -55,20 +54,28 @@ export function getLoggerForBuild( commitHash: CommitHash ) {
 		],
 		commitHash,
 		imageName: getImageName( commitHash ),
-	} );
+	} ) as LoggerWithStreams;
 
 	// we want it to be a child so that
 	// it inherits al the same properties as the parent
 	// except we don't want any of the parents streams
 	// so this line removes them all
-	// @ts-ignore this needs to be fixed with proper typing
-	( ( logger as any ) as Logger ).streams = _.filter( ( logger as any ).streams, { path } );
+	logger.streams = logger.streams.filter( stream => stream.path === path );
 
 	return logger;
 }
 
-type Logger = { streams: Array< { stream: Writable; type: string } > };
-export function closeLogger( logger: Logger ) {
+/**
+ * A stream as bunyan stores it on a logger. File streams keep their path.
+ */
+type LoggerStream = { stream: Writable; type: string; path?: string };
+
+/**
+ * A bunyan logger with its streams, which bunyan's type definitions leave out.
+ */
+type LoggerWithStreams = bunyan & { streams: LoggerStream[] };
+
+export function closeLogger( logger: LoggerWithStreams ) {
 	logger.streams.forEach( stream => {
 		stream.stream.end();
 	} );
