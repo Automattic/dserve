@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+
 const REPO = 'registry.a8c.com/calypso/app';
 const SHA = '20ab23234e264bedc031b01e29efa0c6494b0948';
 const OTHER_SHA = 'feedfacefeedfacefeedfacefeedfacefeedface';
@@ -24,31 +26,34 @@ type LocalImage = {
 describe( 'image-runner middleware', () => {
 	let localImages: LocalImage[];
 	let containers: any[];
-	const inspect = jest.fn();
-	const tag = jest.fn();
-	const createContainer = jest.fn();
-	const pull = jest.fn();
-	const followProgress = jest.fn();
+	const inspect = vi.fn();
+	const tag = vi.fn();
+	const createContainer = vi.fn();
+	const pull = vi.fn();
+	const followProgress = vi.fn();
 
 	// Loads the modules against a mocked Docker daemon holding `localImages`.
 	async function loadModules() {
-		jest.doMock( 'dockerode', () =>
-			jest.fn().mockImplementation( () => ( {
-				listImages: jest.fn( async () => localImages.map( ( { sha, ...image } ) => image ) ),
-				listContainers: jest.fn( async () => containers ),
-				pull,
-				modem: { followProgress },
-				createContainer,
-				getImage: ( id: string ) => ( {
-					inspect: () => inspect( id ),
-					tag: ( options: { repo: string; tag: string } ) => tag( id, options ),
-				} ),
-			} ) )
-		);
+		vi.doMock( 'dockerode', () => ( {
+			// A function, not an arrow, as dserve constructs it with `new`.
+			default: vi.fn( function () {
+				return {
+					listImages: vi.fn( async () => localImages.map( ( { sha, ...image } ) => image ) ),
+					listContainers: vi.fn( async () => containers ),
+					pull,
+					modem: { followProgress },
+					createContainer,
+					getImage: ( id: string ) => ( {
+						inspect: () => inspect( id ),
+						tag: ( options: { repo: string; tag: string } ) => tag( id, options ),
+					} ),
+				};
+			} ),
+		} ) );
 
-		const api = require( '../src/api' );
+		const api = await import( '../src/api' );
 		await api.refreshLocalImages();
-		return require( '../src/image-runner' );
+		return import( '../src/image-runner' );
 	}
 
 	// Runs the middleware, resolving once it redirects or hands an error to next().
@@ -61,7 +66,7 @@ describe( 'image-runner middleware', () => {
 				path: '/',
 			};
 			const res = {
-				header: jest.fn(),
+				header: vi.fn(),
 				redirect: ( url: string ) => resolve( { redirect: url } ),
 			};
 			middleware( req, res, ( error: any ) => resolve( { error } ) );
@@ -69,8 +74,8 @@ describe( 'image-runner middleware', () => {
 	}
 
 	beforeEach( () => {
-		jest.resetModules();
-		jest.clearAllMocks();
+		vi.resetModules();
+		vi.clearAllMocks();
 
 		containers = [];
 		localImages = [];
@@ -90,12 +95,12 @@ describe( 'image-runner middleware', () => {
 			return { id: NEW_CONTAINER.Id };
 		} );
 
-		jest.doMock( 'get-port', () => jest.fn().mockResolvedValue( 12345 ) );
-		jest.doMock( '../src/builder', () => ( { pendingHashes: new Set() } ) );
-		jest.doMock( '../src/logger', () => ( {
-			l: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+		vi.doMock( 'get-port', () => ( { default: vi.fn().mockResolvedValue( 12345 ) } ) );
+		vi.doMock( '../src/builder', () => ( { pendingHashes: new Set() } ) );
+		vi.doMock( '../src/logger', () => ( {
+			l: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 		} ) );
-		jest.doMock( '../src/stats', () => ( { timing: jest.fn() } ) );
+		vi.doMock( '../src/stats', () => ( { timing: vi.fn() } ) );
 	} );
 
 	test( 'tags a local image built from the commit when the registry dropped the tag', async () => {
@@ -180,7 +185,7 @@ describe( 'image-runner middleware', () => {
 			},
 		];
 		const { middleware } = await loadModules();
-		const { ImageNotFound } = require( '../src/error' );
+		const { ImageNotFound } = await import( '../src/error' );
 
 		const result = await request( middleware, COMMIT_IMAGE );
 
@@ -196,7 +201,7 @@ describe( 'image-runner middleware', () => {
 			{ Id: 'sha256:unlabelled', RepoTags: [ BUILD_IMAGE ], Created: 100, sha: SHA },
 		];
 		const { middleware } = await loadModules();
-		const { ImageNotFound } = require( '../src/error' );
+		const { ImageNotFound } = await import( '../src/error' );
 
 		const result = await request( middleware, COMMIT_IMAGE );
 
@@ -216,7 +221,7 @@ describe( 'image-runner middleware', () => {
 			},
 		];
 		const { middleware } = await loadModules();
-		const { ImageNotFound } = require( '../src/error' );
+		const { ImageNotFound } = await import( '../src/error' );
 
 		const result = await request( middleware, BUILD_IMAGE );
 
@@ -257,12 +262,12 @@ describe( 'image-runner middleware', () => {
 
 		await new Promise< void >( resolve => {
 			const res = {
-				header: jest.fn(),
+				header: vi.fn(),
 				status: () => res,
 				write: ( chunk: string ) => writes.push( chunk ),
 				end: resolve,
 			};
-			middleware( { query: { image: COMMIT_IMAGE } }, res, resolve );
+			middleware( { query: { image: COMMIT_IMAGE } } as any, res as any, resolve );
 		} );
 
 		expect( writes[ 1 ] ).toMatch(

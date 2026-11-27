@@ -1,10 +1,15 @@
-jest.mock( 'hot-shots', () => ( {
-	StatsD: jest.fn( () => ( {
-		increment: jest.fn(),
-		decrement: jest.fn(),
-		gauge: jest.fn(),
-		timing: jest.fn(),
-	} ) ),
+import { describe, expect, test, vi } from 'vitest';
+
+vi.mock( 'hot-shots', () => ( {
+	// A function, not an arrow, as dserve constructs it with `new`.
+	StatsD: vi.fn( function () {
+		return {
+			increment: vi.fn(),
+			decrement: vi.fn(),
+			gauge: vi.fn(),
+			timing: vi.fn(),
+		};
+	} ),
 } ) );
 
 import { parseRemoteBranchRefs } from '../src/git';

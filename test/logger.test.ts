@@ -1,32 +1,40 @@
-jest.mock( 'hot-shots', () => ( {
-	StatsD: jest.fn( () => ( {
-		increment: jest.fn(),
-		decrement: jest.fn(),
-		gauge: jest.fn(),
-		timing: jest.fn(),
-	} ) ),
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+
+vi.mock( 'hot-shots', () => ( {
+	// A function, not an arrow, as dserve constructs it with `new`.
+	StatsD: vi.fn( function () {
+		return {
+			increment: vi.fn(),
+			decrement: vi.fn(),
+			gauge: vi.fn(),
+			timing: vi.fn(),
+		};
+	} ),
 } ) );
 
-jest.mock( 'bunyan', () => ( {
-	createLogger: jest.fn( () => ( {
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-	} ) ),
-	RingBuffer: jest.fn(),
+// src/logger default-imports bunyan, so the mock provides a default export.
+vi.mock( 'bunyan', () => ( {
+	default: {
+		createLogger: vi.fn( () => ( {
+			info: () => {},
+			warn: () => {},
+			error: () => {},
+		} ) ),
+		RingBuffer: vi.fn(),
+	},
 } ) );
 
 describe( 'logger', () => {
 	let logger: any;
 	let createLogger: any;
 	beforeEach( () => {
-		jest.clearAllMocks();
-		jest.resetModules();
+		vi.clearAllMocks();
+		vi.resetModules();
 		logger = {
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-			child: jest.fn( options => ( { streams: options.streams } ) ),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			child: vi.fn( options => ( { streams: options.streams } ) ),
 		};
 		createLogger = () => logger;
 	} );
@@ -36,16 +44,16 @@ describe( 'logger', () => {
 	} );
 
 	describe( 'l', () => {
-		test( 'should only make one base logger', () => {
-			const bunyan = require( 'bunyan' );
-			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
+		test( 'should only make one base logger', async () => {
+			const { default: bunyan } = ( await import( 'bunyan' ) ) as any;
+			await import( '../src/logger' );
 			expect( bunyan.createLogger.mock.calls.length ).toBe( 1 );
 			expect( bunyan.createLogger.mock.instances.length ).toBe( 1 );
 		} );
 
-		test( 'l should call the underlying loggers info and error functions', () => {
-			jest.setMock( 'bunyan', { createLogger, RingBuffer: jest.fn() } );
-			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
+		test( 'l should call the underlying loggers info and error functions', async () => {
+			vi.doMock( 'bunyan', () => ( { default: { createLogger, RingBuffer: vi.fn() } } ) );
+			const { l } = await import( '../src/logger' );
 
 			l.info( 'testLog' );
 			l.warn( 'testLog' );
@@ -58,18 +66,16 @@ describe( 'logger', () => {
 	} );
 
 	describe( '#getLoggerForBuild', () => {
-		test( 'should make a child logger', () => {
-			const bunyan = require( 'bunyan' );
-			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
+		test( 'should make a child logger', async () => {
+			const { getLoggerForBuild } = await import( '../src/logger' );
 			getLoggerForBuild( 'build-hash' );
 			expect( logger.child.mock.calls.length ).toBe( 1 );
 		} );
 
-		test( 'should write to a file at the correct path', () => {
-			const bunyan = require( 'bunyan' );
-			const { l, closeLogger, getLoggerForBuild } = require( '../src/logger' );
+		test( 'should write to a file at the correct path', async () => {
+			const { getLoggerForBuild } = await import( '../src/logger' );
 			const childLogger = getLoggerForBuild( 'build-hash' );
-			expect( childLogger.streams ).toEqual( [
+			expect( ( childLogger as any ).streams ).toEqual( [
 				{
 					path: expect.stringContaining(
 						'dserve-build-Automattic-wp-calypso-build-hash/dserve-build-log.txt'

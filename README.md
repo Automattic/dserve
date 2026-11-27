@@ -54,7 +54,8 @@ The unit test workflow does not require Docker:
 
 ```bash
 yarn run build-ts
-yarn test --runInBand
+yarn run typecheck
+yarn test
 yarn run audit:critical
 ```
 

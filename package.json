@@ -4,12 +4,11 @@
 	"description": "",
 	"main": "src/index.js",
 	"devDependencies": {
-		"@types/jest": "29",
 		"@types/tar-stream": "^2.2.3",
-		"jest": "29",
 		"prettier": "npm:wp-prettier@1.18.2",
 		"tar-stream": "^2.2.0",
-		"ts-jest": "29.4.11"
+		"vite": "^8.4.0",
+		"vitest": "^5.1.2"
 	},
 	"dependencies": {
 		"@types/bunyan": "^1.8.11",
@@ -36,45 +35,28 @@
 	"resolutions": {
 		"@protobufjs/utf8": "1.1.1",
 		"brace-expansion": "1.1.13",
-		"braces": "3.0.3",
 		"bunyan/mv/mkdirp": "0.5.6",
 		"debug": "4.3.1",
-		"micromatch": "4.0.8",
 		"minimatch": "3.1.4",
 		"minimist": "1.2.8",
-		"picomatch": "2.3.2",
 		"protobufjs": "7.5.8"
 	},
 	"scripts": {
 		"audit:critical": "node scripts/audit-critical.js",
-		"test": "jest",
+		"test": "vitest run",
 		"start": "yarn run build-ts && yarn run serve",
 		"serve": "node build/index.js",
 		"serve:debug": "node build/index.js | bunyan",
 		"serve:forever": "node build/daemon.js",
 		"build-ts": "tsc",
 		"watch-ts": "tsc -w",
-		"reformat-files": "./node_modules/.bin/prettier --write \"**/*.{ts,tsx,json}\""
+		"reformat-files": "./node_modules/.bin/prettier --write \"**/*.{ts,tsx,json}\"",
+		"typecheck": "tsc -p tsconfig.test.json"
 	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Automattic/dserve"
 	},
 	"author": "samouri",
-	"license": "MIT",
-	"jest": {
-		"testEnvironment": "node",
-		"transform": {
-			"^.+\\.tsx?$": "ts-jest"
-		},
-		"testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$",
-		"moduleFileExtensions": [
-			"ts",
-			"tsx",
-			"js",
-			"jsx",
-			"json",
-			"node"
-		]
-	}
+	"license": "MIT"
 }
