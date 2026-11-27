@@ -1,4 +1,4 @@
-import fs from 'fs-extra';
+import { mkdir, readFile, rm } from 'fs/promises';
 import os from 'os';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -10,6 +10,7 @@ import { closeLogger, l, getLoggerForBuild } from './logger';
 import { ONE_SECOND, ONE_MINUTE } from './constants';
 import { increment, timing, gauge } from './stats';
 import { checkoutCommit, cloneRepo, hasCommit } from './git';
+import { pathExists } from './file-utils';
 
 export const MAX_CONCURRENT_BUILDS = 4;
 
@@ -31,9 +32,9 @@ export async function isBuildInProgress( hash: CommitHash ): Promise< boolean > 
 		return true;
 	}
 
-	const pathExists = await fs.pathExists( getBuildDir( hash ) );
+	const buildDirExists = await pathExists( getBuildDir( hash ) );
 
-	return pendingHashes.has( hash ) || pathExists;
+	return pendingHashes.has( hash ) || buildDirExists;
 }
 
 export function didBuildFail( hash: CommitHash ): boolean {
@@ -41,8 +42,8 @@ export function didBuildFail( hash: CommitHash ): boolean {
 }
 
 export async function readBuildLog( hash: CommitHash ): Promise< string | null > {
-	return ( await fs.pathExists( getLogPath( hash ) ) )
-		? fs.readFile( getLogPath( hash ), 'utf-8' )
+	return ( await pathExists( getLogPath( hash ) ) )
+		? readFile( getLogPath( hash ), 'utf-8' )
 		: null;
 }
 
@@ -55,7 +56,7 @@ export async function cleanupBuildDir( hash: CommitHash ) {
 	const buildDir = getBuildDir( hash );
 	l.info( `removing directory: ${ buildDir }` );
 	pendingHashes.delete( hash );
-	return fs.remove( buildDir );
+	return rm( buildDir, { recursive: true, force: true } );
 }
 
 const waitingOnCommits: Set< CommitHash > = new Set();
@@ -205,7 +206,7 @@ export async function buildImageForHash( commitHash: CommitHash ): Promise< void
 	increment( 'build.start' );
 
 	try {
-		await fs.mkdir( buildDir );
+		await mkdir( buildDir );
 	} catch ( err ) {
 		l.error( { err, buildDir, commitHash }, 'Could not create directory for the build' );
 		increment( 'build.error' );

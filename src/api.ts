@@ -4,7 +4,6 @@ import http from 'http';
 import https from 'https';
 import _ from 'lodash';
 import getPort from 'get-port';
-import fs from 'fs-extra';
 import path from 'path';
 import { ContainerInfo } from 'dockerode';
 
@@ -21,6 +20,7 @@ import {
 import { CONTAINER_EXPIRY_TIME } from './constants';
 import { timing } from './stats';
 import { ContainerError, ImageError } from './error';
+import { pathExists } from './file-utils';
 
 type APIState = {
 	accesses: Map< ContainerName, number >;
@@ -506,7 +506,7 @@ async function getRemoteBranches(): Promise< Map< string, string > > {
 		l.error( { err }, 'Could not fetch repo to update branches list' );
 	}
 
-	if ( ! ( await fs.pathExists( calypsoDir ) ) ) {
+	if ( ! ( await pathExists( calypsoDir ) ) ) {
 		l.error( 'Something went very wrong while trying to refresh branches' );
 		return;
 	}

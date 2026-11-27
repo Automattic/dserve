@@ -1,6 +1,5 @@
 // external
 import express from 'express';
-import fs from 'fs-extra';
 import striptags from 'striptags';
 import { exec } from 'child_process';
 
