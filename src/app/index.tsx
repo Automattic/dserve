@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
+import { stripVTControlCharacters } from 'util';
 import { ONE_SECOND } from '../constants';
 
 import { Shell } from './app-shell';
-import stripAnsi from 'strip-ansi';
 import LogDetails from './log-details';
 
 const BUILD_LOG_DETAILS = new Set( [ 'error', 'err' ] );
@@ -24,7 +24,7 @@ class BuildLog extends React.Component< { log: string } > {
 			} )
 			.map( ( [ data, str ], i ) => (
 				<li key={ i }>
-					{ stripAnsi( str ) }
+					{ stripVTControlCharacters( str ) }
 					<LogDetails data={ data } details={ BUILD_LOG_DETAILS } />
 				</li>
 			) );

@@ -20,7 +20,6 @@
 		"@types/node": "20",
 		"@types/react": "^16.14.70",
 		"@types/react-dom": "^16.9.25",
-		"@types/strip-ansi": "^3.0.0",
 		"bunyan": "^1.8.15",
 		"docker-parse-image": "^3.0.1",
 		"dockerode": "^5.0.0",
@@ -31,13 +30,11 @@
 		"http-proxy": "^1.18.1",
 		"react": "^16.4.2",
 		"react-dom": "^16.4.2",
-		"strip-ansi": "^5.0.0",
 		"striptags": "^3.2.0",
 		"typescript": "5"
 	},
 	"resolutions": {
 		"@protobufjs/utf8": "1.1.1",
-		"ansi-regex": "4.1.1",
 		"brace-expansion": "1.1.13",
 		"braces": "3.0.3",
 		"bunyan/mv/mkdirp": "0.5.6",
